@@ -1,4 +1,4 @@
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from Cython.Build import cythonize
 import numpy
 
@@ -12,8 +12,10 @@ IS_WINDOWS = (platform.system() == 'Windows')   # get the operating system
 STATE_SIZE = 8                                  # the compiled code supports MHNs with maximum size of 32 * STATE_SIZE
 GENERATE_DEBUG_HTML = False                     # set this to True so that Cython generates a optimization HTML file
 
-
 assert STATE_SIZE > 0                           # make sure STATE_SIZE is greater zero
+
+with open("README.md", 'r') as f:
+    long_description = f.read()
 
 
 def compile_cuda_code():
@@ -36,7 +38,8 @@ def compile_cuda_code():
         return
 
     # command to compile the CUDA code using nvcc
-    compile_command = ['nvcc', '-o', 'CudaStateSpaceRestriction.dll', '--shared', 'kernel.cu', '-DSTATE_SIZE=8']
+    compile_command = ['nvcc', '-o', 'CudaStateSpaceRestriction.dll', '--shared',
+                       'kernel.cu', f'-DSTATE_SIZE={STATE_SIZE}']
     if not IS_WINDOWS:
         compile_command += ['-Xcompiler', '-fPIC']
 
@@ -57,7 +60,7 @@ if nvcc_available:
 ext_modules = [
     Extension(
         "StateSpaceRestrictionCython",
-        ["StateSpaceRestrictionCython.pyx"],
+        ["mhn/ssr/StateSpaceRestrictionCython.pyx"],
         libraries=libraries,
         library_dirs=[os.getcwd()],
         runtime_library_dirs=None if IS_WINDOWS else ["."],
@@ -71,7 +74,7 @@ ext_modules = [
     ),
     Extension(
         "approximate_gradient_cython",
-        ["approximate_gradient_cython.pyx"],
+        ["mhn/ssr/approximate_gradient_cython.pyx"],
         extra_compile_args=[
             '/openmp' if IS_WINDOWS else '-fopenmp',
             '/Ox' if IS_WINDOWS else '-O2',
@@ -81,7 +84,7 @@ ext_modules = [
     ),
     Extension(
         "state_storage",
-        ["state_storage.pyx"],
+        ["mhn/ssr/state_storage.pyx"],
         extra_compile_args=[
             f'-DSTATE_SIZE={STATE_SIZE}'
         ]
@@ -89,12 +92,24 @@ ext_modules = [
 ]
 
 setup(
+    name="mhn",
+    version="0.0.1",
+    packages=find_packages(),
+    author="Stefan Vocht",
+    description="Contains functions to train and work with Mutual Hazard Networks",
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     ext_modules=cythonize(ext_modules,
                           annotate=GENERATE_DEBUG_HTML,
                           compile_time_env=dict(
-                              NVCC_AVAILABLE=nvcc_available,
-                              STATE_SIZE=STATE_SIZE
-                          )
+                                                NVCC_AVAILABLE=nvcc_available,
+                                                STATE_SIZE=STATE_SIZE
+                                                )
                           ),
-    include_dirs=[numpy.get_include()]
+    include_dirs=[numpy.get_include()],
+    install_requires=[
+        'numpy>=1.19.0',
+        'numba>=0.53.0',                                # @TODO remove numba once the original code is written in Cython
+        'scipy>=1.1.0'
+    ]
 )
