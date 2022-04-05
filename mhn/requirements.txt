@@ -1,0 +1,6 @@
+Cython
+numba
+numpy
+scipy
+matplotlib
+setuptools
