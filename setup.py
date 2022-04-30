@@ -23,9 +23,9 @@ def compile_cuda_code():
     This function compiles the CUDA code of kernel.cu containing the CUDA function for State Space Restriction
     """
     if IS_WINDOWS:
-        output_filename = "CudaStateSpaceRestriction.dll"
+        output_filename = "./mhn/ssr/CudaStateSpaceRestriction.dll"
     else:
-        output_filename = "libCudaStateSpaceRestriction.so"
+        output_filename = "./mhn/ssr/libCudaStateSpaceRestriction.so"
 
     # check if the shared library file was modified after the source file
     shared_lib_latest_version = (os.path.getmtime("kernel.cu") - os.path.getmtime(output_filename) < 0)
@@ -38,8 +38,8 @@ def compile_cuda_code():
         return
 
     # command to compile the CUDA code using nvcc
-    compile_command = ['nvcc', '-o', 'CudaStateSpaceRestriction.dll', '--shared',
-                       'kernel.cu', f'-DSTATE_SIZE={STATE_SIZE}']
+    compile_command = ['nvcc', '-o', './mhn/ssr/CudaStateSpaceRestriction.dll', '--shared',
+                       './mhn/ssr/kernel.cu', f'-DSTATE_SIZE={STATE_SIZE}']
     if not IS_WINDOWS:
         compile_command += ['-Xcompiler', '-fPIC']
 
@@ -59,12 +59,19 @@ if nvcc_available:
 # define compile options for the Cython files
 ext_modules = [
     Extension(
+        "state_storage",
+        ["./mhn/ssr/state_storage.pyx"],
+        extra_compile_args=[
+            f'-DSTATE_SIZE={STATE_SIZE}'
+        ]
+    ),
+    Extension(
         "StateSpaceRestrictionCython",
-        ["mhn/ssr/StateSpaceRestrictionCython.pyx"],
+        ["./mhn/ssr/StateSpaceRestrictionCython.pyx"],
         libraries=libraries,
-        library_dirs=[os.getcwd()],
-        runtime_library_dirs=None if IS_WINDOWS else ["."],
-        include_dirs=['.'],
+        library_dirs=["./mhn/ssr/"],
+        runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/"],
+        include_dirs=['./mhn/ssr/'],
         extra_compile_args=[
             '/openmp' if IS_WINDOWS else '-fopenmp',
             '/Ox' if IS_WINDOWS else '-O2',
@@ -74,20 +81,13 @@ ext_modules = [
     ),
     Extension(
         "approximate_gradient_cython",
-        ["mhn/ssr/approximate_gradient_cython.pyx"],
+        ["./mhn/ssr/approximate_gradient_cython.pyx"],
         extra_compile_args=[
             '/openmp' if IS_WINDOWS else '-fopenmp',
             '/Ox' if IS_WINDOWS else '-O2',
             f'-DSTATE_SIZE={STATE_SIZE}'
         ],
         extra_link_args=[]
-    ),
-    Extension(
-        "state_storage",
-        ["mhn/ssr/state_storage.pyx"],
-        extra_compile_args=[
-            f'-DSTATE_SIZE={STATE_SIZE}'
-        ]
     )
 ]
 
