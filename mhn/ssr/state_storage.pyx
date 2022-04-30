@@ -5,6 +5,8 @@
 
 from libc.stdlib cimport malloc, free
 
+from mhn.ssr.state_storage cimport State
+
 import numpy as np
 
 # STATE_SIZE is defined in setup.py, 
@@ -34,6 +36,8 @@ cdef class State_storage:
     """
     This class is used as a wrapper such that the C array containing the States can be reference in a Python script
     """
+
+    cdef State *states
 
     def __cinit__(self, int[:, :] mutation_data):
 

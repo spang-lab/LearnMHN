@@ -12,7 +12,7 @@ from libc.stdlib cimport malloc, free
 from cython.parallel import parallel, prange
 from libc.math cimport exp, log
 
-from state_storage cimport State, State_storage
+from mhn.ssr.state_storage cimport State, State_storage
 
 import numpy as np
 cimport numpy as cnp

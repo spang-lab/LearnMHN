@@ -11,7 +11,7 @@ cimport cython
 from libc.stdlib cimport malloc, free, rand, srand, RAND_MAX
 from libc.math cimport exp 
 
-from state_storage cimport State_storage
+from mhn.ssr.state_storage cimport State_storage
 
 import numpy as np
 cimport numpy as cnp
