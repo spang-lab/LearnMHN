@@ -59,14 +59,14 @@ if nvcc_available:
 # define compile options for the Cython files
 ext_modules = [
     Extension(
-        "state_storage",
+        "mhn.ssr.state_storage",
         ["./mhn/ssr/state_storage.pyx"],
         extra_compile_args=[
             f'-DSTATE_SIZE={STATE_SIZE}'
         ]
     ),
     Extension(
-        "StateSpaceRestrictionCython",
+        "mhn.ssr.StateSpaceRestrictionCython",
         ["./mhn/ssr/StateSpaceRestrictionCython.pyx"],
         libraries=libraries,
         library_dirs=["./mhn/ssr/"],
@@ -80,7 +80,7 @@ ext_modules = [
         extra_link_args=[]
     ),
     Extension(
-        "approximate_gradient_cython",
+        "mhn.ssr.approximate_gradient_cython",
         ["./mhn/ssr/approximate_gradient_cython.pyx"],
         extra_compile_args=[
             '/openmp' if IS_WINDOWS else '-fopenmp',

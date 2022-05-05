@@ -7,8 +7,8 @@ import numpy as np
 
 from numpy.linalg import inv
 
-from MHN import ModelConstruction, UtilityFunctions
-from MHN import Likelihood
+from mhn.original import ModelConstruction, UtilityFunctions
+from mhn.original import Likelihood
 
 
 def count_ones(u: int) -> int:

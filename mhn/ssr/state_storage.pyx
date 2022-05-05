@@ -37,12 +37,11 @@ cdef class State_storage:
     This class is used as a wrapper such that the C array containing the States can be reference in a Python script
     """
 
-    cdef State *states
-
     def __cinit__(self, int[:, :] mutation_data):
 
         # the number of columns (number of genes) must not exceed 32 * STATE_SIZE
-        assert mutation_data.shape[1] < (32 * STATE_SIZE)
+        if mutation_data.shape[1] > (32 * STATE_SIZE):
+            raise ValueError(f"The number of genes present in the mutation data must not exceed {32 * STATE_SIZE}")
 
         self.data_size = mutation_data.shape[0]
         self.gene_num = mutation_data.shape[1]
