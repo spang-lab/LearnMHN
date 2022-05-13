@@ -8,10 +8,10 @@ from numpy.linalg import det, inv, norm
 
 from numba import njit
 
-from MHN import Likelihood, PerformanceCriticalCode
-from MHN import ModelConstruction
-from MHN import RegularizedOptimization
-from MHN import UtilityFunctions
+from mhn.original import Likelihood, PerformanceCriticalCode
+from mhn.original import ModelConstruction
+from mhn.original import RegularizedOptimization
+from mhn.original import UtilityFunctions
 
 
 @njit
