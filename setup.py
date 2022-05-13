@@ -28,7 +28,10 @@ def compile_cuda_code():
         output_filename = "./mhn/ssr/libCudaStateSpaceRestriction.so"
 
     # check if the shared library file was modified after the source file
-    shared_lib_latest_version = (os.path.getmtime("kernel.cu") - os.path.getmtime(output_filename) < 0)
+    try:
+        shared_lib_latest_version = (os.path.getmtime("./mhn/ssr/kernel.cu") - os.path.getmtime(output_filename) < 0)
+    except FileNotFoundError:
+        shared_lib_latest_version = False
 
     # check if compilation is even necessary or if the CUDA file was already compiled
     # for that we check if the shared library file exists and if it was modified after the source file
@@ -52,7 +55,7 @@ nvcc_available = int(which('nvcc') is not None)
 
 libraries = []
 if nvcc_available:
-    libraries.append("./CudaStateSpaceRestriction")
+    libraries.append("./mhn/ssr/CudaStateSpaceRestriction")
     compile_cuda_code()
 
 
