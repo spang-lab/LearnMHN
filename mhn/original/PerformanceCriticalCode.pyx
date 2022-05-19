@@ -11,7 +11,7 @@ from libc.stdlib cimport malloc, free
 from libc.math cimport exp
 
 
-cpdef kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, bint diag = False, bint transp = False):
+cpdef void kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, bint diag = False, bint transp = False):
     """
     This function multiplies the kronecker-product you get from the ith row of theta with a vector
 
@@ -91,7 +91,7 @@ cpdef kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, bint diag = False
     free(ptmp)
 
 
-cdef loop_j(int i, int n, double *pr, double *pG):
+cdef void loop_j(int i, int n, double *pr, double *pG):
     """
     This function is used in the gradient function (in Likelihood.pyx) to compute the gradient more efficiently
 
@@ -126,6 +126,7 @@ cdef loop_j(int i, int n, double *pr, double *pG):
         dcopy(&nxhalf, old_vec, &incx2, shuffled_vec, &incx)
         dcopy(&nxhalf, old_vec+1, &incx2, shuffled_vec+nxhalf, &incx)
 
+        # sums as dot products with 1
         pG[j] = ddot(&nxhalf, shuffled_vec+nxhalf, &incx, &one, &incx0)
         if i == j:
             pG[j] += ddot(&nxhalf, shuffled_vec, &incx, &one, &incx0)
