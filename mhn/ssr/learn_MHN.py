@@ -9,8 +9,8 @@ from scipy.optimize import minimize
 from typing import Callable
 
 from state_storage import State_storage, create_indep_model
-import StateSpaceRestrictionCython
-import approximate_gradient_cython as agc
+import state_space_restriction
+import approximate_gradient as ag
 
 
 def L1(theta: np.ndarray, eps: float = 1e-05) -> float:
@@ -45,9 +45,9 @@ def reg_state_space_restriction_score(theta: np.ndarray, states: State_storage, 
     """
     theta = theta.reshape((n, n))
 
-    # grad, score = StateSpaceRestrictionCython.gradient_and_score(theta, states)
+    # grad, score = state_space_restriction.gradient_and_score(theta, states)
     print("Start computing gradient")
-    grad, score = StateSpaceRestrictionCython.gradient_and_score_with_cuda(theta, states)
+    grad, score = state_space_restriction.gradient_and_score_with_cuda(theta, states)
     print("Finish")
     score_grad_container[0] = grad
 
@@ -72,7 +72,7 @@ def reg_state_space_restriction_gradient(theta: np.ndarray, states: State_storag
 
     grad = score_grad_container[0]
     if grad is None:
-        grad, score = StateSpaceRestrictionCython.gradient(theta, states)
+        grad, score = state_space_restriction.gradient(theta, states)
 
     return -(grad - lam * L1_(theta_)).flatten()
 
@@ -91,9 +91,9 @@ def reg_approximate_score(theta: np.ndarray, states: State_storage, lam: float,
     """
     theta = theta.reshape((n, n))
 
-    # grad, score = StateSpaceRestrictionCython.gradient_and_score(theta, states)
+    # grad, score = state_space_restriction.gradient_and_score(theta, states)
     print("Start approximating gradient")
-    grad, score = agc.gradient_and_score_using_c(np.exp(theta), states, 50, 10)
+    grad, score = ag.gradient_and_score_using_c(np.exp(theta), states, 50, 10)
     print("Finish")
     score_grad_container[0] = grad
 
@@ -118,7 +118,7 @@ def reg_approximate_gradient(theta: np.ndarray, states: State_storage, lam: floa
 
     grad = score_grad_container[0]
     if grad is None:
-        grad, score = agc.gradient_and_score_using_c(np.exp(theta), states, 50, 10)
+        grad, score = ag.gradient_and_score_using_c(np.exp(theta), states, 50, 10)
 
     return -(grad - lam * L1_(theta_)).flatten()
 

@@ -69,8 +69,8 @@ ext_modules = [
         ]
     ),
     Extension(
-        "mhn.ssr.StateSpaceRestrictionCython",
-        ["./mhn/ssr/StateSpaceRestrictionCython.pyx"],
+        "mhn.ssr.state_space_restriction",
+        ["./mhn/ssr/state_space_restriction.pyx"],
         libraries=libraries,
         library_dirs=["./mhn/ssr/"],
         runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/"],
@@ -83,8 +83,8 @@ ext_modules = [
         extra_link_args=[]
     ),
     Extension(
-        "mhn.ssr.approximate_gradient_cython",
-        ["./mhn/ssr/approximate_gradient_cython.pyx"],
+        "mhn.ssr.approximate_gradient",
+        ["./mhn/ssr/approximate_gradient.pyx"],
         extra_compile_args=[
             '/openmp' if IS_WINDOWS else '-fopenmp',
             '/Ox' if IS_WINDOWS else '-O2',
