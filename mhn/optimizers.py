@@ -30,8 +30,21 @@ class StateSpaceOptimizer:
         self.__data = State_storage(data_matrix)
         return self
 
-    def load_data_from_csv(self, src: str):
-        data_matrix = genfromtxt(src, delimiter=';', dtype=np.int32)
+    def load_data_from_csv(self, src: str, delimiter: str = ';',
+                           first_row: int = None, last_row: int = None, first_col: int = None, last_col: int = None):
+        """
+        Load binary mutation data from a CSV file
+
+        :param src: path to the CSV file
+        :param delimiter:  delimiter used in the CSV file (default: ';')
+        :param first_row: (Optional) first row of the CSV file that is part of the binary matrix without the column names
+        :param last_row: (Optional) last row of the CSV file that is part of the binary matrix without the column names
+        :param first_col: (Optional) first column of the CSV file that is part of the binary matrix without the row names
+        :param last_col: (Optional) last column of the CSV file that is part of the binary matrix without the row names
+        :return: this optimizer object
+        """
+        data_matrix = genfromtxt(src, delimiter=delimiter, dtype=np.int32)
+        data_matrix = data_matrix[first_row: last_row, first_col: last_col]
         self.load_data_matrix(data_matrix)
         return self
 

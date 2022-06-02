@@ -8,9 +8,9 @@ from scipy.optimize import minimize
 
 from typing import Callable
 
-from state_storage import State_storage, create_indep_model
-import state_space_restriction
-import approximate_gradient as ag
+from .state_storage import State_storage, create_indep_model
+from . import state_space_restriction
+from . import approximate_gradient as ag
 
 
 def L1(theta: np.ndarray, eps: float = 1e-05) -> float:
@@ -47,7 +47,7 @@ def reg_state_space_restriction_score(theta: np.ndarray, states: State_storage, 
 
     # grad, score = state_space_restriction.gradient_and_score(theta, states)
     print("Start computing gradient")
-    grad, score = state_space_restriction.gradient_and_score_with_cuda(theta, states)
+    grad, score = state_space_restriction.gradient_and_score(theta, states)
     print("Finish")
     score_grad_container[0] = grad
 
