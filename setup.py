@@ -41,7 +41,7 @@ def compile_cuda_code():
         return
 
     # command to compile the CUDA code using nvcc
-    compile_command = ['nvcc', '-o', './mhn/ssr/CudaStateSpaceRestriction.dll', '--shared',
+    compile_command = ['nvcc', '-o', output_filename, '--shared',
                        './mhn/ssr/kernel.cu', f'-DSTATE_SIZE={STATE_SIZE}']
     if not IS_WINDOWS:
         compile_command += ['-Xcompiler', '-fPIC']
@@ -96,7 +96,7 @@ ext_modules = [
 
 setup(
     name="mhn",
-    version="0.0.1",
+    version="0.0.3",
     packages=find_packages(),
     author="Stefan Vocht",
     description="Contains functions to train and work with Mutual Hazard Networks",
