@@ -19,6 +19,7 @@ class StateSpaceOptimizer:
     """
     def __init__(self):
         self.__data = None
+        self.__bin_datamatrix = None
         self.__result = None
         self.__init = None
         self.__callback = None
@@ -28,6 +29,7 @@ class StateSpaceOptimizer:
 
     def load_data_matrix(self, data_matrix: np.ndarray):
         self.__data = State_storage(data_matrix)
+        self.__bin_datamatrix = data_matrix
         return self
 
     def load_data_from_csv(self, src: str, delimiter: str = ';',
@@ -89,4 +91,8 @@ class StateSpaceOptimizer:
     @property
     def result(self):
         return self.__result
+
+    @property
+    def bin_datamatrix(self):
+        return self.__bin_datamatrix
 
