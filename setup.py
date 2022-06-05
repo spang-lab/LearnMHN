@@ -41,7 +41,7 @@ def compile_cuda_code():
         return
 
     # command to compile the CUDA code using nvcc
-    compile_command = ['nvcc', '-o', './mhn/ssr/CudaStateSpaceRestriction.dll', '--shared',
+    compile_command = ['nvcc', '-o', output_filename, '--shared',
                        './mhn/ssr/kernel.cu', f'-DSTATE_SIZE={STATE_SIZE}']
     if not IS_WINDOWS:
         compile_command += ['-Xcompiler', '-fPIC']
@@ -55,7 +55,7 @@ nvcc_available = int(which('nvcc') is not None)
 
 libraries = []
 if nvcc_available:
-    libraries.append("./mhn/ssr/CudaStateSpaceRestriction")
+    libraries.append(os.path.abspath("./mhn/ssr/CudaStateSpaceRestriction"))
     compile_cuda_code()
 
 
@@ -69,8 +69,8 @@ ext_modules = [
         ]
     ),
     Extension(
-        "mhn.ssr.StateSpaceRestrictionCython",
-        ["./mhn/ssr/StateSpaceRestrictionCython.pyx"],
+        "mhn.ssr.state_space_restriction",
+        ["./mhn/ssr/state_space_restriction.pyx"],
         libraries=libraries,
         library_dirs=["./mhn/ssr/"],
         runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/"],
@@ -83,8 +83,8 @@ ext_modules = [
         extra_link_args=[]
     ),
     Extension(
-        "mhn.ssr.approximate_gradient_cython",
-        ["./mhn/ssr/approximate_gradient_cython.pyx"],
+        "mhn.ssr.approximate_gradient",
+        ["./mhn/ssr/approximate_gradient.pyx"],
         extra_compile_args=[
             '/openmp' if IS_WINDOWS else '-fopenmp',
             '/Ox' if IS_WINDOWS else '-O2',
@@ -96,7 +96,7 @@ ext_modules = [
 
 setup(
     name="mhn",
-    version="0.0.1",
+    version="0.0.3",
     packages=find_packages(),
     author="Stefan Vocht",
     description="Contains functions to train and work with Mutual Hazard Networks",
