@@ -55,7 +55,7 @@ nvcc_available = int(which('nvcc') is not None)
 
 libraries = []
 if nvcc_available:
-    libraries.append("./mhn/ssr/CudaStateSpaceRestriction")
+    libraries.append(os.path.abspath("./mhn/ssr/CudaStateSpaceRestriction"))
     compile_cuda_code()
 
 
