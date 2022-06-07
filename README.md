@@ -26,7 +26,7 @@ The package contains the original MHN functions implemented in Python. You impor
 ```python
 from mhn.original import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
 ```
-It contains also functions to compute the Fisher information for a given MHN and use
+It also contains functions to compute the Fisher information for a given MHN and use
 Natural Gradient Descent to train a new model. You can use those functions by importing
 ```python
 from mhn.original import FisherFunctions
@@ -34,7 +34,7 @@ from mhn.original import FisherFunctions
 Lastly, you can train a MHN using state-space restriction. The corresponding functions
 can be imported with
 ```python
-from mhn.ssr import StateSpaceRestrictionCython, state_storage
+from mhn.ssr import state_space_restriction, state_storage
 ```
 
 ## How to train a new MHN
