@@ -24,6 +24,11 @@ class StateSpaceOptimizer:
         self.__init = None
         self.__callback = None
 
+        self.__backup_steps = -1
+        self.__backup_filename = None
+        self.__backup_always_new_file = False
+        self.__backup_current_step = None
+
         self.__score_func = reg_state_space_restriction_score
         self.__grad_func = reg_state_space_restriction_gradient
 
@@ -77,15 +82,52 @@ class StateSpaceOptimizer:
         self.__grad_func = reg_approximate_gradient
         return self
 
+    def save_progress(self, steps: int = -1, always_new_file: bool = False, filename: str = 'theta_backup'):
+        """
+        If you want to regularly save the progress during training, you can use this function and define the number
+        of steps between each progress save
+
+        :param filename: file name of the backup file
+        :param steps: number of training iterations between each progress backup
+        :param always_new_file: if this is True, every backup is stored in a separate file, else the file is overwritten each time
+        :return: this optimizer object
+        """
+        self.__backup_steps = steps
+        self.__backup_always_new_file = always_new_file
+        self.__backup_filename = filename
+        return self
+
+    def __total_callback_func(self, theta: np.ndarray):
+        if self.__callback is not None:
+            self.__callback(theta)
+
+        if self.__backup_steps > 0:
+            self.__create_backup(theta)
+
+    def __create_backup(self, theta: np.ndarray):
+        self.__backup_current_step += 1
+        if not (self.__backup_current_step % self.__backup_steps):
+            filename = self.__backup_filename
+            if self.__backup_always_new_file:
+                try:
+                    indx = filename.index(".")
+                    filename = filename[:indx] + f"_{self.__backup_current_step}" + filename[indx:]
+                except ValueError:
+                    filename += f"_{self.__backup_current_step}.npy"
+            with open(filename, 'wb') as f:
+                np.save(f, theta)
+
     def train(self, lam: float = 0, maxit: int = 5000, trace: bool = False,
               reltol: float = 1e-7, round_result: bool = True) -> np.ndarray:
         if self.__data is None:
             raise ValueError("You have to load data before training!")
 
         self.__result = None
+        self.__backup_current_step = 0
         self.__result = learn_MHN(self.__data, self.__init, lam, maxit, trace, reltol,
-                                  round_result, self.__callback, self.__score_func, self.__grad_func)
+                                  round_result, self.__total_callback_func, self.__score_func, self.__grad_func)
 
+        self.__backup_current_step = None
         return self.__result
 
     @property
