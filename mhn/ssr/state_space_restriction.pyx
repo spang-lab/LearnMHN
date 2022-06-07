@@ -521,5 +521,12 @@ cpdef gradient_and_score(double[:, :] theta, State_storage mutation_data):
         return (final_gradient / data_size, score / data_size)
 
     ELSE:
-        return cython_gradient_and_score(theta, mutation_data) 
+        return cython_gradient_and_score(theta, mutation_data)
+
+
+def cuda_available():
+    """
+    Call this function if you are not sure if the mhn package was compiled with CUDA.
+    """
+    return bool(NVCC_AVAILABLE)
 
