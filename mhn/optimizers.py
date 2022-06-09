@@ -22,7 +22,7 @@ class StateSpaceOptimizer:
         self.__bin_datamatrix = None
         self.__result = None
         self.__init = None
-        self.__callback = None
+        self.__custom_callback = None
 
         self.__backup_steps = -1
         self.__backup_filename = None
@@ -62,7 +62,7 @@ class StateSpaceOptimizer:
     def set_callback_func(self, callback):
         if not hasattr(callback, '__call__'):
             raise ValueError("callback has to be a function!")
-        self.__callback = callback
+        self.__custom_callback = callback
         return self
 
     def set_score_and_gradient_function(self, score_func, gradient_func):
@@ -98,21 +98,21 @@ class StateSpaceOptimizer:
         return self
 
     def __total_callback_func(self, theta: np.ndarray):
-        if self.__callback is not None:
-            self.__callback(theta)
+        if self.__custom_callback is not None:
+            self.__custom_callback(theta)
 
         if self.__backup_steps > 0:
             self.__create_backup(theta)
 
     def __create_backup(self, theta: np.ndarray):
         self.__backup_current_step += 1
-        if not (self.__backup_current_step % self.__backup_steps):
+        if (self.__backup_current_step % self.__backup_steps) == 0:
             filename = self.__backup_filename
             if self.__backup_always_new_file:
                 try:
-                    indx = filename.index(".")
-                    filename = filename[:indx] + f"_{self.__backup_current_step}" + filename[indx:]
-                except ValueError:
+                    idx = filename.index(".")
+                    filename = filename[:idx] + f"_{self.__backup_current_step}" + filename[idx:]
+                except ValueError:  # str.index raises ValueError if no "." is present in the filename
                     filename += f"_{self.__backup_current_step}.npy"
             with open(filename, 'wb') as f:
                 np.save(f, theta)
@@ -124,8 +124,14 @@ class StateSpaceOptimizer:
 
         self.__result = None
         self.__backup_current_step = 0
+
+        if self.__custom_callback is None and self.__backup_steps < 1:
+            callback_func = None
+        else:
+            callback_func = self.__total_callback_func
+
         self.__result = learn_MHN(self.__data, self.__init, lam, maxit, trace, reltol,
-                                  round_result, self.__total_callback_func, self.__score_func, self.__grad_func)
+                                  round_result, callback_func, self.__score_func, self.__grad_func)
 
         self.__backup_current_step = None
         return self.__result
