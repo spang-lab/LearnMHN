@@ -37,6 +37,34 @@ can be imported with
 from mhn.ssr import state_space_restriction, state_storage
 ```
 
+## Using the CUDA implementation for State-Space Restriction
+If your device has a Nvidia GPU, you can accelerate the computation of the gradient and score for
+State Space Restriction with CUDA. 
+For that you have to have CUDA and the CUDA compiler
+installed on your device. You can check that in the terminal with
+```bash
+nvcc --version
+```
+If this command is recognized, then CUDA should be installed on your device.  
+You can also use the following function of the ```state_space_restriction``` submodule:
+```python
+from mhn.ssr import state_space_restriction
+
+print(state_space_restriction.cuda_available())
+
+# the three possible results are also available as constants:
+# CUDA_AVAILABLE, CUDA_NOT_AVAILABLE, CUDA_NOT_FUNCTIONAL
+
+if state_space_restriction.cuda_available() == state_space_restriction.CUDA_AVAILABLE:
+    print('CUDA is available')
+
+if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_AVAILABLE:
+    print('The CUDA compiler nvcc could not be found')
+
+if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_FUNCTIONAL:
+    print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')
+```
+
 ## How to train a new MHN
 
 The simplest way to train a new MHN is to import the ```optimizers``` module and
