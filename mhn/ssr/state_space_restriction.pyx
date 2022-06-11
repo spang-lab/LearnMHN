@@ -78,9 +78,11 @@ IF NVCC_AVAILABLE:
         #endif
 
         double DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out);
+        int DLL_PREFIX cuda_functional();
         """
 
         double cuda_gradient_and_score(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out)
+        int cuda_functional()
 
 
 @cython.wraparound(False)
@@ -524,9 +526,18 @@ cpdef gradient_and_score(double[:, :] theta, State_storage mutation_data):
         return cython_gradient_and_score(theta, mutation_data)
 
 
+CUDA_AVAILABLE = "CUDA is available"
+CUDA_NOT_AVAILABLE = "The CUDA compiler nvcc could not be found"
+CUDA_NOT_FUNCTIONAL = "CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation"
 def cuda_available():
     """
-    Call this function if you are not sure if the mhn package was compiled with CUDA.
+    Call this function if you want to know if the mhn package is able to use CUDA functions on your device.
     """
-    return bool(NVCC_AVAILABLE)
+    IF NVCC_AVAILABLE:
+        if cuda_functional():
+            return CUDA_AVAILABLE
+        else:
+            return CUDA_NOT_FUNCTIONAL
+    ELSE:
+        return CUDA_NOT_AVAILABLE
 

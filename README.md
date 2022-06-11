@@ -37,6 +37,46 @@ can be imported with
 from mhn.ssr import state_space_restriction, state_storage
 ```
 
+## Using the CUDA implementation of State-Space Restriction
+If your device has a Nvidia GPU, you can accelerate the computation of the gradient and score for
+State Space Restriction with CUDA. 
+For that you have to have CUDA and the CUDA compiler
+installed on your device. You can check that in the terminal with
+```bash
+nvcc --version
+```
+If this command is recognized, then CUDA should be installed on your device.  
+You can also use the following function of the ```state_space_restriction``` submodule:
+```python
+from mhn.ssr import state_space_restriction
+
+print(state_space_restriction.cuda_available())
+
+# the three possible results are also available as constants:
+# CUDA_AVAILABLE, CUDA_NOT_AVAILABLE, CUDA_NOT_FUNCTIONAL
+
+if state_space_restriction.cuda_available() == state_space_restriction.CUDA_AVAILABLE:
+    print('CUDA is available')
+
+if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_AVAILABLE:
+    print('The CUDA compiler nvcc could not be found')
+
+if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_FUNCTIONAL:
+    print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')
+```
+
+Be especially aware of the ```CUDA_NOT_FUNCTIONAL``` case: Even though CUDA
+is not functional, the CUDA functions will run with no error, but will
+return wrong results. In this case
+something is probably wrong with your CUDA drivers and you should check your CUDA
+installation.  
+If you install ``nvcc`` after installing the ``mhn`` package, you have to
+run 
+```bash
+pip3 install -e /path/to/this/directory --upgrade
+```
+to use the CUDA functions of this package.
+
 ## How to train a new MHN
 
 The simplest way to train a new MHN is to import the ```optimizers``` module and
@@ -76,9 +116,22 @@ is an independence model, with
 ```python
 opt = opt.set_init_theta(init_theta)
 ```
+If you want to regularly save the progress during training you can use
+```python
+opt = opt.save_progress(steps=-1, always_new_file=False, filename='theta_backup.npy')
+```
+The parameters of this method are  
+``steps`` (default: ``-1``): if positive, the number of iterations between two progress storages  
+``always_new_file`` (default: ``False``): if True, creates a new file for every progress storage, 
+else the former progress file is overwritten each time  
+``filename`` (default: ``"theta_backup.npy"``): the file name of the progress file.
+
 Lastly, you could specify a callback function that is called after each training step
 ```python
-opt = opt.set_callback_func(callback_func)
+def some_callback_function(theta: np.ndarray):
+    pass
+
+opt = opt.set_callback_func(some_callback_function)
 ```
 
 Finally, you can train a new MHN with
@@ -89,9 +142,9 @@ opt = opt.load_data_from_csv(filename, delimiter)
 opt.train()
 ```
 Some important parameters of the ``train`` method include  
-``lam`` (default: 0), which is
+``lam`` (default: ``0``), which is
 a tuning parameter to control regularization,  
-``maxit`` (default: 5000), which is the maximum
+``maxit`` (default: ``5000``), which is the maximum
 number of training iterations,  
 ```reltol``` (default: ``1e-7``), which is the gradient norm at which the training terminates and
 ```round_result``` (default: ``True``), which, if set to True, rounds the result to two decimal places  

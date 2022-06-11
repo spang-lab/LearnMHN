@@ -688,3 +688,18 @@ double DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation
 
 	return score;
 }
+
+
+/**
+ * This function can be used to check if CUDA works as intended. For that it allocates and frees memory on the GPU.
+ * If the allocation fails, something is probably wrong with the CUDA drivers and you should check your CUDA installation.
+ *
+ * @return 1, if everything works as it should, else 0
+*/
+int DLL_PREFIX cuda_functional(){
+    int *ptr;
+    cudaMalloc(&ptr, sizeof(int));
+    cudaFree(ptr);
+
+    return (cudaGetLastError() == cudaSuccess);
+}
