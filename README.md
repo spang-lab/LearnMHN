@@ -37,7 +37,7 @@ can be imported with
 from mhn.ssr import state_space_restriction, state_storage
 ```
 
-## Using the CUDA implementation for State-Space Restriction
+## Using the CUDA implementation of State-Space Restriction
 If your device has a Nvidia GPU, you can accelerate the computation of the gradient and score for
 State Space Restriction with CUDA. 
 For that you have to have CUDA and the CUDA compiler
@@ -64,6 +64,18 @@ if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_
 if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_FUNCTIONAL:
     print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')
 ```
+
+Be especially aware of the ```CUDA_NOT_FUNCTIONAL``` case: Even though CUDA
+is not functional, the CUDA functions will run with no error, but will
+return wrong results. In this case
+something is probably wrong with your CUDA drivers and you should check your CUDA
+installation.  
+If you install ``nvcc`` after installing the ``mhn`` package, you have to
+run 
+```bash
+pip3 install -e /path/to/this/directory --upgrade
+```
+to use the CUDA functions of this package.
 
 ## How to train a new MHN
 
