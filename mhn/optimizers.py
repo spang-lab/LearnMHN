@@ -59,8 +59,8 @@ class StateSpaceOptimizer:
         self.__init = init
         return self
 
-    def set_callback_func(self, callback):
-        if not hasattr(callback, '__call__'):
+    def set_callback_func(self, callback=None):
+        if callback is not None and not hasattr(callback, '__call__'):
             raise ValueError("callback has to be a function!")
         self.__custom_callback = callback
         return self
@@ -82,7 +82,7 @@ class StateSpaceOptimizer:
         self.__grad_func = reg_approximate_gradient
         return self
 
-    def save_progress(self, steps: int = -1, always_new_file: bool = False, filename: str = 'theta_backup'):
+    def save_progress(self, steps: int = -1, always_new_file: bool = False, filename: str = 'theta_backup.npy'):
         """
         If you want to regularly save the progress during training, you can use this function and define the number
         of steps between each progress save
