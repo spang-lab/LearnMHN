@@ -146,7 +146,7 @@ Some important parameters of the ``train`` method include
 a tuning parameter to control regularization,  
 ``maxit`` (default: ``5000``), which is the maximum
 number of training iterations,  
-```reltol``` (default: ``1e-7``), which is the gradient norm at which the training terminates and
+```reltol``` (default: ``1e-7``), which is the gradient norm at which the training terminates and  
 ```round_result``` (default: ``True``), which, if set to True, rounds the result to two decimal places  
   
 The resulting MHN is returned by the ```train()``` method, but can also be obtained
