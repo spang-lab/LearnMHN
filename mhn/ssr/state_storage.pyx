@@ -32,7 +32,7 @@ cdef void fill_states(State *states, int[:, :] mutation_data):
                 current_state[0].parts[j >> 5] |=  1 << (j & 31)
 
 
-cdef class State_storage:
+cdef class StateStorage:
     """
     This class is used as a wrapper such that the C array containing the States can be reference in a Python script
     """
@@ -64,9 +64,9 @@ cdef class State_storage:
         free(self.states)
 
 
-def create_indep_model(State_storage state_storage):
+def create_indep_model(StateStorage state_storage):
     """
-    Compute a independence model from the data stored in the State_storage object
+    Compute an independence model from the data stored in the StateStorage object
     """
 
     cdef int n = state_storage.gene_num

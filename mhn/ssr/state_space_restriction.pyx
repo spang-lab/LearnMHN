@@ -12,7 +12,7 @@ from libc.stdlib cimport malloc, free
 from cython.parallel import parallel, prange
 from libc.math cimport exp, log
 
-from mhn.ssr.state_storage cimport State, State_storage
+from mhn.ssr.state_storage cimport State, StateStorage
 
 import numpy as np
 cimport numpy as cnp
@@ -410,12 +410,12 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
     return log(pth[nx - 1])
 
 
-cpdef cython_gradient_and_score(double[:, :] theta, State_storage mutation_data):
+cpdef cython_gradient_and_score(double[:, :] theta, StateStorage mutation_data):
     """
     Computes the total gradient and score for a given MHN and given mutation data
 
     :param theta: matrix containing the theta entries of the current MHN
-    :param mutation_data: State_storage containing the mutation data the MHN should be trained on
+    :param mutation_data: StateStorage containing the mutation data the MHN should be trained on
     :return: tuple containing the gradient and the score
     """
     cdef int n = theta.shape[0]
@@ -440,12 +440,12 @@ cpdef cython_gradient_and_score(double[:, :] theta, State_storage mutation_data)
 
 # this function is only defined if the CUDA-compiler (nvcc) is available on your device
 IF NVCC_AVAILABLE:
-    cpdef gradient_and_score_with_cuda(double[:, :] theta, State_storage mutation_data):
+    cpdef gradient_and_score_with_cuda(double[:, :] theta, StateStorage mutation_data):
         """
         This function is a wrapper for the cuda implementation of the state space restriction
 
         :param theta: matrix containing the theta entries of the current MHN
-        :param mutation_data: State_storage containing the mutation data the MHN should be trained on
+        :param mutation_data: StateStorage containing the mutation data the MHN should be trained on
         :return: tuple containing the gradient and the score
         """
 
@@ -459,7 +459,7 @@ IF NVCC_AVAILABLE:
         return (np.asarray(grad_out).reshape((n, n)) / data_size, score / data_size)
 
 
-cpdef gradient_and_score(double[:, :] theta, State_storage mutation_data):
+cpdef gradient_and_score(double[:, :] theta, StateStorage mutation_data):
     """
     This function computes the gradient using Cython AND CUDA (only if CUDA is installed)
     It will compute the gradients for data points with few mutations using the Cython implementation

@@ -7,7 +7,7 @@
 from .ssr.learn_MHN import learn_MHN, reg_state_space_restriction_score, reg_state_space_restriction_gradient
 from .ssr.learn_MHN import reg_approximate_score, reg_approximate_gradient
 
-from .ssr.state_storage import State_storage
+from .ssr.state_storage import StateStorage
 
 import numpy as np
 from numpy import genfromtxt
@@ -33,7 +33,7 @@ class StateSpaceOptimizer:
         self.__grad_func = reg_state_space_restriction_gradient
 
     def load_data_matrix(self, data_matrix: np.ndarray):
-        self.__data = State_storage(data_matrix)
+        self.__data = StateStorage(data_matrix)
         self.__bin_datamatrix = data_matrix
         return self
 

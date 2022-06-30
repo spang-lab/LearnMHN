@@ -11,7 +11,7 @@ cimport cython
 from libc.stdlib cimport malloc, free, rand, srand, RAND_MAX
 from libc.math cimport exp 
 
-from mhn.ssr.state_storage cimport State_storage
+from mhn.ssr.state_storage cimport StateStorage
 
 import numpy as np
 cimport numpy as cnp
@@ -429,12 +429,12 @@ def gradient(double[:, :] theta, int[:] mutation_data, int m = 50, int burn_in_s
     return final_gradient / len(mutation_data)
 
 
-def gradient_and_score_using_c(double[:, :] theta, State_storage mutation_data, int m = 50, int burn_in_samples = 10) -> np.ndarray:
+def gradient_and_score_using_c(double[:, :] theta, StateStorage mutation_data, int m = 50, int burn_in_samples = 10) -> np.ndarray:
     """
     This is a wrapper for the C implementation of the approximated gradient, so that it can be called from a Python script
 
     :param theta: matrix containing the theta entries
-    :param mutation_data: State_storage object containing the mutation data used to train the current MHN
+    :param mutation_data: StateStorage object containing the mutation data used to train the current MHN
     :param m: number of paths that should be sampled to approximate the gradients for each tumor sample
     :param burn_in_samples: number of paths that should be sampled at the beginning as burn in for better results
     """

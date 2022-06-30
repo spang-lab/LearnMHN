@@ -16,7 +16,7 @@ cdef extern from *:
         unsigned int parts[STATE_SIZE]
 
 
-cdef class State_storage:
+cdef class StateStorage:
     cdef State *states
     cdef int data_size
     cdef int gene_num

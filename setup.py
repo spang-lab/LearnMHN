@@ -96,7 +96,7 @@ ext_modules = [
 
 setup(
     name="mhn",
-    version="0.0.3",
+    version="0.0.4",
     packages=find_packages(),
     author="Stefan Vocht",
     description="Contains functions to train and work with Mutual Hazard Networks",
