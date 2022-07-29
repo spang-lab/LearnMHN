@@ -197,7 +197,7 @@ cdef void restricted_kronvec(double[:, :] theta_mat, int i, double[:] x_vec, Sta
 
 cdef void restricted_q_vec(double[:, :] theta, double[:] x, State *state, double *yout, bint diag= False, bint transp = False):
     """
-    computes y = Q(ptheta) * x, result is saved in yout
+    multiplies the matrix Q(ptheta) with the vector x, result is saved in yout
 
     :param theta: matrix containing the theta entries
     :param x: vector that should be multiplied with Q(ptheta)
@@ -279,6 +279,8 @@ cdef void restricted_q_diag(double[:, :] theta, State *state, double *dg):
                 exp_theta = - exp(theta[i, j])
                 dscal(&current_length, &exp_theta, s, &i_one)
 
+            # if the mutation state of the next gene is stored on the current state_copy, make a bit shift to the right
+            # else state_copy becomes the next integer stored in the given state (x >> 5  <=> x // 32, x & 31 <=> x % 32)
             if (j + 1) & 31:
                 state_copy >>= 1
             else:
@@ -309,14 +311,16 @@ cdef double [:] restricted_jacobi(double[:, :] theta, double[:] b, State *state,
     cdef double d_one = 1
     cdef double mOne = -1
 
+    # make x a vector of size nx in which every entry is set to 1/nx,
+    # will be the initial guess to the solution for the jacobi method
     cdef double[:] x = np.full(nx, 1 / (1.0 * nx), dtype=np.float)
     cdef double *q_vec_result = <double *> malloc(nx * sizeof(double))
 
     # compute the diagonal of [I-Q], store it in dg
     cdef double *dg = <double *> malloc(nx * sizeof(double))
-    restricted_q_diag(theta, state, dg)
-    daxpy(&nx, &d_one, &mOne, &zero, dg, &i_one)
-    dscal(&nx, &mOne, dg, &i_one)
+    restricted_q_diag(theta, state, dg)             # compute the diagonal of Q
+    daxpy(&nx, &d_one, &mOne, &zero, dg, &i_one)    # subtract 1 from each entry to get the diagonal of [Q-I]
+    dscal(&nx, &mOne, dg, &i_one)                   # scale with -1 to get the diagonal of [I-Q]
 
     for z in range(mutation_num+1):
         restricted_q_vec(theta, x, state, q_vec_result, diag=False, transp=transp)
@@ -382,23 +386,31 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
         for j in range(nx):
             r_vec[j] = q[j] * ptmp[j] 
         old_vec = &r_vec[0]
-        shuffled_vec = ptmp  # reuse ptmp for the shuffle as it is already allocated memory
+        # reuse the allocated memory of ptmp for the shuffle since the entries of ptmp are no longer used anyway
+        shuffled_vec = ptmp
         state_copy = state[0].parts[0]
         for j in range(n):
             if state_copy & 1:
+                # shuffle entries of old_vec
                 dcopy(&nxhalf, old_vec, &incx2, shuffled_vec, &incx)
                 dcopy(&nxhalf, old_vec+1, &incx2, shuffled_vec+nxhalf, &incx)
+                # add up the entries of the second half of the shuffled vector to get the partial derivative
                 g[i, j] = ddot(&nxhalf, shuffled_vec+nxhalf, &incx, &one, &incx0)
+                # in the case i == j also add all the entries of the first half of the shuffled vector
                 if i == j:
                     g[i, j] += ddot(&nxhalf, shuffled_vec, &incx, &one, &incx0)
 
+                # make shuffled_vec the old_vec and vice versa for the next iteration
                 swap_vec = old_vec
                 old_vec = shuffled_vec
                 shuffled_vec = swap_vec
 
             elif i == j:
+                # add up all entries of old_vec (respectively r_vec) to get the partial derivative for i == j, if gene i is not mutated
                 g[i, j] = ddot(&nx, old_vec, &incx, &one, &incx0)
 
+            # if the mutation state of the next gene is stored on the current state_copy, make a bit shift to the right
+            # else state_copy becomes the next integer stored in the given state (x >> 5  <=> x // 32, x & 31 <=> x % 32)
             if (j + 1) & 31:
                 state_copy >>= 1
             else:
@@ -432,10 +444,13 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateStorage mutation_data):
     cdef double score = 0
 
     for i in range(data_size):
+        # for each sample/patient in mutation_data,
+        # compute the gradient and score for the sample and add them to the total gradient and total score
         score += restricted_gradient_and_score(theta, &mutation_data.states[i], local_gradient_container)
         final_gradient += local_gradient_container
 
-    return (final_gradient / data_size, score / data_size)
+    # return the normalized gradient and normalized score
+    return (final_gradient / data_size), (score / data_size)
 
 
 # this function is only defined if the CUDA-compiler (nvcc) is available on your device
@@ -446,7 +461,7 @@ IF NVCC_AVAILABLE:
 
         :param theta: matrix containing the theta entries of the current MHN
         :param mutation_data: StateStorage containing the mutation data the MHN should be trained on
-        :return: tuple containing the gradient and the score
+        :return: tuple containing the normalized gradient and score
         """
 
         cdef int n = theta.shape[0]
@@ -456,7 +471,7 @@ IF NVCC_AVAILABLE:
 
         cdef double score = cuda_gradient_and_score(&theta[0, 0], n, &mutation_data.states[0], data_size, &grad_out[0])
 
-        return (np.asarray(grad_out).reshape((n, n)) / data_size, score / data_size)
+        return (np.asarray(grad_out).reshape((n, n)) / data_size), (score / data_size)
 
 
 cpdef gradient_and_score(double[:, :] theta, StateStorage mutation_data):
