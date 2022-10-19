@@ -31,6 +31,7 @@ class _Optimizer(abc.ABC):
     This abstract Optimizer class is the base class for the other Optimizer classes and cannot be instantiated alone.
     """
 
+
     def __init__(self):
         self._data = None
         self._bin_datamatrix = None
@@ -105,6 +106,24 @@ class _Optimizer(abc.ABC):
         self.__custom_callback = callback
         return self
 
+    def set_score_and_gradient_function(self, score_func, gradient_func):
+        if not hasattr(score_func, '__call__') or not hasattr(gradient_func, '__call__'):
+            raise ValueError(
+                "score_func and gradient_func have to be functions!")
+        self.__score_func = score_func
+        self.__grad_func = gradient_func
+        return self
+
+    def use_state_space_restriction(self):
+        self.__score_func = reg_state_space_restriction_score
+        self.__grad_func = reg_state_space_restriction_gradient
+        return self
+
+    def use_approximate_gradient(self):
+        self.__score_func = reg_approximate_score
+        self.__grad_func = reg_approximate_gradient
+        return self
+
     def save_progress(self, steps: int = -1, always_new_file: bool = False, filename: str = 'theta_backup.npy'):
         """
         If you want to regularly save the progress during training, you can use this function and define the number
@@ -134,7 +153,8 @@ class _Optimizer(abc.ABC):
             if self.__backup_always_new_file:
                 try:
                     idx = filename.index(".")
-                    filename = filename[:idx] + f"_{self.__backup_current_step}" + filename[idx:]
+                    filename = filename[:idx] + \
+                        f"_{self.__backup_current_step}" + filename[idx:]
                 except ValueError:  # str.index raises ValueError if no "." is present in the filename
                     filename += f"_{self.__backup_current_step}.npy"
             with open(filename, 'wb') as f:
