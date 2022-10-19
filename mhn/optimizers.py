@@ -17,6 +17,7 @@ class StateSpaceOptimizer:
     """
     This optimizer uses state space restriction to optimize a MHN
     """
+
     def __init__(self):
         self.__data = None
         self.__bin_datamatrix = None
@@ -67,7 +68,8 @@ class StateSpaceOptimizer:
 
     def set_score_and_gradient_function(self, score_func, gradient_func):
         if not hasattr(score_func, '__call__') or not hasattr(gradient_func, '__call__'):
-            raise ValueError("score_func and gradient_func have to be functions!")
+            raise ValueError(
+                "score_func and gradient_func have to be functions!")
         self.__score_func = score_func
         self.__grad_func = gradient_func
         return self
@@ -111,7 +113,8 @@ class StateSpaceOptimizer:
             if self.__backup_always_new_file:
                 try:
                     idx = filename.index(".")
-                    filename = filename[:idx] + f"_{self.__backup_current_step}" + filename[idx:]
+                    filename = filename[:idx] + \
+                        f"_{self.__backup_current_step}" + filename[idx:]
                 except ValueError:  # str.index raises ValueError if no "." is present in the filename
                     filename += f"_{self.__backup_current_step}.npy"
             with open(filename, 'wb') as f:
@@ -144,3 +147,18 @@ class StateSpaceOptimizer:
     def bin_datamatrix(self):
         return self.__bin_datamatrix
 
+    def save(self, filename: str):
+        np.save(f"{filename}_log_theta.npy", self.__result)
+        np.save(f"{filename}_events.npy", self.__result)
+
+    @classmethod
+    def load(events: np.ndarray, log_theta: np.ndarray):
+        """
+        :param eventfile
+        :param log_theta_file
+        """
+        opt = StateSpaceOptimizer()
+        opt.__result = log_theta
+        opt.load_data_matrix(events)
+
+        return opt
