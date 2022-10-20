@@ -146,19 +146,3 @@ class StateSpaceOptimizer:
     @property
     def bin_datamatrix(self):
         return self.__bin_datamatrix
-
-    def save(self, filename: str):
-        np.save(f"{filename}_log_theta.npy", self.__result)
-        np.save(f"{filename}_events.npy", self.__result)
-
-    @classmethod
-    def load(events: np.ndarray, log_theta: np.ndarray):
-        """
-        :param eventfile
-        :param log_theta_file
-        """
-        opt = StateSpaceOptimizer()
-        opt.__result = log_theta
-        opt.load_data_matrix(events)
-
-        return opt
