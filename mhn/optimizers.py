@@ -6,6 +6,7 @@
 
 from .ssr.learn_MHN import learn_MHN, reg_state_space_restriction_score, reg_state_space_restriction_gradient
 from .ssr.learn_MHN import reg_approximate_score, reg_approximate_gradient
+from .model import MHN
 
 from .ssr.state_storage import State_storage
 
@@ -137,11 +138,11 @@ class StateSpaceOptimizer:
                                   round_result, callback_func, self.__score_func, self.__grad_func)
 
         self.__backup_current_step = None
-        return self.__result
+        return MHN(log_theta=self.__result)
 
     @property
     def result(self):
-        return self.__result
+        return MHN(log_theta=self.__result)
 
     @property
     def bin_datamatrix(self):
