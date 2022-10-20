@@ -18,6 +18,9 @@ import matplotlib.axes
 import matplotlib.colors as colors
 
 
+from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
+
+
 class bits_fixed_n:
 
     def __init__(self, n, k):
@@ -363,3 +366,54 @@ class OmegaMHN(MHN):
                     json_serializable_meta[meta_key] = str(meta_value)
             with open(f"{filename}_meta.json", "x") as file:
                 json.dump(json_serializable_meta, file, indent=4)
+
+    def get_restr_diag(self, events: np.array):
+        k = events.sum()
+        nx = 1 << k
+        n = self.log_theta.shape[0]
+        diag =  np.zeros(nx)
+        subdiag = np.zeros(nx)
+
+        for i in range(n):
+
+            current_length = 1
+            subdiag[0] = 1
+            # compute the ith subdiagonal of Q 
+            for j in range(n):
+                if events[j]:
+                    exp_theta = np.exp(self.log_theta[i, j])
+                    if i == j:
+                        exp_theta *= -1
+                        dscal(current_length, exp_theta, subdiag, 1)
+                        dscal(current_length, zero, subdiag + current_length, 1)
+                    else:
+                        dcopy(current_length, subdiag, 1, subdiag + current_length, 1)
+                        dscal(current_length, exp_theta, subdiag + current_length, 1)
+
+                    current_length *= 2
+
+                elif i == j:
+                    exp_theta = - np.exp(self.log_theta[i, j])
+                    dscal(current_length, exp_theta, subdiag, 1)
+
+            # add the subdiagonal to dg
+            daxpy(nx, 1, subdiag, 1, diag, 1)
+        return diag
+
+    # def likeliest_order(events: np.array):
+
+    #     restr_diag = 
+
+    #     k = events.sum()
+    #     A = {0:1}
+    #     B = {0:[]}
+    #     for i in range(k):
+    #         for state in bits_fixed_n:
+
+    #             for bit in range(k):
+    #                 if (1 << bit) & state:
+    #                     if S * A[state - (1 << bit)] > A_new[state]:
+    #                         A_new[state] = S * A[state - (1 << bit)]
+    #                         B_new[state] = B[state - (1 << bit)][i] = bit
+    #         A = A_new
+    #         B = B_new
