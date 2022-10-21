@@ -26,7 +26,7 @@ class bits_fixed_n:
     def __init__(self, n, k):
         self.v = int("1"*n, 2)
         self.stop_no = int("1"*n + "0"*(k-n), 2)
-        self.stop=False
+        self.stop = False
 
     def __iter__(self):
         return self
@@ -35,7 +35,7 @@ class bits_fixed_n:
         if self.stop:
             raise StopIteration
         if self.v == self.stop_no:
-            self.stop=True
+            self.stop = True
         t = (self.v | (self.v - 1)) + 1
         w = t | ((((t & -t)) // (self.v & (-self.v)) >> 1) - 1)
         self.v, w = w, self.v
@@ -371,38 +371,41 @@ class OmegaMHN(MHN):
         k = events.sum()
         nx = 1 << k
         n = self.log_theta.shape[0]
-        diag =  np.zeros(nx)
+        diag = np.zeros(nx)
         subdiag = np.zeros(nx)
 
         for i in range(n):
 
             current_length = 1
             subdiag[0] = 1
-            # compute the ith subdiagonal of Q 
+            # compute the ith subdiagonal of Q
             for j in range(n):
                 if events[j]:
                     exp_theta = np.exp(self.log_theta[i, j])
                     if i == j:
                         exp_theta *= -1
-                        dscal(current_length, exp_theta, subdiag, 1)
-                        dscal(current_length, zero, subdiag + current_length, 1)
+                        dscal(n=current_length, a=exp_theta, x=subdiag, incx=1)
+                        dscal(n=current_length, a=0,
+                              x=subdiag[current_length:], incx=1)
                     else:
-                        dcopy(current_length, subdiag, 1, subdiag + current_length, 1)
-                        dscal(current_length, exp_theta, subdiag + current_length, 1)
+                        dcopy(n=current_length, x=subdiag, incx=1,
+                              y=subdiag[current_length:], incy=1)
+                        dscal(n=current_length, a=exp_theta,
+                              x=subdiag[current_length:], incx=1)
 
                     current_length *= 2
 
                 elif i == j:
                     exp_theta = - np.exp(self.log_theta[i, j])
-                    dscal(current_length, exp_theta, subdiag, 1)
+                    dscal(n=current_length, a=exp_theta, x=subdiag, incx=1)
 
             # add the subdiagonal to dg
-            daxpy(nx, 1, subdiag, 1, diag, 1)
+            daxpy(n=nx, a=1, x=subdiag, incx=1, y=diag, incy=1)
         return diag
 
     # def likeliest_order(events: np.array):
 
-    #     restr_diag = 
+    #     restr_diag =
 
     #     k = events.sum()
     #     A = {0:1}
