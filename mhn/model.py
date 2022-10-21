@@ -22,6 +22,12 @@ from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
 
 
 class bits_fixed_n:
+    """
+    Iterator over integers whose binary representation has a fixed number, in lexicographical order
+
+    :param n: How many 1s there should be
+    :param k: How many bits the integer should have
+    """
 
     def __init__(self, n, k):
         self.v = int("1"*n, 2)
@@ -403,20 +409,29 @@ class OmegaMHN(MHN):
             daxpy(n=nx, a=1, x=subdiag, incx=1, y=diag, incy=1)
         return diag
 
-    # def likeliest_order(events: np.array):
+    def likeliest_order(self, events: np.array):
 
-    #     restr_diag =
+        restr_diag = self.get_restr_diag(events=events)
 
-    #     k = events.sum()
-    #     A = {0:1}
-    #     B = {0:[]}
-    #     for i in range(k):
-    #         for state in bits_fixed_n:
+        k = events.sum()
+        A = {0: 1/(1-restr_diag[0])}
+        B = {0: []}
+        for i in range(1, k+1):
+            A_new = dict()
+            B_new = dict()
+            for state in bits_fixed_n(n=i, k=k):
+                A_new[state] = -1
+                state_bin_pos = np.nonzero(
+                    np.flip(np.array(list(np.binary_repr(state)), dtype=int)))[0]
+                for pos in state_bin_pos:
+                    num = np.exp(self.log_theta[pos, state_bin_pos].sum())
+                    pre_state = state - (1 << pos)
+                    if A[pre_state] * num > A_new[state]:
+                        A_new[state] = A[pre_state] * num
+                        B_new[state] = B[pre_state].copy()
+                        B_new[state].append(pos)
+                A_new[state] /= (1-restr_diag[state])
+            A = A_new
+            B = B_new
 
-    #             for bit in range(k):
-    #                 if (1 << bit) & state:
-    #                     if S * A[state - (1 << bit)] > A_new[state]:
-    #                         A_new[state] = S * A[state - (1 << bit)]
-    #                         B_new[state] = B[state - (1 << bit)][i] = bit
-    #         A = A_new
-    #         B = B_new
+        return (A, B)
