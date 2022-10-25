@@ -59,11 +59,11 @@ class MHN:
         """
         :param filename: path to the CSV file
         """
-        df = pd.read_csv(filename, index_col=0)
+        df = pd.read_csv(f"{filename}.csv", index_col=0)
         if events is None and (df.columns != pd.Index([str(x) for x in range(len(df.columns))])).any():
             events = df.columns.to_list()
         try:
-            with open(f"{filename}_meta.json", "x") as file:
+            with open(f"{filename}_meta.json", "r") as file:
                 meta = json.load(file)
         except FileNotFoundError:
             meta = None
