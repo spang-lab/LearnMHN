@@ -306,7 +306,7 @@ def test_NGD():
                 print(e)
                 print("NGD did not work")
 
-            theta_rec = RegularizedOptimization.learn_MHN(pth, maxit=600, round_result=True)
+            theta_rec = RegularizedOptimization.learn_MHN(pth, maxit=600, round_result=True).x
 
             print("BFGS")
             print(theta_rec)

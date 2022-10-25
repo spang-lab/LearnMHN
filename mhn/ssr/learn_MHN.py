@@ -4,7 +4,7 @@
 #
 
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, OptimizeResult
 
 from typing import Callable
 
@@ -126,7 +126,7 @@ def reg_approximate_gradient(theta: np.ndarray, states: State_storage, lam: floa
 def learn_MHN(states: State_storage, init: np.ndarray = None, lam: float = 0, maxit: int = 5000,
               trace: bool = False, reltol: float = 1e-07, round_result: bool = True, callback: Callable = None,
               score_func: Callable = reg_state_space_restriction_score,
-              jacobi: Callable = reg_state_space_restriction_gradient) -> np.ndarray:
+              jacobi: Callable = reg_state_space_restriction_gradient) -> OptimizeResult:
     """
     This function is used to train a MHN, it is very similar to the learn_MHN function from the original MHN
 
@@ -154,9 +154,9 @@ def learn_MHN(states: State_storage, init: np.ndarray = None, lam: float = 0, ma
     opt = minimize(fun=score_func, x0=init, args=(states, lam, n, score_and_gradient_container), method="L-BFGS-B",
                    jac=jacobi, options={'maxiter': maxit, 'disp': trace, 'gtol': reltol}, callback=callback)
 
-    theta = opt.x.reshape((n, n))
+    opt.x = opt.x.reshape((n, n))
 
     if round_result:
-        theta = np.around(theta, decimals=2)
+        opt.x = np.around(opt.x, decimals=2)
 
-    return theta
+    return opt

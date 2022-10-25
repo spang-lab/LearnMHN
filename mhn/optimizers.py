@@ -134,15 +134,25 @@ class StateSpaceOptimizer:
         else:
             callback_func = self.__total_callback_func
 
-        self.__result = learn_MHN(self.__data, self.__init, lam, maxit, trace, reltol,
-                                  round_result, callback_func, self.__score_func, self.__grad_func)
+        result = learn_MHN(self.__data, self.__init, lam, maxit, trace, reltol,
+                           round_result, callback_func, self.__score_func, self.__grad_func)
 
         self.__backup_current_step = None
-        return MHN(log_theta=self.__result)
+        self.__result = MHN(
+            log_theta=result.x,
+            meta={
+                "lambda": lam,
+                "init": self.__init,
+                "maxit": maxit,
+                "reltol": reltol,
+                "score": result.fun
+            })
+
+        return self.__result
 
     @property
     def result(self):
-        return MHN(log_theta=self.__result)
+        return self.__result
 
     @property
     def bin_datamatrix(self):
