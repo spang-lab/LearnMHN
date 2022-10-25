@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
+import json
 
 
 class bits_fixed_n:
@@ -37,17 +38,21 @@ class MHN:
     This class represents the Mutual Hazard Network
     """
 
-    def __init__(self, log_theta: np.array, events: list[str] = None):
+    def __init__(self, log_theta: np.array, events: list[str] = None, meta: dict = None):
 
         self.log_theta = log_theta
         self.events = events
+        self.meta = meta
 
     def save(self, filename: str):
         """
         Save the MHN file
         """
         pd.DataFrame(self.log_theta, columns=self.events,
-                     index=self.events).to_csv(filename)
+                     index=self.events).to_csv(f"{filename}.csv")
+        if self.meta is not None:
+            with open(f"{filename}_meta.json", "x") as file:
+                json.dump(self.meta, file, indent=4)
 
     @classmethod
     def load(cls, filename: str, events: list[str] = None):
@@ -57,7 +62,12 @@ class MHN:
         df = pd.read_csv(filename, index_col=0)
         if events is None and (df.columns != pd.Index([str(x) for x in range(len(df.columns))])).any():
             events = df.columns.to_list()
-        return cls(np.array(df), events=events)
+        try:
+            with open(f"{filename}_meta.json", "x") as file:
+                meta = json.load(file)
+        except FileNotFoundError:
+            meta = None
+        return cls(np.array(df), events=events, meta=meta)
 
     def get_restr_diag(self, events: np.array):
         k = events.sum()
