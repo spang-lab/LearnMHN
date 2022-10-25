@@ -19,6 +19,7 @@ import matplotlib.colors as colors
 
 
 from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
+import json
 
 
 class bits_fixed_n:
