@@ -15,7 +15,6 @@ from tqdm.auto import trange
 from .ssr.learn_MHN import learn_MHN, reg_state_space_restriction_score, reg_state_space_restriction_gradient
 from .ssr.learn_MHN import reg_approximate_score, reg_approximate_gradient
 
-from .ssr.state_storage import State_storage
 
 import numpy as np
 import pandas as pd
@@ -193,11 +192,8 @@ class _Optimizer(abc.ABC):
         else:
             callback_func = self.__total_callback_func
 
-        score_func = self._regularized_score_func_builder(self._gradient_and_score_func)
-        gradient_func = self._regularized_gradient_func_builder(self._gradient_and_score_func)
-
-        result = reg_optim.learn_MHN(self._data, self._init_theta, lam, maxit, trace, reltol,
-                                     round_result, callback_func, score_func, gradient_func)
+        self.__result = learn_MHN(self.__data, self.__init, lam, maxit, trace, reltol,
+                                  round_result, callback_func, self.__score_func, self.__grad_func)
 
         self.__backup_current_step = None
 
@@ -545,57 +541,8 @@ class DUAOptimizer(_Optimizer):
         return super().train(lam, maxit, trace, reltol, round_result)
 
     @property
-    def training_data(self) -> (np.ndarray, np.ndarray):
-        """
-        This property returns all the data given to this optimizer to train a new MHN.
-        """
-        return self._bin_datamatrix, self._state_ages
-
-
-class OmegaOptimizer(StateSpaceOptimizer):
-    """
-    This optimizer models the data with the OmegaMHN.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self._gradient_and_score_func = omega_funcs.gradient_and_score
-        self._regularized_score_func_builder = lambda grad_score_func: \
-            omega_funcs.build_regularized_score_func(grad_score_func, omega_funcs.L1)
-        self._regularized_gradient_func_builder = lambda grad_score_func: \
-            omega_funcs.build_regularized_gradient_func(grad_score_func, omega_funcs.L1_)
-        self._OutputMHNClass = model.OmegaMHN
-
-    def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
-              reltol: float = 1e-7, round_result: bool = True) -> model.OmegaMHN:
-        """
-        Use this function to learn a new MHN from the data given to this optimizer.
-
-        :param lam: tuning parameter lambda for regularization (default: 1/(number of samples in the dataset))
-        :param maxit: maximum number of training iterations
-        :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
-        :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
-        :param round_result: if True, the result is rounded to two decimal places
-        :return: trained model
-        """
-        if self._data is None:
-            raise ValueError("You have to load data before training!")
-
-        undo_init_theta = False
-        if self._init_theta is None:
-            undo_init_theta = True
-            vanilla_theta = create_indep_model(self._data)
-            n = vanilla_theta.shape[0]
-            omega_theta = np.zeros((n + 1, n))
-            omega_theta[:n] = vanilla_theta
-            self._init_theta = omega_theta
-
-        super().train(lam, maxit, trace, reltol, round_result)
-
-        if undo_init_theta:
-            self._init_theta = None
-
-        return self.result
+    def result(self):
+        return MHN(log_theta=self.__result)
 
     @property
     def result(self) -> model.OmegaMHN:

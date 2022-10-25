@@ -6,7 +6,7 @@ It contains functions to learn an MHN on the *full state-space* for a given data
 # author(s): Stefan Vocht
 
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, OptimizeResult
 
 from . import Likelihood
 from . import ModelConstruction
@@ -80,7 +80,7 @@ def grad_reg(theta: np.ndarray, pD: np.ndarray, lam: float, n: int = 0, pth_spac
 
 def learn_MHN(pD: np.ndarray, init: np.ndarray = None, lam: float = 0, maxit: int = 5000,
               trace: bool = False, reltol: float = 1e-07, round_result: bool = True,
-              callback: Callable = None, score_func: Callable = score_reg, jacobi: Callable = grad_reg) -> np.ndarray:
+              callback: Callable = None, score_func: Callable = score_reg, jacobi: Callable = grad_reg) -> OptimizeResult:
     """
     This function is used to train an MHN to a given probability distribution pD.
 
@@ -107,9 +107,9 @@ def learn_MHN(pD: np.ndarray, init: np.ndarray = None, lam: float = 0, maxit: in
     opt = minimize(fun=score_func, x0=init, args=(pD, lam, n, pth_space), method="BFGS", jac=jacobi,
                    options={'maxiter': maxit, 'disp': trace, 'gtol': reltol}, callback=callback)
 
-    theta = opt.x.reshape((n, n))
+    opt.x = opt.x.reshape((n, n))
 
     if round_result:
-        theta = np.around(theta, decimals=2)
+        opt.x = np.around(opt.x, decimals=2)
 
-    return theta
+    return opt
