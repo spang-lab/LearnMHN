@@ -131,3 +131,24 @@ class MHN:
             B = B_new
 
         return (A, B)
+
+    # THIS IS NOT RIGHT SAMPLING, THERE IS NO TIME RESTRICTION
+    #
+    # def importance_sampling_restr(self, events: np.array, n_samples: int):
+
+    #     restr_diag = self.get_restr_diag(events=events)
+    #     mutation_num = events.sum()
+
+    #     samples = list()
+    #     for _ in range(n_samples):
+    #         evs = np.nonzero(events)[0].tolist()
+    #         S = evs.copy()
+    #         for __ in range(mutation_num):
+    #             probs = np.exp(self.log_theta[np.ix_(S, evs)].sum(axis=1) + self.log_theta[S, S])
+    #             i = np.random.choice(
+    #                 np.arange(len(S)),
+    #                 p=probs/probs.sum())
+    #             evs.append(S.pop(i))
+    #         samples.append(evs)
+
+    #     return samples
