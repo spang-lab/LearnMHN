@@ -437,23 +437,41 @@ class OmegaMHN(MHN):
 
         return (A, B)
 
-    # THIS IS NOT RIGHT SAMPLING, THERE IS NO TIME RESTRICTION
-    #
-    # def importance_sampling_restr(self, events: np.array, n_samples: int):
+### THIS IS YIELDING WEIRD RESULTS, CHECK AGAIN
 
-    #     restr_diag = self.get_restr_diag(events=events)
-    #     mutation_num = events.sum()
+    def mcmc_sampling(self, events: np.array, n_samples: int=50, burn_in: float=0.2):
+                
+        
+        restr_diag = self.get_restr_diag(events=events)
+        mutation_num = events.sum()  
 
-    #     samples = list()
-    #     for _ in range(n_samples):
-    #         evs = np.nonzero(events)[0].tolist()
-    #         S = evs.copy()
-    #         for __ in range(mutation_num):
-    #             probs = np.exp(self.log_theta[np.ix_(S, evs)].sum(axis=1) + self.log_theta[S, S])
-    #             i = np.random.choice(
-    #                 np.arange(len(S)),
-    #                 p=probs/probs.sum())
-    #             evs.append(S.pop(i))
-    #         samples.append(evs)
+        def proposal():
+            S = np.nonzero(events)[0].tolist()
+            evs = []
+            p = 1
+            bin_state = 0
+            for __ in range(mutation_num): 
+                probs = np.exp(self.log_theta[np.ix_(S, evs)].sum(axis=1) + self.log_theta[S, S]) / (1 - restr_diag[bin_state + (1 << np.array(S))])
+                i = np.random.choice(
+                    np.arange(len(S)),
+                    p=probs/probs.sum())
+                evs.append(S.pop(i))
+                p *= (probs[i] / probs.sum())
+                bin_state += (1 << evs[-1])
+            return evs, p
+        
+        samples = list()    
+        
+        n = 0
+        evs, last_p = proposal()
+        samples.append(evs)
 
-    #     return samples
+        while n < int((1 + burn_in) * n_samples):
+            evs, p = proposal()
+            
+            if np.random.random() <= min(1, p/last_p):
+                samples.append(evs)
+                last_p = p
+                n += 1
+        
+        return samples[-n_samples:]
