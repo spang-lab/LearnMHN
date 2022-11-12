@@ -11,13 +11,14 @@ from libc.stdlib cimport malloc, free
 from libc.math cimport exp
 
 
-cpdef void kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, bint diag = False, bint transp = False):
+cpdef void kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, double[:] pout, bint diag = False, bint transp = False):
     """
     This function multiplies the kronecker-product you get from the ith row of theta with a vector
 
-    :param theta: matrix containing the theta values
+    :param theta_mat: matrix containing the theta values
     :param i: row of theta used for the kronecker-product
     :param x_vec: vector that is multiplied with the kronecker-product matrix
+    :param pout: vector that will contain the result of the multiplication
     :param diag: if False, the diagonal of the kronecker-product matrix is set to zero
     :param transp: if True, the kronecker-product matrix is transposed
     :return:
@@ -45,9 +46,9 @@ cpdef void kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, bint diag = 
     # for the shuffle algorithm we have to initialize the pointers correctly
     if n & 1 == 1:
         swap_vec = ptmp
-        shuffled_vec = pout
+        shuffled_vec = &pout[0]
     else:
-        swap_vec = pout
+        swap_vec = &pout[0]
         shuffled_vec = ptmp
 
     old_vec = &x_vec[0]
@@ -115,7 +116,7 @@ cdef void loop_j(int i, int n, double *pr, double *pG):
     cdef double *shuffled_vec, *old_vec, *swap_vec
     cdef int incx = 1
     cdef int incx2 = 2
-    cdef int inc0 = 0
+    cdef int incx0 = 0
     cdef int j
 
     old_vec = pr
