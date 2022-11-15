@@ -8,6 +8,7 @@ from __future__ import annotations
 from .original import Likelihood
 from .ssr import state_space_restriction
 
+from cmath import log
 import numpy as np
 import pandas as pd
 import json
@@ -20,6 +21,28 @@ import matplotlib.colors as colors
 
 from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
 import json
+
+
+def Q_from_log_theta(log_theta, diag=True):
+
+    n = log_theta.shape[0]
+
+    def bi(x: int):
+        bi = np.array(list(np.binary_repr(x)), dtype=int)
+        ze = np.zeros(n)
+        ze[-len(bi):] = bi
+        return ze
+        
+    Q = np.zeros((1 << n, 1 << n))
+    for i in range(1 << n):
+        for y, b_y in enumerate(reversed(bi(i))):
+            if b_y == 0:
+                Q[i + (1 << y)][i] = np.exp(log_theta[y][y] + sum(log_theta[y][x]
+                                                                  for x in np.nonzero(bi(i))[0]))
+    if diag:
+        Q = Q - np.diag(Q.sum(axis=0))
+
+    return Q
 
 
 class bits_fixed_n:
