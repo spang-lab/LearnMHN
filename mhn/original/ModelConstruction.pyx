@@ -7,6 +7,8 @@ cimport cython
 
 from libc.math cimport exp
 
+from scipy.sparse import diags as scipy_diags
+
 import numpy as np
 cimport numpy as np
 
