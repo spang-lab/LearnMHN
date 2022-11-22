@@ -168,37 +168,28 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
 				double theta = theta_i[j];
 
 				if (i == j) {
-					// at the beginning, x_index_1 and x_index_2 were chosen in such a way that for i == j those are the entries that are added/multiplied together
-					// we want to know which entry is in which "column" (see original shuffle algorithm), they are loaded accordingly in right_side/left_side
-					// here we prevent "if" diverging branches, which would lead to serial execution, by implicitly doing the if clause while computing right_side
-					// as left_side must be the px that is not right_side, we get it with px1 + px2 - right_side (again no branching)
-					double right_side, left_side;
-					right_side = px1 + (x_index2 > x_index1) * (px2 - px1);
-					left_side = px1 + px2 - right_side;
+					// at the beginning, px1 and px2 were chosen in such a way that for i == j
+					// those are the entries that are added/multiplied together in this part of the algorithm
 
-					// this part is pratically the same as in the original kronvec function
+					// this part is practically the same as in the original kronvec function
 					if (!transp) {
-						right_side = left_side * theta;
+						px2 = px1 * theta;
 						if (diag) {
-							left_side = -right_side;
+							px1 = -px2;
 						}
 						else {
-							left_side = 0;
+							px1 = 0;
 						}
 					}
 					else {
 						if (diag) {
-							left_side = (right_side - left_side) * theta;
+							px1 = (px2 - px1) * theta;
 						}
 						else {
-							left_side = right_side * theta;
+							px1 = px2 * theta;
 						}
-						right_side = 0;
+						px2 = 0;
 					}
-
-					// update values of px1,px2 with the values from right_side/left_side (again with implicit if condition)
-					px1 = right_side + (x_index1 < x_index2) * (left_side - right_side);
-					px2 = right_side + left_side - px1;
 				}
 				else {
 					// this is equivalent to "if(x_index >= nxhalf) px *= theta_i[j] else px *= 1
