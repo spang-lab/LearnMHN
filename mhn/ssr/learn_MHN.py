@@ -1,6 +1,6 @@
 # by Stefan Vocht
 #
-# this script is used to learn a MHN using state space restriction or the approximated gradient
+# this script is used to learn a MHN using state space restriction
 #
 
 import numpy as np
@@ -10,7 +10,6 @@ from typing import Callable
 
 from .state_storage import StateStorage, create_indep_model
 from . import state_space_restriction
-from . import approximate_gradient as ag
 
 
 def L1(theta: np.ndarray, eps: float = 1e-05) -> float:
@@ -73,52 +72,6 @@ def reg_state_space_restriction_gradient(theta: np.ndarray, states: StateStorage
     grad = score_grad_container[0]
     if grad is None:
         grad, score = state_space_restriction.gradient(theta, states)
-
-    return -(grad - lam * L1_(theta_)).flatten()
-
-
-def reg_approximate_score(theta: np.ndarray, states: StateStorage, lam: float,
-                                      n: int, score_grad_container: list) -> float:
-    """
-    Computes the score using the approximate score with L1 regularization
-
-    :param theta: current theta
-    :param states: states observed in the data
-    :param lam: regularization parameter
-    :param n: size of theta (nxn)
-    :param score_grad_container: a list that enables this function to communicate with the gradient function
-    :return: regularized score
-    """
-    theta = theta.reshape((n, n))
-
-    # grad, score = state_space_restriction.gradient_and_score(theta, states)
-    print("Start approximating gradient")
-    grad, score = ag.gradient_and_score_using_c(np.exp(theta), states, 50, 10)
-    print("Finish")
-    score_grad_container[0] = grad
-
-    return -(score - lam * L1(theta))
-
-
-def reg_approximate_gradient(theta: np.ndarray, states: StateStorage, lam: float,
-                                         n: int, score_grad_container: list) -> np.ndarray:
-    """
-    Computes the gradient state space restriction with L1 regularization
-
-    :param theta: current theta
-    :param states: states observed i the data
-    :param lam: regularization parameter
-    :param n: size of theta (nxn)
-    :param score_grad_container: a list that enables this function to communicate with the score function
-    :return: regularized gradient
-    """
-
-    n = n or int(np.sqrt(theta.size))
-    theta_ = theta.reshape((n, n))
-
-    grad = score_grad_container[0]
-    if grad is None:
-        grad, score = ag.gradient_and_score_using_c(np.exp(theta), states, 50, 10)
 
     return -(grad - lam * L1_(theta_)).flatten()
 

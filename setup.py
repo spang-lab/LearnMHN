@@ -81,16 +81,6 @@ ext_modules = [
             f'-DSTATE_SIZE={STATE_SIZE}'
         ],
         extra_link_args=[]
-    ),
-    Extension(
-        "mhn.ssr.approximate_gradient",
-        ["./mhn/ssr/approximate_gradient.pyx"],
-        extra_compile_args=[
-            '/openmp' if IS_WINDOWS else '-fopenmp',
-            '/Ox' if IS_WINDOWS else '-O2',
-            f'-DSTATE_SIZE={STATE_SIZE}'
-        ],
-        extra_link_args=[]
     )
 ]
 

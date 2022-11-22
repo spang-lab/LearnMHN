@@ -5,7 +5,6 @@
 
 
 from .ssr.learn_MHN import learn_MHN, reg_state_space_restriction_score, reg_state_space_restriction_gradient
-from .ssr.learn_MHN import reg_approximate_score, reg_approximate_gradient
 
 from .ssr.state_storage import StateStorage
 
@@ -75,11 +74,6 @@ class StateSpaceOptimizer:
     def use_state_space_restriction(self):
         self.__score_func = reg_state_space_restriction_score
         self.__grad_func = reg_state_space_restriction_gradient
-        return self
-
-    def use_approximate_gradient(self):
-        self.__score_func = reg_approximate_score
-        self.__grad_func = reg_approximate_gradient
         return self
 
     def save_progress(self, steps: int = -1, always_new_file: bool = False, filename: str = 'theta_backup.npy'):
