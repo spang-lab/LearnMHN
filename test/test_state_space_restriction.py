@@ -95,8 +95,8 @@ class TestCudaGradient(unittest.TestCase):
         theta = ModelConstruction.random_theta(n)
         random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.7, 0.3])
         # make sure that there are mutations in two different "parts" of the "State" C struct
-        random_sample[:, 0] = 1
-        random_sample[:, -1] = 1
+        random_sample[:, 1] = 1
+        random_sample[:, -3] = 1
         state_storage = StateStorage(random_sample)
         gradient1, score1 = state_space_restriction.cython_gradient_and_score(theta, state_storage)
         gradient2, score2 = state_space_restriction.gradient_and_score_with_cuda(theta, state_storage)
@@ -113,8 +113,8 @@ class TestCudaGradient(unittest.TestCase):
         theta = ModelConstruction.random_theta(n)
         random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.8, 0.2])
         # make sure that there are mutations in two different "parts" of the "State" C struct
-        random_sample[:, 0] = 1
-        random_sample[:, -1] = 1
+        random_sample[:, 1] = 1
+        random_sample[:, -3] = 1
         # compute original gradient and score
         gradient1, score1 = state_space_restriction.gradient_and_score_with_cuda(theta, StateStorage(random_sample))
         # permute the sample and theta, compute gradient and score and reverse the permutation
@@ -129,28 +129,6 @@ class TestCudaGradient(unittest.TestCase):
         # compare gradients and scores
         np.testing.assert_array_equal(np.around(gradient1, decimals=8), np.around(reversed_gradient, decimals=8))
         self.assertEqual(score1, score2)
-
-    def test_execution_speed(self):
-        import time
-        sample_num = 10
-        mutation_per_state = 18
-        n = 32 * 8
-        random_sample = np.zeros((sample_num, n), dtype=np.int32)
-        random_sample[:, :mutation_per_state] = 1
-        random_sample = np.random.permutation(random_sample.T).T
-        theta = ModelConstruction.random_theta(n)
-
-        s1 = time.perf_counter()
-        gradient, score = state_space_restriction.gradient_and_score_with_cuda(theta, StateStorage(random_sample))
-        s2 = time.perf_counter()
-        print(s2 - s1)
-
-        # timings:
-        # n = 32*8 , sample_num = 10, mutation_per_state = 18
-        # ca 26s vs 19
-        #
-        # n = 100
-        # ca 7.5 vs 5.3
 
 
 if __name__ == '__main__':
