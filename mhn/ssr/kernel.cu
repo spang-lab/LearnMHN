@@ -118,7 +118,7 @@ inline void determine_block_thread_num(int &block_num, int &thread_num, const in
  * @param[in] count_before_i number of genes mutated that have a lower index than i
  * @param[out] pout vector which will contain the result of this multiplication
 */
-__global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const int i, const double* __restrict__ px, const State state, const bool diag, const bool transp, const int n, const int mutation_num, const int count_before_i, double* __restrict__ pout) {
+__global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const int i, const double* __restrict__ px, const State state, const bool diag, const bool transp, const int n, const int mutation_num, int count_before_i, double* __restrict__ pout) {
 	const int stride = blockDim.x * gridDim.x;
 	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -130,10 +130,17 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
 	// tells us, if state i is set to 1
 	int state_i_one = (state.parts[i >> 5] >> (i & 31)) & 1;
 
-	if (!diag && !state_i_one) {
-		// in this case the result is zero in every entry
-		// this means we do not have to add anything to pout and can just return
-		return;
+	if(!state_i_one){
+		if(!diag){
+			// in this case the result is zero in every entry
+			// this means we do not have to add anything to pout and can just return
+			return;
+		} else {
+			// if the ith gene is not mutated, we don't care how many genes are mutated before i
+			// instead we set count_before_i to mutation_num - 1, which later leads to better aligned memory accesses 
+			// on global memory in our algorithm
+			count_before_i = mutation_num - 1;
+		}
 	}
 
 	// load the ith row of theta into shared memory for more efficient access
@@ -143,32 +150,48 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
 
 	__syncthreads();
 
-
 	// patch_size is important for later for the case i == j in the shuffle algorithm
 	// as we do not actually shuffle the data in px in this implementation (only implicitly), we have to keep track of some indices
-	// and which entries have to be computed together in the case i == j. Those two entries are px1 and px2
-	// the index difference between those is patch_size (patches, as over all, the px1 and px2 occur in patches of size 2^z
-	// z here is the number of events/bits set to 1 that have an index smaller than i)
+	// and which entries have to be computed together in the case i == j. Those two indices are (x_index) and (x_index + patch_size)
+	// ("patch_size", as over all, the entries that have to be computed together occur in patches of size 2**(count_before_i))
 	const int patch_size = 1 << count_before_i;
 	int x_index = (cuda_index >> count_before_i) * 2 * patch_size + (cuda_index & (patch_size - 1));
 
+	// for each iteration of this while loop, we compute the output values for indices (x_index) and (x_index + patch_size) 
+	// and add the result to pout
 	while (x_index + patch_size < nx) {
+		// for each entry the theta_ij that have to be multiplied to give us the correct result are given
+		// by the bit representation of its index: 
+		// if the kth bit of the index is set to 1 and j is the kth mutated gene, we have to use theta_ij to compute the output
+		// as patch_size is a power of two, (x_index) and (x_index + patch_size) only differ in a single bit,
+		// namely the (count_before_i)th one
+		// furthermore, if the ith gene is mutated, both output values have to be multiplied with theta_ii anyways
+		// so we can simply compute the product of thetas for both entries at once
+		// if the ith gene is not mutated, count_before_i is set to mutation_num - 1, which leads to the two indices
+		// only differing in the last bit (respectively the theta_i[j] for the spatially last mutated gene j). 
+		// Hence we will just multiply the last theta to the (x_index + patch_size) entry at the end and get correct results
 		double theta_product = 1.;
+
 		int x_index_copy = x_index;
 		double theta;
 
 		int state_copy = state.parts[0];
 
 		for (int j = 0; j < n; j++) {
+			// check if the jth gene is mutated or not
 			if (state_copy & 1) {
-				// change the indices as they would change if we did an actual shuffle
 				theta = theta_i[j];
 				if (i == j) {
+					// if i == j then that theta is always part of theta_product
 					theta_product *= theta;
 				}
 				else {
+					// if the current first bit of x_index_copy is set to 1, multiply with theta
+					// else multiply with one
+					// here the if condition is implicitly in the computation to avoid branching of the threads
 					theta_product *= 1. + (x_index_copy & 1) * (theta - 1.);
 				}
+				// shift the bits by one for the next iteration
 				x_index_copy >>= 1;
 			}
 			else if (i == j) {
@@ -186,6 +209,9 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
 			}
 		}
 
+		// if the ith gene is mutated we need to make computations involving the entries (x_index) and (x_index + patch_size) 
+		// this is the part for which it was important to choose the correct patch_size and why we needed to compute two entries at once
+		// the following computations follow from the part of the shuffle algorithm where we multiply the 2x2 matrix containing theta_ii with px
 		if (state_i_one) {
 			if (!transp) {
 				double output = px[x_index] * theta_product;
@@ -196,6 +222,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
 			}
 			else {
 				if (diag) {
+					// this case never occurs during gradient computation, its just here for the sake of completeness
 					pout[x_index] += (px[x_index + patch_size] - px[x_index]) * theta_product;
 				}
 				else {
@@ -203,8 +230,11 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
 				}
 			}
 		}
+		// if the ith gene is not mutated the two entries do not have to be computated together, this is why we could choose
+		// count_before_i independently from the given state
 		else {
 		    pout[x_index] += theta_product * px[x_index];
+			// multiply the last theta to this entry, as the thetas needed for both entries only differ in this last one
 			pout[x_index + patch_size] += theta_product * px[x_index + patch_size] * theta;
 		}
 
