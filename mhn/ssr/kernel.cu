@@ -124,7 +124,6 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
 
 	// in the following 1 << i is equivalent to 2^i, x >> i is equivalent to x // 2^i, x & ((1<<i)-1) to x % 2^i
 	const int nx = 1 << mutation_num;
-	const int nxhalf = nx >> 1;
 
 	extern __shared__ double theta_i[];
 
@@ -138,8 +137,8 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
 	}
 
 	// load the ith row of theta into shared memory for more efficient access
-	for(int j = threadIdx.x; j < n; j += blockDim.x){
-		theta_i[j] = ptheta[i*n + j];
+	for (int j = threadIdx.x; j < n; j += blockDim.x) {
+		theta_i[j] = ptheta[i * n + j];
 	}
 
 	__syncthreads();
@@ -151,82 +150,73 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
 	// the index difference between those is patch_size (patches, as over all, the px1 and px2 occur in patches of size 2^z
 	// z here is the number of events/bits set to 1 that have an index smaller than i)
 	const int patch_size = 1 << count_before_i;
-	int x_index1 = (cuda_index >> count_before_i) * 2 * patch_size + (cuda_index & (patch_size - 1));
-	int x_index2 = x_index1 + patch_size;
+	int x_index = (cuda_index >> count_before_i) * 2 * patch_size + (cuda_index & (patch_size - 1));
 
-	while(x_index2 < nx){
-		double px1 = px[x_index1];
-		double px2 = px[x_index2];
+	while (x_index + patch_size < nx) {
+		double theta_product = 1.;
+		int x_index_copy = x_index;
+		double theta;
 
 		int state_copy = state.parts[0];
 
 		for (int j = 0; j < n; j++) {
 			if (state_copy & 1) {
 				// change the indices as they would change if we did an actual shuffle
-				x_index1 = (x_index1 >> 1) + (x_index1 & 1) * nxhalf;
-				x_index2 = (x_index2 >> 1) + (x_index2 & 1) * nxhalf;
-				double theta = theta_i[j];
-
+				theta = theta_i[j];
 				if (i == j) {
-					// at the beginning, px1 and px2 were chosen in such a way that for i == j
-					// those are the entries that are added/multiplied together in this part of the algorithm
-
-					// this part is practically the same as in the original kronvec function
-					if (!transp) {
-						px2 = px1 * theta;
-						if (diag) {
-							px1 = -px2;
-						}
-						else {
-							px1 = 0;
-						}
-					}
-					else {
-						if (diag) {
-							px1 = (px2 - px1) * theta;
-						}
-						else {
-							px1 = px2 * theta;
-						}
-						px2 = 0;
-					}
+					theta_product *= theta;
 				}
 				else {
-					// this is equivalent to "if(x_index >= nxhalf) px *= theta_i[j] else px *= 1
-					// we dont use a if clause to prevent diverging branches
-					px1 *= 1 + (x_index1 >= nxhalf) * (theta - 1);
-					px2 *= 1 + (x_index2 >= nxhalf) * (theta - 1);
+					theta_product *= 1. + (x_index_copy & 1) * (theta - 1.);
 				}
-			} 
+				x_index_copy >>= 1;
+			}
 			else if (i == j) {
 				// if the ith gene is not mutated, we simply multiply the entries with (-theta_ii)
-				px1 *= -theta_i[i];
-				px2 *= -theta_i[i];
+				theta_product *= -theta_i[i];
 			}
 
 			// if the mutation state of the next gene is stored on the current state_copy, make a bit shift to the right
 			// else state_copy becomes the next integer stored in the given state (x >> 5  <=> x // 32, x & 31 <=> x % 32)
-			if ((j + 1) & 31){
+			if ((j + 1) & 31) {
 				state_copy >>= 1;
 			}
 			else {
 				state_copy = state.parts[(j + 1) >> 5];
 			}
-			
 		}
-		// add the px values to the output array
-		pout[x_index1] += px1;
-		pout[x_index2] += px2;
+
+		if (state_i_one) {
+			if (!transp) {
+				double output = px[x_index] * theta_product;
+				pout[x_index + patch_size] += output;
+				if (diag) {
+					pout[x_index] -= output;
+				}
+			}
+			else {
+				if (diag) {
+					pout[x_index] += (px[x_index + patch_size] - px[x_index]) * theta_product;
+				}
+				else {
+					pout[x_index] += px[x_index + patch_size] * theta_product;
+				}
+			}
+		}
+		else {
+		    pout[x_index] += theta_product * px[x_index];
+			pout[x_index + patch_size] += theta_product * px[x_index + patch_size] * theta;
+		}
+
 
 		// if patch_size is bigger than stride, we have to do corrections to the indices
-		if(stride < patch_size){
+		if (stride < patch_size) {
 			// check if the current index is inside an odd patch, if so, jump to the next one
-			x_index1 += stride;
-			x_index1 += ((x_index1 >> count_before_i) & 1) * patch_size;
-			x_index2 = x_index1 + patch_size;
-		} else {
-			x_index1 += 2*stride;
-			x_index2 += 2*stride;
+			x_index += stride;
+			x_index += ((x_index >> count_before_i) & 1) * patch_size;
+		}
+		else {
+			x_index += 2 * stride;
 		}
 	}
 }
