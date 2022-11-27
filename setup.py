@@ -20,7 +20,7 @@ with open("README.md", 'r') as f:
 
 def compile_cuda_code():
     """
-    This function compiles the CUDA code of kernel.cu containing the CUDA function for State Space Restriction
+    This function compiles the CUDA code of cuda_state_space_restriction.cu containing the CUDA function for State Space Restriction
     """
     if IS_WINDOWS:
         output_filename = "./mhn/ssr/CudaStateSpaceRestriction.dll"
@@ -29,7 +29,8 @@ def compile_cuda_code():
 
     # check if the shared library file was modified after the source file
     try:
-        shared_lib_latest_version = (os.path.getmtime("./mhn/ssr/kernel.cu") - os.path.getmtime(output_filename) < 0)
+        shared_lib_latest_version = (os.path.getmtime(
+            "mhn/ssr/cuda_state_space_restriction.cu") - os.path.getmtime(output_filename) < 0)
     except FileNotFoundError:
         shared_lib_latest_version = False
 
@@ -42,7 +43,7 @@ def compile_cuda_code():
 
     # command to compile the CUDA code using nvcc
     compile_command = ['nvcc', '-o', output_filename, '--shared',
-                       './mhn/ssr/kernel.cu', f'-DSTATE_SIZE={STATE_SIZE}']
+                       './mhn/ssr/cuda_state_space_restriction.cu', f'-DSTATE_SIZE={STATE_SIZE}']
     if not IS_WINDOWS:
         compile_command += ['-Xcompiler', '-fPIC']
 
