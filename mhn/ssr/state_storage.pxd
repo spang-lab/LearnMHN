@@ -20,6 +20,7 @@ cdef class StateStorage:
     cdef State *states
     cdef int data_size
     cdef int gene_num
+    cdef int max_mutation_num
 
 
 
