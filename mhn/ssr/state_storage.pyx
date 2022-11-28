@@ -53,7 +53,8 @@ cdef void fill_states(State *states, int[:, :] mutation_data):
 
 cdef class StateStorage:
     """
-    This class is used as a wrapper such that the C array containing the States can be reference in a Python script
+    This class is used as a wrapper such that the C array containing the States can be referenced in a Python script
+    It also makes sure that there aren't more than 32 mutations present in a single sample as this would break the algorithms
     """
 
     def __cinit__(self, int[:, :] mutation_data):
@@ -67,7 +68,7 @@ cdef class StateStorage:
 
         self.max_mutation_num = compute_max_mutation_number(mutation_data)
         if self.max_mutation_num == 0:
-            warnings.warn("Warning, your data does not contain any mutations, something went probably wrong")
+            warnings.warn("Your data does not contain any mutations, something went probably wrong")
         elif self.max_mutation_num > 32:
             raise ValueError("A single sample must not contain more than 32 mutations")
 
@@ -87,7 +88,7 @@ cdef class StateStorage:
 
     def get_max_mutation_num(self):
         """
-        returns the maximum number of mutations present in a single sample, might be useful as sanity check
+        returns the maximum number of mutations present in a single sample, might be useful as a sanity check
         """
         return self.max_mutation_num
 
