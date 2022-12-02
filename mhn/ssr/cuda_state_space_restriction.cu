@@ -28,7 +28,7 @@
 // this struct is used to store states representing up to 32 * STATE_SIZE genes
 // STATE_SIZE must be defined during compilation
 typedef struct {
-     unsigned int parts[STATE_SIZE];
+     uint32_t parts[STATE_SIZE];
 } State;
 
 
@@ -175,7 +175,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
 		int x_index_copy = x_index;
 		double theta;
 
-		int state_copy = state.parts[0];
+		uint32_t state_copy = state.parts[0];
 
 		for (int j = 0; j < n; j++) {
 			// check if the jth gene is mutated or not
@@ -317,7 +317,7 @@ __global__ void cuda_subdiag(const double *ptheta, const State state, const int 
 
 		double dg_entry = 1;
 
-		int state_copy = state.parts[0];
+		uint32_t state_copy = state.parts[0];
 		int position_condition = k;
 		for (int j = 0; j < n; j++) {
 			double theta = theta_i[j];
@@ -566,7 +566,7 @@ static void cuda_restricted_gradient(const double *ptheta, const State *state, c
 
 		old_vec = tmp1;
 		shuffled_vec = tmp2;
-		int state_copy = state->parts[0];
+		uint32_t state_copy = state->parts[0];
 		double *grad_i = grad + i * n;
 
 		// use the shuffle trick for a more efficient computation of the gradient

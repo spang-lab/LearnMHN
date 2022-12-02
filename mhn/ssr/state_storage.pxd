@@ -9,7 +9,7 @@
 cdef extern from *:
     """
     typedef struct {
-        unsigned int parts[STATE_SIZE];
+        uint32_t parts[STATE_SIZE];
     } State;
     """
     ctypedef struct State:
