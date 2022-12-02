@@ -634,7 +634,7 @@ __global__ void add_to_score(double *score, double *pth_end){
  *
  * @return this function returns the score of the current MHN as d double value
 */
-double DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out) {
+int DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out) {
 
 	// determine the maximum number of mutations present in a single tumor sample
 	int max_mutation_num = 0;
@@ -647,19 +647,40 @@ double DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation
 	double *cuda_grad_out, *partial_grad;
 	double *p0_pD, *pth, *q, *tmp1, *tmp2;
 	double *cuda_ptheta;
-	double *cuda_score, score;
+	double *cuda_score;
 
 	// allocate memory on the GPU
-	cudaMalloc(&cuda_grad_out, n*n * sizeof(double));
-	cudaMalloc(&partial_grad, n*n * sizeof(double));
-	cudaMalloc(&p0_pD, nx * sizeof(double));
-	cudaMalloc(&pth, nx * sizeof(double));
-	cudaMalloc(&q, nx * sizeof(double));
-	cudaMalloc(&tmp1, nx * sizeof(double));
-	cudaMalloc(&tmp2, nx * sizeof(double));
-	cudaMalloc(&cuda_ptheta, n*n * sizeof(double));
+	// we allocate all at once so that we can easily check for allocation errors
+	// if we did each allocation as a separate cudaMalloc, we would have to check for errors after each single call
+	double *d_memory;
+	cudaMalloc(&d_memory,
+				n*n * sizeof(double) +  // cuda_grad_out
+				n*n * sizeof(double) +  // partial_grad
+				nx  * sizeof(double) +  // p0_pD
+				nx  * sizeof(double) +  // pth
+				nx  * sizeof(double) +  // q
+				nx  * sizeof(double) +  // tmp1
+				nx  * sizeof(double) +  // tmp2
+				n*n * sizeof(double) +  // cuda_ptheta
+				 1  * sizeof(double)    // cuda_score
+				 );
 
-	cudaMalloc(&cuda_score, sizeof(double));
+	// check for errors
+	// errors could occur if CUDA is not installed correctly or if the user tries to allocate too much memory
+	if (cudaPeekAtLastError() != cudaSuccess){
+		// cast cudaError_t to int, not the best style, but simplest method to get it work in Cython
+		return (int) cudaPeekAtLastError();
+	}
+
+	cuda_grad_out = d_memory;
+	partial_grad  = d_memory +   n*n;
+	p0_pD         = d_memory + 2*n*n;
+	pth 		  = d_memory + 2*n*n +   nx;
+	q			  = d_memory + 2*n*n + 2*nx;
+	tmp1		  = d_memory + 2*n*n + 3*nx;
+	tmp2		  = d_memory + 2*n*n + 4*nx;
+	cuda_ptheta   = d_memory + 2*n*n + 5*nx;
+	cuda_score	  = d_memory + 3*n*n + 5*nx;
 
 	// copy theta to the GPU
 	cudaMemcpy(cuda_ptheta, ptheta, n*n * sizeof(double), cudaMemcpyHostToDevice);
@@ -669,6 +690,13 @@ double DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation
 
 	// for the functions we need theta in its exponential form
 	array_exp<<<32, 64>>>(cuda_ptheta, n*n);
+
+	// again check for errors
+	// errors could occur if CUDA is not installed correctly or the kernel call did not work correctly
+	if (cudaPeekAtLastError() != cudaSuccess){
+		// cast cudaError_t to int, not the best style, but simplest method to get it work in Cython
+		return (int) cudaPeekAtLastError();
+	}
 
 	// compute the gradient for each tumor sample and add them together
 	for (int i = 0; i < data_size; i++) {
@@ -683,21 +711,25 @@ double DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation
 
 	// copy the results to the CPU
 	cudaMemcpy(grad_out, cuda_grad_out, n*n * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy(&score, cuda_score, sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(score_out, cuda_score, sizeof(double), cudaMemcpyDeviceToHost);
 
 	// free all memory on the GPU
-	cudaFree(partial_grad);
-	cudaFree(p0_pD);
-	cudaFree(pth);
-	cudaFree(q);
-	cudaFree(tmp1);
-	cudaFree(tmp2);
-	cudaFree(cuda_ptheta);
+	cudaFree(d_memory);
 
-	cudaFree(cuda_score);
-	cudaFree(cuda_grad_out);
+	return (int) cudaGetLastError();
+}
 
-	return score;
+
+/**
+ * This function is used by state_space_restriction.pyx to get the error name and description if an error occurred
+ *
+ * @param[in] error is the cudaError_t returned by the CUDA function casted to int to be usable in Cython
+ * @param[out] error_name the name of the error will be stored in this variable
+ * @param[out] error_description the description of the error will be stored in this variable
+*/
+void DLL_PREFIX get_error_name_and_description(int error, const char **error_name, const char **error_description){
+	*error_name = cudaGetErrorName((cudaError_t) error);
+	*error_description = cudaGetErrorString((cudaError_t) error);
 }
 
 
