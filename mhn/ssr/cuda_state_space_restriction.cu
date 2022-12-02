@@ -634,7 +634,7 @@ __global__ void add_to_score(double *score, double *pth_end){
  *
  * @return this function returns the score of the current MHN as d double value
 */
-int DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out) {
+int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out) {
 
 	// determine the maximum number of mutations present in a single tumor sample
 	int max_mutation_num = 0;

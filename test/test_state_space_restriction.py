@@ -48,7 +48,7 @@ class TestCythonGradient(unittest.TestCase):
         Permutation of the position of genes in the data should lead to a permutation in the gradient,
         but should not change the score
         """
-        n = 40  # make n > 32 to make sure that the logic of the "State" stuct in the C implementation works as expected
+        n = 40  # make n > 32 to make sure that the logic of the "State" struct in the C implementation works as expected
         sample_num = 30
         theta = ModelConstruction.random_theta(n)
         random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.8, 0.2])
@@ -79,7 +79,7 @@ class TestCythonGradient(unittest.TestCase):
 
 class TestCudaGradient(unittest.TestCase):
     """
-    Tests for the function gradient_and_score_with_cuda
+    Tests for the function cuda_gradient_and_score
     """
     def setUp(self) -> None:
         """
@@ -99,7 +99,7 @@ class TestCudaGradient(unittest.TestCase):
         random_sample[:, -3] = 1
         state_storage = StateStorage(random_sample)
         gradient1, score1 = state_space_restriction.cython_gradient_and_score(theta, state_storage)
-        gradient2, score2 = state_space_restriction.gradient_and_score_with_cuda(theta, state_storage)
+        gradient2, score2 = state_space_restriction.cuda_gradient_and_score(theta, state_storage)
         self.assertEqual(round(score1, 8), round(score2, 8))
         np.testing.assert_array_equal(np.around(gradient1, decimals=8), np.around(gradient2, decimals=8))
 
@@ -108,7 +108,7 @@ class TestCudaGradient(unittest.TestCase):
         Permutation of the position of genes in the data should lead to a permutation in the gradient,
         but should not change the score
         """
-        n = 40  # make n > 32 to make sure that the logic of the "State" stuct in the C implementation works as expected
+        n = 40  # make n > 32 to make sure that the logic of the "State" struct in the C implementation works as expected
         sample_num = 30
         theta = ModelConstruction.random_theta(n)
         random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.8, 0.2])
@@ -116,14 +116,14 @@ class TestCudaGradient(unittest.TestCase):
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
         # compute original gradient and score
-        gradient1, score1 = state_space_restriction.gradient_and_score_with_cuda(theta, StateStorage(random_sample))
+        gradient1, score1 = state_space_restriction.cuda_gradient_and_score(theta, StateStorage(random_sample))
         # permute the sample and theta, compute gradient and score and reverse the permutation
         permutation = np.random.permutation(n)
         reverse = np.empty(n, int)
         reverse[permutation] = np.arange(n)
         permutation_sample = random_sample[:, permutation]
         permutation_theta = theta[permutation][:, permutation]
-        gradient2, score2 = state_space_restriction.gradient_and_score_with_cuda(permutation_theta.copy(), StateStorage(permutation_sample))
+        gradient2, score2 = state_space_restriction.cuda_gradient_and_score(permutation_theta.copy(), StateStorage(permutation_sample))
         reversed_gradient = gradient2[reverse][:, reverse]
         np.testing.assert_array_equal(permutation_sample[:, reverse], random_sample)
         # compare gradients and scores

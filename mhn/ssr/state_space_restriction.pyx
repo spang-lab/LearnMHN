@@ -77,12 +77,12 @@ IF NVCC_AVAILABLE:
         #define DLL_PREFIX 
         #endif
 
-        int DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out);
+        int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out);
         void DLL_PREFIX get_error_name_and_description(int error, const char **error_name, const char **error_description);
         int DLL_PREFIX cuda_functional();
         """
 
-        int cuda_gradient_and_score(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out)
+        int cuda_gradient_and_score_implementation(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out)
         void get_error_name_and_description(int error, const char **error_name, const char **error_description)
         int cuda_functional()
 
@@ -462,7 +462,7 @@ IF NVCC_AVAILABLE:
         Error raised if something went wrong during execution of the CUDA code
         """
 
-    cpdef gradient_and_score_with_cuda(double[:, :] theta, StateStorage mutation_data):
+    cpdef cuda_gradient_and_score(double[:, :] theta, StateStorage mutation_data):
         """
         This function is a wrapper for the cuda implementation of the state space restriction
 
@@ -480,7 +480,7 @@ IF NVCC_AVAILABLE:
         cdef const char *error_name
         cdef const char *error_description
 
-        error_code = cuda_gradient_and_score(&theta[0, 0], n, &mutation_data.states[0], data_size, &grad_out[0], &score)
+        error_code = cuda_gradient_and_score_implementation(&theta[0, 0], n, &mutation_data.states[0], data_size, &grad_out[0], &score)
 
         if error_code != 0:
             get_error_name_and_description(error_code, &error_name, &error_description)
@@ -497,7 +497,7 @@ cpdef gradient_and_score(double[:, :] theta, StateStorage mutation_data):
     """
     IF NVCC_AVAILABLE:
         if mutation_data.get_max_mutation_num() > 12:
-            return gradient_and_score_with_cuda(theta, mutation_data)
+            return cuda_gradient_and_score(theta, mutation_data)
         else:
             return cython_gradient_and_score(theta, mutation_data)
     ELSE:
