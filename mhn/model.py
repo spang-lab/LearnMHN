@@ -183,19 +183,3 @@ class MHN:
     #         n += 1
 
     #     return samples[-n_samples:]
-
-
-if __name__ == "__main__":
-    mhn = MHN.load(
-        R"C:\Users\Hu\Documents\Likeliestorder\likeliestorder\data\lung_no_split\log_theta")
-    events = np.zeros(mhn.log_theta.shape[0], dtype=np.int32)
-    events[:5] = 1
-    n_samples = 100
-    unique, counts = np.unique(mhn.mcmc_sampling(
-        events=events, n_samples=n_samples), return_counts=True, axis=0)
-    probs = {
-        tuple(u): c / n_samples for u, c in zip(unique, counts)
-    }
-    for k in sorted(probs, key=probs.get):
-        print(*k, end="  ")
-        print(probs[k])
