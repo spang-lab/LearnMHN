@@ -740,9 +740,17 @@ void DLL_PREFIX get_error_name_and_description(int error, const char **error_nam
  * @return 1, if everything works as it should, else 0
 */
 int DLL_PREFIX cuda_functional(){
-    int *ptr;
-    cudaMalloc(&ptr, sizeof(int));
-    cudaFree(ptr);
+    bool error_occurred = false;
+    double *ptr;
 
-    return (cudaGetLastError() == cudaSuccess);
+    // check if memory allocation works
+    error_occurred |= (cudaMalloc(&ptr, sizeof(double)) != cudaSuccess);
+
+    // check if calling a kernel works
+    fill_array<<<1, 1 >>>(ptr, 3.1415, 1);  // fill array with a random value
+    error_occurred |= (cudaPeekAtLastError() != cudaSuccess);
+
+    error_occurred |= (cudaFree(ptr) != cudaSuccess);
+
+    return (!error_occurred);
 }
