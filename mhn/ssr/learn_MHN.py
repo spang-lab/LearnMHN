@@ -59,7 +59,7 @@ def reg_state_space_restriction_gradient(theta: np.ndarray, states: StateStorage
     Computes the gradient state space restriction with L1 regularization
 
     :param theta: current theta
-    :param states: states observed i the data
+    :param states: states observed in the data
     :param lam: regularization parameter
     :param n: size of theta (nxn)
     :param score_grad_container: a list that enables this function to communicate with the score function
@@ -71,7 +71,7 @@ def reg_state_space_restriction_gradient(theta: np.ndarray, states: StateStorage
 
     grad = score_grad_container[0]
     if grad is None:
-        grad, score = state_space_restriction.gradient(theta, states)
+        grad, score = state_space_restriction.gradient_and_score(theta_, states)
 
     return -(grad - lam * L1_(theta_)).flatten()
 
