@@ -5,13 +5,15 @@
 #
 
 cimport cython
+import numpy as np
+cimport numpy as cnp
 
 from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot
 from libc.stdlib cimport malloc, free
 from libc.math cimport exp
 
 
-cpdef void kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, double[:] pout, bint diag = False, bint transp = False):
+cdef void internal_kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, double[:] pout, bint diag = False, bint transp = False):
     """
     This function multiplies the kronecker-product you get from the ith row of theta with a vector
 
@@ -85,28 +87,46 @@ cpdef void kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, double[:] po
         else:
             dscal(&nxhalf, &theta, px2, &incx)
 
-        old_vec = shuffled_vec;
-        shuffled_vec = swap_vec;
-        swap_vec = old_vec;
+        old_vec = shuffled_vec
+        shuffled_vec = swap_vec
+        swap_vec = old_vec
 
     free(ptmp)
 
 
-cdef void loop_j(int i, int n, double *pr, double *pG):
+def kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, bint diag = False, bint transp = False) -> np.ndarray:
+    """
+    This function multiplies the kronecker-product you get from the ith row of theta with a vector.
+    This is a Python wrapper for the more efficient Cython implementation.
+
+    :param theta_mat: matrix containing the theta values
+    :param i: row of theta used for the kronecker-product
+    :param x_vec: vector that is multiplied with the kronecker-product matrix
+    :param diag: if False, the diagonal of the kronecker-product matrix is set to zero
+    :param transp: if True, the kronecker-product matrix is transposed
+    :return: vector that will contain the result of the multiplication
+    """
+    cdef int n = theta_mat.shape[0]
+    cdef np.ndarray[cnp.double_t] result = np.empty(2**n, dtype=np.double)
+    internal_kron_vec(theta_mat, i, x_vec, result, diag, transp)
+    return result
+
+
+cdef void loop_j(int i, int n, double *pr, double *pg):
     """
     This function is used in the gradient function (in Likelihood.pyx) to compute the gradient more efficiently
 
     :param i: current row of the gradient to be computed
     :param n: number of columns/rows of theta
-    :param r_vec: a vector calculated in the gradient function
-    :param g: gradient matrix (output)
+    :param pr: a vector calculated in the gradient function
+    :param pg: gradient matrix (output)
     :return:
     """   
 
     cdef int nx = 1 << n
     cdef int nxhalf = nx/2
 
-    pG = pG + i*n
+    pg = pg + i * n
 
     cdef double one = 1.
     cdef double *ptmp = <double *> malloc(nx*sizeof(double))
@@ -128,9 +148,9 @@ cdef void loop_j(int i, int n, double *pr, double *pG):
         dcopy(&nxhalf, old_vec+1, &incx2, shuffled_vec+nxhalf, &incx)
 
         # sums as dot products with 1
-        pG[j] = ddot(&nxhalf, shuffled_vec+nxhalf, &incx, &one, &incx0)
+        pg[j] = ddot(&nxhalf, shuffled_vec + nxhalf, &incx, &one, &incx0)
         if i == j:
-            pG[j] += ddot(&nxhalf, shuffled_vec, &incx, &one, &incx0)
+            pg[j] += ddot(&nxhalf, shuffled_vec, &incx, &one, &incx0)
 
         swap_vec = old_vec
         old_vec = shuffled_vec
