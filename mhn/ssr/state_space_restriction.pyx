@@ -10,7 +10,6 @@ cimport cython
 from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot
 from libc.stdlib cimport malloc, free
 from libc.math cimport exp, log
-from libcpp.string cimport string
 
 from mhn.ssr.state_storage cimport State, StateStorage
 
@@ -103,7 +102,7 @@ cdef void restricted_kronvec(double[:, :] theta_mat, int i, double[:] x_vec, Sta
     :param transp: if True, the kronecker product is transposed
     """
 
-    # inizialize some constants used in this function
+    # initialize some constants used in this function
     cdef double[:] theta_i = theta_mat[i, :]
     cdef int n = theta_i.shape[0]
     cdef int nx = 1 << mutation_num
