@@ -77,7 +77,6 @@ ext_modules = [
         runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/"],
         include_dirs=['./mhn/ssr/'],
         extra_compile_args=[
-            '/openmp' if IS_WINDOWS else '-fopenmp',
             '/Ox' if IS_WINDOWS else '-O2',
             f'-DSTATE_SIZE={STATE_SIZE}'
         ],
