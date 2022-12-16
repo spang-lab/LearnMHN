@@ -7,7 +7,7 @@ from scipy.optimize import minimize
 from numba import njit
 
 from . import Likelihood
-from . import ModelConstruction
+from . import ModelConstructionOld
 
 from typing import Callable
 

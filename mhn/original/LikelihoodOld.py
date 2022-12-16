@@ -6,7 +6,7 @@ import numpy as np
 from numba import njit, prange
 
 from . import ModelConstruction
-from .PerformanceCriticalCode import kron_vec, loop_j
+from .PerformanceCriticalCodeOld import kron_vec, loop_j
 
 
 @njit(cache=True)
