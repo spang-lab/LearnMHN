@@ -43,6 +43,8 @@ class StateSpaceOptimizer:
         if data_matrix.dtype != np.int32:
             data_matrix = data_matrix.astype(dtype=np.int32)
             warnings.warn("The dtype of the given data matrix is changed to np.int32")
+        if not set(data_matrix.flatten()).issubset({0, 1}):
+            raise ValueError("The data matrix must only contain 0s and 1s")
         self.__data = StateStorage(data_matrix)
         self.__bin_datamatrix = data_matrix
         return self
