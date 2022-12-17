@@ -2,10 +2,9 @@
 #
 # this script contains classes that can be used to optimize a MHN for given data
 #
-
+import warnings
 
 from .ssr.learn_MHN import learn_MHN, reg_state_space_restriction_score, reg_state_space_restriction_gradient
-
 from .ssr.state_storage import StateStorage
 
 import numpy as np
@@ -32,6 +31,18 @@ class StateSpaceOptimizer:
         self.__grad_func = reg_state_space_restriction_gradient
 
     def load_data_matrix(self, data_matrix: np.ndarray):
+        """
+        Load binary mutation data stored in a numpy array
+
+        :param data_matrix: two-dimensional numpy array which should have dtype=np.int32
+        :return: this optimizer object
+        """
+        if len(data_matrix.shape) != 2:
+            raise ValueError("The given data matrix must be two-dimensional")
+        # StateStorage only accepts numpy arrays with dtype=np.int32
+        if data_matrix.dtype != np.int32:
+            data_matrix = data_matrix.astype(dtype=np.int32)
+            warnings.warn("The dtype of the given data matrix is changed to np.int32")
         self.__data = StateStorage(data_matrix)
         self.__bin_datamatrix = data_matrix
         return self
