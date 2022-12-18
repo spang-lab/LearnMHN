@@ -272,16 +272,18 @@ static void cuda_q_vec(const double *ptheta, const double *x, const State *state
 	cudaMemset(yout, 0, nx * sizeof(double));
 
 	int block_num, thread_num;
-	int mutation_counter = 0;
+	int mutation_counter = -1;
 
 	determine_block_thread_num(block_num, thread_num, mutation_num);
 
 	for (int i = 0; i < n; i++) {
-		// this would also be done in the kernel, but its faster to check it here
-		if (!((state->parts[i >> 5] >> (i & 31)) & 1) && !diag) continue;
-
+		if(((state->parts[i >> 5] >> (i & 31)) & 1)) {
+		    mutation_counter++;
+		} else if(!diag) {
+		    // this would also be done in the kernel, but its faster to check it here
+		    continue;
+		}
 		cuda_restricted_kronvec<<<block_num, thread_num, n * sizeof(double)>>>(ptheta, i, x, *state, diag, transp, n, mutation_num, mutation_counter, yout);
-		mutation_counter++;
 	}
 }
 
@@ -494,7 +496,7 @@ __global__ void print_vec(double *vec, int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	for (int k = cuda_index; k < size; k++) {
+	for (int k = cuda_index; k < size; k+=stride) {
 		printf("%g, ", vec[k]);
 	}
 	printf("\n\n");
