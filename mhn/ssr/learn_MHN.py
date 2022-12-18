@@ -76,6 +76,57 @@ def reg_state_space_restriction_gradient(theta: np.ndarray, states: StateStorage
     return -(grad - lam * L1_(theta_)).flatten()
 
 
+def build_regularized_score_func(gradient_and_score_function: Callable):
+    """
+    This function gets a function which can compute a gradient and a score at the same time and returns a function
+    which computes the score and adds a L1 regularization
+    """
+    def reg_score_func(theta: np.ndarray, states: StateStorage, lam: float,
+                                          n: int, score_grad_container: list) -> float:
+        """
+        Computes the score using state space restriction with L1 regularization
+
+        :param theta: current theta
+        :param states: states observed in the data
+        :param lam: regularization parameter
+        :param n: size of theta (nxn)
+        :param score_grad_container: a list that enables this function to communicate with the gradient function
+        :return: regularized score
+        """
+        theta = theta.reshape((n, n))
+        grad, score = gradient_and_score_function(theta, states)
+        score_grad_container[0] = grad
+
+        return -(score - lam * L1(theta))
+    return reg_score_func
+
+
+def build_regularized_gradient_func(gradient_and_score_function: Callable):
+    """
+    This function gets a function which can compute a gradient and a score at the same time and returns a function
+    which computes the gradient and adds the gradient of the L1 regularization
+    """
+    def reg_gradient_func(theta: np.ndarray, states: StateStorage, lam: float,
+                                             n: int, score_grad_container: list) -> np.ndarray:
+        """
+        Computes the gradient state space restriction with L1 regularization
+
+        :param theta: current theta
+        :param states: states observed in the data
+        :param lam: regularization parameter
+        :param n: size of theta (nxn)
+        :param score_grad_container: a list that enables this function to communicate with the score function
+        :return: regularized gradient
+        """
+        n = n or int(np.sqrt(theta.size))
+        theta_ = theta.reshape((n, n))
+        grad = score_grad_container[0]
+        if grad is None:
+            grad, score = gradient_and_score_function(theta_, states)
+        return -(grad - lam * L1_(theta_)).flatten()
+    return reg_gradient_func
+
+
 def learn_MHN(states: StateStorage, init: np.ndarray = None, lam: float = 0, maxit: int = 5000,
               trace: bool = False, reltol: float = 1e-07, round_result: bool = True, callback: Callable = None,
               score_func: Callable = reg_state_space_restriction_score,
