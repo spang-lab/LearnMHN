@@ -3,17 +3,32 @@
 # this script contains classes that can be used to optimize a MHN for given data
 #
 import warnings
+from enum import Enum
 
-from .ssr.learn_MHN import learn_MHN, reg_state_space_restriction_score, reg_state_space_restriction_gradient
+from .ssr.learn_MHN import learn_MHN, build_regularized_score_func, build_regularized_gradient_func
 from .ssr.state_storage import StateStorage
+from .ssr.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
+from .ssr.state_space_restriction import gradient_and_score, cython_gradient_and_score
+
+if cuda_available() == CUDA_AVAILABLE:
+    from .ssr.state_space_restriction import cuda_gradient_and_score
+else:
+    cuda_gradient_and_score = None
 
 import numpy as np
 from numpy import genfromtxt
 
 
+class Device(Enum):
+    """
+    A small Enum which can represent device types
+    """
+    AUTO, CPU, GPU = range(3)
+
+
 class StateSpaceOptimizer:
     """
-    This optimizer uses state space restriction to optimize a MHN
+    This optimizer uses state space restriction to optimize an MHN
     """
     def __init__(self):
         self.__data = None
@@ -27,8 +42,7 @@ class StateSpaceOptimizer:
         self.__backup_always_new_file = False
         self.__backup_current_step = None
 
-        self.__score_func = reg_state_space_restriction_score
-        self.__grad_func = reg_state_space_restriction_gradient
+        self.__gradient_and_score_func = gradient_and_score
 
     def load_data_matrix(self, data_matrix: np.ndarray):
         """
@@ -77,17 +91,23 @@ class StateSpaceOptimizer:
         self.__custom_callback = callback
         return self
 
-    def set_score_and_gradient_function(self, score_func, gradient_func):
-        if not hasattr(score_func, '__call__') or not hasattr(gradient_func, '__call__'):
-            raise ValueError("score_func and gradient_func have to be functions!")
-        self.__score_func = score_func
-        self.__grad_func = gradient_func
-        return self
+    def set_device(self, device: Device):
+        """
+        Set the device that should be used for training. You have three options:
 
-    def use_state_space_restriction(self):
-        self.__score_func = reg_state_space_restriction_score
-        self.__grad_func = reg_state_space_restriction_gradient
-        return self
+        Device.AUTO: (default) automatically select the device that best fits the data
+        Device.CPU:  use the CPU implementations to compute the scores and gradients
+        Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
+        """
+        if not isinstance(device, Device):
+            raise ValueError(f"The given device is not an instance of {Device}")
+        if device == Device.GPU and cuda_gradient_and_score is None:
+            raise CUDAError(cuda_available())
+        self.__gradient_and_score_func = {
+            Device.AUTO: gradient_and_score,
+            Device.CPU: cython_gradient_and_score,
+            Device.GPU: cuda_gradient_and_score
+        }[device]
 
     def save_progress(self, steps: int = -1, always_new_file: bool = False, filename: str = 'theta_backup.npy'):
         """
@@ -147,8 +167,11 @@ class StateSpaceOptimizer:
         else:
             callback_func = self.__total_callback_func
 
+        score_func = build_regularized_score_func(self.__gradient_and_score_func)
+        gradient_func = build_regularized_gradient_func(self.__gradient_and_score_func)
+
         self.__result = learn_MHN(self.__data, self.__init, lam, maxit, trace, reltol,
-                                  round_result, callback_func, self.__score_func, self.__grad_func)
+                                  round_result, callback_func, score_func, gradient_func)
 
         self.__backup_current_step = None
         return self.__result
