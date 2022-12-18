@@ -126,6 +126,16 @@ class StateSpaceOptimizer:
 
     def train(self, lam: float = 0, maxit: int = 5000, trace: bool = False,
               reltol: float = 1e-7, round_result: bool = True) -> np.ndarray:
+        """
+        Use this function to learn a new MHN from the data given to this optimizer.
+
+        :param lam: tuning parameter for regularization
+        :param maxit: maximum number of training iterations
+        :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
+        :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
+        :param round_result: if True, the result is rounded to two decimal places
+        :return: trained model
+        """
         if self.__data is None:
             raise ValueError("You have to load data before training!")
 
