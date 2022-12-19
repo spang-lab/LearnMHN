@@ -45,7 +45,7 @@ cpdef np.ndarray[np.double_t, ndim=1] q_subdiag(double[:, :] theta, int i):
 
     :return: subdiagonal of Q corresponding to the ith row of Theta
     """
-    cdef double *row = &theta[i, :]
+    cdef double[:] row = theta[i, :]
     cdef int n = theta.shape[0]
     cdef int j
 

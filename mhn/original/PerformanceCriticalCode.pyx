@@ -6,14 +6,15 @@
 
 cimport cython
 import numpy as np
-cimport numpy as cnp
+cimport numpy as np
 
 from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot
 from libc.stdlib cimport malloc, free
 from libc.math cimport exp
 
+np.import_array()
 
-cdef void internal_kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, double[:] pout, bint diag = False, bint transp = False):
+cdef void internal_kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, double *pout, bint diag, bint transp):
     """
     This function multiplies the kronecker-product you get from the ith row of theta with a vector
 
@@ -26,7 +27,7 @@ cdef void internal_kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, doub
     :return:
     """
     # inizialize some constants used in this function
-    cdef double *theta_i = &theta_mat[i, :]
+    cdef double[:] theta_i = theta_mat[i, :]
     cdef int n = theta_mat.shape[0]
     cdef int nx = 1 << n
     cdef int nxhalf = nx / 2
@@ -107,8 +108,8 @@ def kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, bint diag = False, 
     :return: vector that will contain the result of the multiplication
     """
     cdef int n = theta_mat.shape[0]
-    cdef np.ndarray[cnp.double_t] result = np.empty(2**n, dtype=np.double)
-    internal_kron_vec(theta_mat, i, x_vec, result, diag, transp)
+    cdef np.ndarray[np.double_t] result = np.empty(2**n, dtype=np.double)
+    internal_kron_vec(theta_mat, i, x_vec, &result[0], diag, transp)
     return result
 
 

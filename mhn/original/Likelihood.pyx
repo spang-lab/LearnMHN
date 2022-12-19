@@ -39,12 +39,12 @@ cdef internal_q_vec(double[:, :] theta, double[:] x, double[:] yout, bint diag =
     cdef double *result_vec = <double *> malloc(sizeof(double) * nx)
 
     # initialize yout with zero
-    dscal(&nx, &zero, yout, &one_i)
+    dscal(&nx, &zero, &yout[0], &one_i)
 
     for i in range(n):
         internal_kron_vec(theta, i, x, result_vec, diag, transp)
         # add result of restricted_kronvec to yout
-        daxpy(&nx, &one_d, result_vec, &one_i, yout, &one_i)
+        daxpy(&nx, &one_d, result_vec, &one_i, &yout[0], &one_i)
 
     free(result_vec)
 
@@ -77,7 +77,7 @@ cpdef np.ndarray[np.double_t] jacobi(double[:, :] theta, np.ndarray[np.double_t]
     """
     cdef int n = theta.shape[1]
 
-    cdef np.ndarray[np.double_t] x = np.full(2**n, 1 / 2**n)
+    cdef np.ndarray[np.double_t] x = np.full(2**n, 1. / (2**n), dtype=np.double)
     cdef np.ndarray[np.double_t] dg = 1 - q_diag(theta)
 
     for _ in range(n+1):
@@ -87,7 +87,7 @@ cpdef np.ndarray[np.double_t] jacobi(double[:, :] theta, np.ndarray[np.double_t]
     return x
 
 
-cpdef np.ndarray[np.double_t] generate_pTh(double[:, :] theta, np.ndarray[np.double_t] p0 = None):
+cpdef np.ndarray[np.double_t] generate_pTh(double[:, :] theta, p0 = None):
     """
     Returns the probability distribution given by theta
 
@@ -155,10 +155,10 @@ def grad(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t]
     cdef double *r_vec = <double *> malloc(nx * sizeof(double))
 
     for i in range(n):
-        internal_kron_vec(theta, i, &pth[0], r_vec, diag=True)
+        internal_kron_vec(theta, i, pth, r_vec, diag=True, transp=False)
         for j in range(nx):
             r_vec[j] *= q[j]
-        loop_j(i, n, &r_vec[0], &g[0, 0])
+        loop_j(i, n, r_vec, &g[0, 0])
 
     free(<void *> r_vec)
     return g
