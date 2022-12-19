@@ -76,11 +76,12 @@ cpdef np.ndarray[np.double_t] jacobi(double[:, :] theta, np.ndarray[np.double_t]
     :return:
     """
     cdef int n = theta.shape[1]
+    cdef int i
 
     cdef np.ndarray[np.double_t] x = np.full(2**n, 1. / (2**n), dtype=np.double)
     cdef np.ndarray[np.double_t] dg = 1 - q_diag(theta)
 
-    for _ in range(n+1):
+    for i in range(n+1):
         x = b + q_vec(theta, x, diag=False, transp=transp)
         x = x / dg
 
@@ -131,10 +132,9 @@ def grad(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t]
     :param pth_space: opional, with this parameter we can communicate with the function score and use pth here again -> performance boost
     :return: gradient you get from equation 7
     """
-    cdef int n = int(np.sqrt(theta.size))
+    cdef int n = theta.shape[0]
     cdef int nx = 1 << n
     cdef int i, j
-    theta = theta.reshape((n, n))
 
     cdef np.ndarray[np.double_t] p0, pth
 
