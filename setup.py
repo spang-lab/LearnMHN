@@ -91,6 +91,27 @@ ext_modules = [
             f'-DSTATE_SIZE={STATE_SIZE}'
         ],
         extra_link_args=[]
+    ),
+    Extension(
+        "mhn.original.Likelihood",
+        ["./mhn/original/Likelihood.pyx"],
+        extra_compile_args=[
+            '/Ox' if IS_WINDOWS else '-O2'
+        ]
+    ),
+    Extension(
+        "mhn.original.PerformanceCriticalCode",
+        ["./mhn/original/PerformanceCriticalCode.pyx"],
+        extra_compile_args=[
+            '/Ox' if IS_WINDOWS else '-O2'
+        ]
+    ),
+    Extension(
+        "mhn.original.ModelConstruction",
+        ["./mhn/original/ModelConstruction.pyx"],
+        extra_compile_args=[
+            '/Ox' if IS_WINDOWS else '-O2'
+        ]
     )
 ]
 
