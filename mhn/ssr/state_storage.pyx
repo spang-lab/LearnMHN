@@ -8,9 +8,28 @@ from libc.stdlib cimport malloc, free
 from mhn.ssr.state_storage cimport State
 
 import numpy as np
+import warnings
 
 # STATE_SIZE is defined in setup.py, 
 # the maximum number n of genes the MHN can handle is 32 * STATE_SIZE
+
+
+cdef int compute_max_mutation_number(int[:, :] mutation_data):
+    """
+    This function is used to compute the maximum number of mutations in a single sample of the data
+    """
+    cdef int max_mutation_num = 0
+    cdef int local_sum
+    cdef int i, j
+    for i in range(mutation_data.shape[0]):
+        local_sum = 0
+        for j in range(mutation_data.shape[1]):
+            local_sum += mutation_data[i, j]
+
+        if local_sum > max_mutation_num:
+            max_mutation_num = local_sum
+
+    return max_mutation_num
 
 
 cdef void fill_states(State *states, int[:, :] mutation_data):
@@ -32,9 +51,10 @@ cdef void fill_states(State *states, int[:, :] mutation_data):
                 current_state[0].parts[j >> 5] |=  1 << (j & 31)
 
 
-cdef class State_storage:
+cdef class StateStorage:
     """
-    This class is used as a wrapper such that the C array containing the States can be reference in a Python script
+    This class is used as a wrapper such that the C array containing the States can be referenced in a Python script
+    It also makes sure that there aren't more than 32 mutations present in a single sample as this would break the algorithms
     """
 
     def __cinit__(self, int[:, :] mutation_data):
@@ -45,6 +65,13 @@ cdef class State_storage:
 
         self.data_size = mutation_data.shape[0]
         self.gene_num = mutation_data.shape[1]
+
+        self.max_mutation_num = compute_max_mutation_number(mutation_data)
+        if self.max_mutation_num == 0:
+            warnings.warn("Your data does not contain any mutations, something went probably wrong")
+        elif self.max_mutation_num > 32:
+            raise ValueError("A single sample must not contain more than 32 mutations")
+
         self.states = <State *> malloc(self.data_size * sizeof(State))
 
         if not self.states:
@@ -59,14 +86,19 @@ cdef class State_storage:
         """
         return (self.data_size, self.gene_num)
 
+    def get_max_mutation_num(self):
+        """
+        returns the maximum number of mutations present in a single sample, might be useful as a sanity check
+        """
+        return self.max_mutation_num
 
     def __dealloc__(self):
         free(self.states)
 
 
-def create_indep_model(State_storage state_storage):
+def create_indep_model(StateStorage state_storage):
     """
-    Compute a independence model from the data stored in the State_storage object
+    Compute an independence model from the data stored in the StateStorage object
     """
 
     cdef int n = state_storage.gene_num

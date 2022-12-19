@@ -9,17 +9,18 @@
 cdef extern from *:
     """
     typedef struct {
-        unsigned int parts[STATE_SIZE];
+        uint32_t parts[STATE_SIZE];
     } State;
     """
     ctypedef struct State:
         unsigned int parts[STATE_SIZE]
 
 
-cdef class State_storage:
+cdef class StateStorage:
     cdef State *states
     cdef int data_size
     cdef int gene_num
+    cdef int max_mutation_num
 
 
 

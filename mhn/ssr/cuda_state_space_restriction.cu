@@ -28,7 +28,7 @@
 // this struct is used to store states representing up to 32 * STATE_SIZE genes
 // STATE_SIZE must be defined during compilation
 typedef struct {
-     unsigned int parts[STATE_SIZE];
+     uint32_t parts[STATE_SIZE];
 } State;
 
 
@@ -118,124 +118,135 @@ inline void determine_block_thread_num(int &block_num, int &thread_num, const in
  * @param[in] count_before_i number of genes mutated that have a lower index than i
  * @param[out] pout vector which will contain the result of this multiplication
 */
-__global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const int i, const double* __restrict__ px, const State state, const bool diag, const bool transp, const int n, const int mutation_num, const int count_before_i, double* __restrict__ pout) {
+__global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const int i, const double* __restrict__ px, const State state, const bool diag, const bool transp, const int n, const int mutation_num, int count_before_i, double* __restrict__ pout) {
 	const int stride = blockDim.x * gridDim.x;
 	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
 	// in the following 1 << i is equivalent to 2^i, x >> i is equivalent to x // 2^i, x & ((1<<i)-1) to x % 2^i
 	const int nx = 1 << mutation_num;
-	const int nxhalf = nx >> 1;
 
 	extern __shared__ double theta_i[];
 
 	// tells us, if state i is set to 1
 	int state_i_one = (state.parts[i >> 5] >> (i & 31)) & 1;
 
-	if (!diag && !state_i_one) {
-		// in this case the result is zero in every entry
-		// this means we do not have to add anything to pout and can just return
-		return;
+	if(!state_i_one){
+		if(!diag){
+			// in this case the result is zero in every entry
+			// this means we do not have to add anything to pout and can just return
+			return;
+		} else {
+			// if the ith gene is not mutated, we don't care how many genes are mutated before i
+			// instead we set count_before_i to mutation_num - 1, which later leads to better aligned memory accesses 
+			// on global memory in our algorithm
+			count_before_i = mutation_num - 1;
+		}
 	}
 
 	// load the ith row of theta into shared memory for more efficient access
-	for(int j = threadIdx.x; j < n; j += blockDim.x){
-		theta_i[j] = ptheta[i*n + j];
+	for (int j = threadIdx.x; j < n; j += blockDim.x) {
+		theta_i[j] = ptheta[i * n + j];
 	}
 
 	__syncthreads();
 
-
 	// patch_size is important for later for the case i == j in the shuffle algorithm
 	// as we do not actually shuffle the data in px in this implementation (only implicitly), we have to keep track of some indices
-	// and which entries have to be computed together in the case i == j. Those two entries are px1 and px2
-	// the index difference between those is patch_size (patches, as over all, the px1 and px2 occur in patches of size 2^z
-	// z here is the number of events/bits set to 1 that have an index smaller than i)
+	// and which entries have to be computed together in the case i == j. Those two indices are (x_index) and (x_index + patch_size)
+	// ("patch_size", as over all, the entries that have to be computed together occur in patches of size 2**(count_before_i))
 	const int patch_size = 1 << count_before_i;
-	int x_index1 = (cuda_index >> count_before_i) * 2 * patch_size + (cuda_index & (patch_size - 1));
-	int x_index2 = x_index1 + patch_size;
+	int x_index = (cuda_index >> count_before_i) * 2 * patch_size + (cuda_index & (patch_size - 1));
 
-	while(x_index2 < nx){
-		double px1 = px[x_index1];
-		double px2 = px[x_index2];
+	// for each iteration of this while loop, we compute the output values for indices (x_index) and (x_index + patch_size) 
+	// and add the result to pout
+	while (x_index + patch_size < nx) {
+		// for each entry the theta_ij that have to be multiplied to give us the correct result are given
+		// by the bit representation of its index: 
+		// if the kth bit of the index is set to 1 and j is the kth mutated gene, we have to use theta_ij to compute the output
+		// as patch_size is a power of two, (x_index) and (x_index + patch_size) only differ in a single bit,
+		// namely the (count_before_i)th one
+		// furthermore, if the ith gene is mutated, both output values have to be multiplied with theta_ii anyways
+		// so we can simply compute the product of thetas for both entries at once
+		// if the ith gene is not mutated, count_before_i is set to mutation_num - 1, which leads to the two indices
+		// only differing in the last bit (respectively the theta_i[j] for the spatially last mutated gene j). 
+		// Hence we will just multiply the last theta to the (x_index + patch_size) entry at the end and get correct results
+		double theta_product = 1.;
 
-		int state_copy = state.parts[0];
+		int x_index_copy = x_index;
+		double theta;
+
+		uint32_t state_copy = state.parts[0];
 
 		for (int j = 0; j < n; j++) {
+			// check if the jth gene is mutated or not
 			if (state_copy & 1) {
-				// change the indices as they would change if we did an actual shuffle
-				x_index1 = (x_index1 >> 1) + (x_index1 & 1) * nxhalf;
-				x_index2 = (x_index2 >> 1) + (x_index2 & 1) * nxhalf;
-				double theta = theta_i[j];
-
+				theta = theta_i[j];
 				if (i == j) {
-					// at the beginning, x_index_1 and x_index_2 were chosen in such a way that for i == j those are the entries that are added/multiplied together
-					// we want to know which entry is in which "column" (see original shuffle algorithm), they are loaded accordingly in right_side/left_side
-					// here we prevent "if" diverging branches, which would lead to serial execution, by implicitly doing the if clause while computing right_side
-					// as left_side must be the px that is not right_side, we get it with px1 + px2 - right_side (again no branching)
-					double right_side, left_side;
-					right_side = px1 + (x_index2 > x_index1) * (px2 - px1);
-					left_side = px1 + px2 - right_side;
-
-					// this part is pratically the same as in the original kronvec function
-					if (!transp) {
-						right_side = left_side * theta;
-						if (diag) {
-							left_side = -right_side;
-						}
-						else {
-							left_side = 0;
-						}
-					}
-					else {
-						if (diag) {
-							left_side = (right_side - left_side) * theta;
-						}
-						else {
-							left_side = right_side * theta;
-						}
-						right_side = 0;
-					}
-
-					// update values of px1,px2 with the values from right_side/left_side (again with implicit if condition)
-					px1 = right_side + (x_index1 < x_index2) * (left_side - right_side);
-					px2 = right_side + left_side - px1;
+					// if i == j then that theta is always part of theta_product
+					theta_product *= theta;
 				}
 				else {
-					// this is equivalent to "if(x_index >= nxhalf) px *= theta_i[j] else px *= 1
-					// we dont use a if clause to prevent diverging branches
-					px1 *= 1 + (x_index1 >= nxhalf) * (theta - 1);
-					px2 *= 1 + (x_index2 >= nxhalf) * (theta - 1);
+					// if the current first bit of x_index_copy is set to 1, multiply with theta
+					// else multiply with one
+					// here the if condition is implicitly in the computation to avoid branching of the threads
+					theta_product *= 1. + (x_index_copy & 1) * (theta - 1.);
 				}
-			} 
+				// shift the bits by one for the next iteration
+				x_index_copy >>= 1;
+			}
 			else if (i == j) {
 				// if the ith gene is not mutated, we simply multiply the entries with (-theta_ii)
-				px1 *= -theta_i[i];
-				px2 *= -theta_i[i];
+				theta_product *= -theta_i[i];
 			}
 
 			// if the mutation state of the next gene is stored on the current state_copy, make a bit shift to the right
 			// else state_copy becomes the next integer stored in the given state (x >> 5  <=> x // 32, x & 31 <=> x % 32)
-			if ((j + 1) & 31){
+			if ((j + 1) & 31) {
 				state_copy >>= 1;
 			}
 			else {
 				state_copy = state.parts[(j + 1) >> 5];
 			}
-			
 		}
-		// add the px values to the output array
-		pout[x_index1] += px1;
-		pout[x_index2] += px2;
+
+		// if the ith gene is mutated we need to make computations involving the entries (x_index) and (x_index + patch_size) 
+		// this is the part for which it was important to choose the correct patch_size and why we needed to compute two entries at once
+		// the following computations follow from the part of the shuffle algorithm where we multiply the 2x2 matrix containing theta_ii with px
+		if (state_i_one) {
+			if (!transp) {
+				double output = px[x_index] * theta_product;
+				pout[x_index + patch_size] += output;
+				if (diag) {
+					pout[x_index] -= output;
+				}
+			}
+			else {
+				if (diag) {
+					// this case never occurs during gradient computation, its just here for the sake of completeness
+					pout[x_index] += (px[x_index + patch_size] - px[x_index]) * theta_product;
+				}
+				else {
+					pout[x_index] += px[x_index + patch_size] * theta_product;
+				}
+			}
+		}
+		// if the ith gene is not mutated the two entries do not have to be computated together, this is why we could choose
+		// count_before_i independently from the given state
+		else {
+		    pout[x_index] += theta_product * px[x_index];
+			// multiply the last theta to this entry, as the thetas needed for both entries only differ in this last one
+			pout[x_index + patch_size] += theta_product * px[x_index + patch_size] * theta;
+		}
+
 
 		// if patch_size is bigger than stride, we have to do corrections to the indices
-		if(stride < patch_size){
+		if (stride < patch_size) {
 			// check if the current index is inside an odd patch, if so, jump to the next one
-			x_index1 += stride;
-			x_index1 += ((x_index1 >> count_before_i) & 1) * patch_size;
-			x_index2 = x_index1 + patch_size;
-		} else {
-			x_index1 += 2*stride;
-			x_index2 += 2*stride;
+			x_index += stride;
+			x_index += ((x_index >> count_before_i) & 1) * patch_size;
+		}
+		else {
+			x_index += 2 * stride;
 		}
 	}
 }
@@ -261,16 +272,18 @@ static void cuda_q_vec(const double *ptheta, const double *x, const State *state
 	cudaMemset(yout, 0, nx * sizeof(double));
 
 	int block_num, thread_num;
-	int mutation_counter = 0;
+	int mutation_counter = -1;
 
 	determine_block_thread_num(block_num, thread_num, mutation_num);
 
 	for (int i = 0; i < n; i++) {
-		// this would also be done in the kernel, but its faster to check it here
-		if (!((state->parts[i >> 5] >> (i & 31)) & 1) && !diag) continue;
-
+		if(((state->parts[i >> 5] >> (i & 31)) & 1)) {
+		    mutation_counter++;
+		} else if(!diag) {
+		    // this would also be done in the kernel, but its faster to check it here
+		    continue;
+		}
 		cuda_restricted_kronvec<<<block_num, thread_num, n * sizeof(double)>>>(ptheta, i, x, *state, diag, transp, n, mutation_num, mutation_counter, yout);
-		mutation_counter++;
 	}
 }
 
@@ -306,7 +319,7 @@ __global__ void cuda_subdiag(const double *ptheta, const State state, const int 
 
 		double dg_entry = 1;
 
-		int state_copy = state.parts[0];
+		uint32_t state_copy = state.parts[0];
 		int position_condition = k;
 		for (int j = 0; j < n; j++) {
 			double theta = theta_i[j];
@@ -483,7 +496,7 @@ __global__ void print_vec(double *vec, int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	for (int k = cuda_index; k < size; k++) {
+	for (int k = cuda_index; k < size; k+=stride) {
 		printf("%g, ", vec[k]);
 	}
 	printf("\n\n");
@@ -555,7 +568,7 @@ static void cuda_restricted_gradient(const double *ptheta, const State *state, c
 
 		old_vec = tmp1;
 		shuffled_vec = tmp2;
-		int state_copy = state->parts[0];
+		uint32_t state_copy = state->parts[0];
 		double *grad_i = grad + i * n;
 
 		// use the shuffle trick for a more efficient computation of the gradient
@@ -623,7 +636,7 @@ __global__ void add_to_score(double *score, double *pth_end){
  *
  * @return this function returns the score of the current MHN as d double value
 */
-double DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out) {
+int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out) {
 
 	// determine the maximum number of mutations present in a single tumor sample
 	int max_mutation_num = 0;
@@ -636,19 +649,40 @@ double DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation
 	double *cuda_grad_out, *partial_grad;
 	double *p0_pD, *pth, *q, *tmp1, *tmp2;
 	double *cuda_ptheta;
-	double *cuda_score, score;
+	double *cuda_score;
 
 	// allocate memory on the GPU
-	cudaMalloc(&cuda_grad_out, n*n * sizeof(double));
-	cudaMalloc(&partial_grad, n*n * sizeof(double));
-	cudaMalloc(&p0_pD, nx * sizeof(double));
-	cudaMalloc(&pth, nx * sizeof(double));
-	cudaMalloc(&q, nx * sizeof(double));
-	cudaMalloc(&tmp1, nx * sizeof(double));
-	cudaMalloc(&tmp2, nx * sizeof(double));
-	cudaMalloc(&cuda_ptheta, n*n * sizeof(double));
+	// we allocate all at once so that we can easily check for allocation errors
+	// if we did each allocation as a separate cudaMalloc, we would have to check for errors after each single call
+	double *d_memory;
+	cudaMalloc(&d_memory,
+				n*n * sizeof(double) +  // cuda_grad_out
+				n*n * sizeof(double) +  // partial_grad
+				nx  * sizeof(double) +  // p0_pD
+				nx  * sizeof(double) +  // pth
+				nx  * sizeof(double) +  // q
+				nx  * sizeof(double) +  // tmp1
+				nx  * sizeof(double) +  // tmp2
+				n*n * sizeof(double) +  // cuda_ptheta
+				 1  * sizeof(double)    // cuda_score
+				 );
 
-	cudaMalloc(&cuda_score, sizeof(double));
+	// check for errors
+	// errors could occur if CUDA is not installed correctly or if the user tries to allocate too much memory
+	if (cudaPeekAtLastError() != cudaSuccess){
+		// cast cudaError_t to int, not the best style, but simplest method to get it work in Cython
+		return (int) cudaPeekAtLastError();
+	}
+
+	cuda_grad_out = d_memory;
+	partial_grad  = d_memory +   n*n;
+	p0_pD         = d_memory + 2*n*n;
+	pth 		  = d_memory + 2*n*n +   nx;
+	q			  = d_memory + 2*n*n + 2*nx;
+	tmp1		  = d_memory + 2*n*n + 3*nx;
+	tmp2		  = d_memory + 2*n*n + 4*nx;
+	cuda_ptheta   = d_memory + 2*n*n + 5*nx;
+	cuda_score	  = d_memory + 3*n*n + 5*nx;
 
 	// copy theta to the GPU
 	cudaMemcpy(cuda_ptheta, ptheta, n*n * sizeof(double), cudaMemcpyHostToDevice);
@@ -658,6 +692,13 @@ double DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation
 
 	// for the functions we need theta in its exponential form
 	array_exp<<<32, 64>>>(cuda_ptheta, n*n);
+
+	// again check for errors
+	// errors could occur if CUDA is not installed correctly or the kernel call did not work correctly
+	if (cudaPeekAtLastError() != cudaSuccess){
+		// cast cudaError_t to int, not the best style, but simplest method to get it work in Cython
+		return (int) cudaPeekAtLastError();
+	}
 
 	// compute the gradient for each tumor sample and add them together
 	for (int i = 0; i < data_size; i++) {
@@ -672,19 +713,46 @@ double DLL_PREFIX cuda_gradient_and_score(double *ptheta, int n, State *mutation
 
 	// copy the results to the CPU
 	cudaMemcpy(grad_out, cuda_grad_out, n*n * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy(&score, cuda_score, sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(score_out, cuda_score, sizeof(double), cudaMemcpyDeviceToHost);
 
 	// free all memory on the GPU
-	cudaFree(partial_grad);
-	cudaFree(p0_pD);
-	cudaFree(pth);
-	cudaFree(q);
-	cudaFree(tmp1);
-	cudaFree(tmp2);
-	cudaFree(cuda_ptheta);
+	cudaFree(d_memory);
 
-	cudaFree(cuda_score);
-	cudaFree(cuda_grad_out);
+	return (int) cudaGetLastError();
+}
 
-	return score;
+
+/**
+ * This function is used by state_space_restriction.pyx to get the error name and description if an error occurred
+ *
+ * @param[in] error is the cudaError_t returned by the CUDA function casted to int to be usable in Cython
+ * @param[out] error_name the name of the error will be stored in this variable
+ * @param[out] error_description the description of the error will be stored in this variable
+*/
+void DLL_PREFIX get_error_name_and_description(int error, const char **error_name, const char **error_description){
+	*error_name = cudaGetErrorName((cudaError_t) error);
+	*error_description = cudaGetErrorString((cudaError_t) error);
+}
+
+
+/**
+ * This function can be used to check if CUDA works as intended. For that it allocates and frees memory on the GPU.
+ * If the allocation fails, something is probably wrong with the CUDA drivers and you should check your CUDA installation.
+ *
+ * @return 1, if everything works as it should, else 0
+*/
+int DLL_PREFIX cuda_functional(){
+    bool error_occurred = false;
+    double *ptr;
+
+    // check if memory allocation works
+    error_occurred |= (cudaMalloc(&ptr, sizeof(double)) != cudaSuccess);
+
+    // check if calling a kernel works
+    fill_array<<<1, 1 >>>(ptr, 3.1415, 1);  // fill array with a random value
+    error_occurred |= (cudaPeekAtLastError() != cudaSuccess);
+
+    error_occurred |= (cudaFree(ptr) != cudaSuccess);
+
+    return (!error_occurred);
 }
