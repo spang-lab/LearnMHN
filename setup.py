@@ -107,7 +107,7 @@ ext_modules = [
 
 setup(
     name="mhn",
-    version="0.0.4",
+    version="0.0.5",
     packages=find_packages(),
     author="Stefan Vocht",
     description="Contains functions to train and work with Mutual Hazard Networks",
@@ -123,7 +123,6 @@ setup(
     include_dirs=[numpy.get_include()],
     install_requires=[
         'numpy>=1.19.0',
-        'numba>=0.53.0',                                # @TODO remove numba once the original code is written in Cython
         'scipy>=1.1.0'
     ]
 )
