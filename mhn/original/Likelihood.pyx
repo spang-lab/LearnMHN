@@ -8,7 +8,7 @@ cimport cython
 from libc.stdlib cimport malloc, free
 
 from .ModelConstruction cimport q_diag
-from .PerformanceCriticalCode cimport kron_vec, loop_j
+from .PerformanceCriticalCode cimport internal_kron_vec, loop_j
 
 from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot
 
@@ -17,7 +17,7 @@ cimport numpy as np
 
 np.import_array()
 
-cpdef q_vec(double[:, :] theta, double[:] x, double[:] yout, bint diag = False, bint transp = False) -> np.ndarray:
+cdef internal_q_vec(double[:, :] theta, double[:] x, double[:] yout, bint diag = False, bint transp = False):
     """
     Multiplies the vector x with the matrix Q
 
@@ -42,14 +42,31 @@ cpdef q_vec(double[:, :] theta, double[:] x, double[:] yout, bint diag = False, 
     dscal(&nx, &zero, yout, &one_i)
 
     for i in range(n):
-        kron_vec(theta, i, x, result_vec, diag, transp)
+        internal_kron_vec(theta, i, x, result_vec, diag, transp)
         # add result of restricted_kronvec to yout
         daxpy(&nx, &one_d, result_vec, &one_i, yout, &one_i)
 
     free(result_vec)
 
 
-def jacobi(theta: np.ndarray, b: np.ndarray, transp: bool = False) -> np.ndarray:
+cpdef np.ndarray[np.double_t] q_vec(double[:, :] theta, double[:] x, bint diag = False, bint transp = False):
+    """
+    Multiplies the vector x with the matrix Q
+
+    :param theta: thetas used to construct Q
+    :param x: vector that is multiplied with Q
+    :param diag: if False, the diagonal of Q is set to zero
+    :param transp: if True, x is multiplied with Q^T
+
+    :return: product of Q and x
+    """
+    cdef int n = theta.shape[0]
+    cdef np.ndarray[np.double_t] result = np.empty(2**n, dtype=np.double)
+    internal_q_vec(theta, x, result, diag, transp)
+    return result
+
+
+cpdef np.ndarray[np.double_t] jacobi(double[:, :] theta, np.ndarray[np.double_t] b, bint transp = False):
     """
     Returns the solution for [I - Q]^-1 x = b
 
@@ -58,11 +75,10 @@ def jacobi(theta: np.ndarray, b: np.ndarray, transp: bool = False) -> np.ndarray
     :param transp: if True, returns solution for ([I - Q]^-1)^T x = b
     :return:
     """
-    n = theta.shape[1]
+    cdef int n = theta.shape[1]
 
-    x = np.full(2**n, 1 / 2**n)
-
-    dg = 1 - ModelConstruction.q_diag(theta)
+    cdef np.ndarray[np.double_t] x = np.full(2**n, 1 / 2**n)
+    cdef np.ndarray[np.double_t] dg = 1 - q_diag(theta)
 
     for _ in range(n+1):
         x = b + q_vec(theta, x, diag=False, transp=transp)
@@ -71,31 +87,7 @@ def jacobi(theta: np.ndarray, b: np.ndarray, transp: bool = False) -> np.ndarray
     return x
 
 
-def jacobi_eq11(theta: np.ndarray, b: np.ndarray, transp: bool = False) -> np.ndarray:
-    """
-    Implementation of equation 11 in the MHN paper (not perfectly working yet)
-
-    :param theta: thetas used to construct Q
-    :param b:
-    :param transp: if True, returns solution for ([I - Q]^-1)^T x = b
-    :return: Returns the solution for [I - Q]^-1 x = b
-    """
-    n = theta.shape[0]
-
-    dg_inv = 1 / (1 - ModelConstruction.q_diag(theta))
-
-    x = dg_inv * b
-    sum = x.copy()
-
-    for k in range(n):
-        x = -dg_inv * q_vec(theta, x, diag=False, transp=transp)
-        sum += x
-
-    # @TODO using the abs function here should not be necessary, should be fixed
-    return np.abs(sum)
-
-
-def generate_pTh(theta: np.ndarray, p0: np.ndarray = None) -> np.ndarray:
+cpdef np.ndarray[np.double_t] generate_pTh(double[:, :] theta, np.ndarray[np.double_t] p0 = None):
     """
     Returns the probability distribution given by theta
 
@@ -103,7 +95,7 @@ def generate_pTh(theta: np.ndarray, p0: np.ndarray = None) -> np.ndarray:
     :param p0:
     :return:
     """
-    n = theta.shape[1]
+    cdef int n = theta.shape[1]
 
     if p0 is None:
         p0 = np.zeros(2**n)
@@ -112,7 +104,7 @@ def generate_pTh(theta: np.ndarray, p0: np.ndarray = None) -> np.ndarray:
     return jacobi(theta, p0)
 
 
-def score(theta: np.ndarray, pD: np.ndarray, pth_space: np.ndarray = None) -> float:
+def score(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t] pth_space = None) -> float:
     """
     Calculates the score for the current theta
 
@@ -121,7 +113,7 @@ def score(theta: np.ndarray, pD: np.ndarray, pth_space: np.ndarray = None) -> fl
     :param pth_space: opional, with this parameter we can communicate with the function grad and use pth there again -> performance boost
     :return: score value
     """
-    pth = generate_pTh(theta)
+    cdef np.ndarray[np.double_t] pth = generate_pTh(theta)
 
     if pth_space is not None:
         pth_space[:] = pth
@@ -129,17 +121,22 @@ def score(theta: np.ndarray, pD: np.ndarray, pth_space: np.ndarray = None) -> fl
     return pD.dot(np.log(pth))
 
 
-def grad(theta: np.ndarray, pD: np.ndarray, pth_space: np.ndarray = None) -> np.ndarray:
+def grad(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t] pth_space = None) -> np.ndarray:
     """
     Implements gradient calculation of equation 7
 
     :param theta:
     :param pD: probability distribution of the training data
     :param pth: as pth is calculated in the score function anyways, we do not need to calculate it again
+    :param pth_space: opional, with this parameter we can communicate with the function score and use pth here again -> performance boost
     :return: gradient you get from equation 7
     """
-    n = int(np.sqrt(theta.size))
+    cdef int n = int(np.sqrt(theta.size))
+    cdef int nx = 1 << n
+    cdef int i, j
     theta = theta.reshape((n, n))
+
+    cdef np.ndarray[np.double_t] p0, pth
 
     # distribution you get from our current model Theta (pth ~ "p_theta")
     if pth_space is None:
@@ -152,12 +149,16 @@ def grad(theta: np.ndarray, pD: np.ndarray, pth_space: np.ndarray = None) -> np.
         pth = pth_space
 
     # should be (pD / pth)^T * R_theta^-1 from equation 7
-    q = jacobi(theta, pD / pth, transp=True)
+    cdef np.ndarray[np.double_t] q = jacobi(theta, pD / pth, transp=True)
 
-    g = np.zeros((n, n))
+    cdef np.ndarray[np.double_t, ndim=2] g = np.zeros((n, n))
+    cdef double *r_vec = <double *> malloc(nx * sizeof(double))
 
     for i in range(n):
-        r_vec = q * kron_vec(theta, i, pth, diag=True)
-        loop_j(i, n, r_vec, g)
+        internal_kron_vec(theta, i, &pth[0], r_vec, diag=True)
+        for j in range(nx):
+            r_vec[j] *= q[j]
+        loop_j(i, n, &r_vec[0], &g[0, 0])
 
+    free(<void *> r_vec)
     return g

@@ -39,7 +39,7 @@ def random_theta(n: int, sparsity: float = 0, rounded: bool = True) -> np.ndarra
     return theta
 
 
-cpdef q_subdiag(double[:, :] theta, int i):
+cpdef np.ndarray[np.double_t, ndim=1] q_subdiag(double[:, :] theta, int i):
     """
     Creates a single subdiagonal of Q from the ith row in Theta
 
@@ -50,7 +50,7 @@ cpdef q_subdiag(double[:, :] theta, int i):
     cdef int j
 
     # s is the subdiagonal of Q, the entries are calculated as described in eq. 2
-    cdef np.ndarray[np.float_t, ndim=1] s = np.empty(2**n, dtype=np.float)
+    cdef np.ndarray[np.double_t, ndim=1] s = np.empty(2**n, dtype=np.double)
     s[0] = exp(row[i])
 
     for j in range(n):
@@ -77,7 +77,7 @@ def build_q(theta: np.ndarray) -> np.ndarray:
     return q.toarray()
 
 
-cpdef q_diag(double[:, :] theta):
+cpdef np.ndarray[np.double_t, ndim=1]  q_diag(double[:, :] theta):
     """
     get the diagonal of Q
 
@@ -85,7 +85,7 @@ cpdef q_diag(double[:, :] theta):
     """
     cdef int n = theta.shape[0]
     cdef int i
-    cdef np.ndarray[np.float_t, ndim=1] dg = np.zeros((2**n), dtype=np.float)
+    cdef np.ndarray[np.double_t, ndim=1] dg = np.zeros((2**n), dtype=np.double)
 
     for i in range(n):
         # the diagonal elements are the negative sums of their columns
@@ -104,7 +104,7 @@ def learn_indep(pD: np.ndarray) -> np.ndarray:
     """
     cdef int n = int(np.log2(pD.size))
     cdef int i
-    cdef np.ndarray[np.float_t, ndim=2] theta = np.zeros((n, n), dtype=np.float)
+    cdef np.ndarray[np.double_t, ndim=2] theta = np.zeros((n, n), dtype=np.double)
 
     # for each event i, sum up the probabilities of events where gene i was mutated to get the total probability
     # theta_ii is the log-odd of gene i being mutated
