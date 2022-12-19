@@ -23,6 +23,7 @@ pip3 install -e /path/to/this/directory --upgrade
 ## A quick overview
 
 The package contains the original MHN functions implemented in Python. You import them from ``mhn.original``:
+
 ```python
 from mhn.original import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
 ```

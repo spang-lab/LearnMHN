@@ -81,12 +81,33 @@ ext_modules = [
             f'-DSTATE_SIZE={STATE_SIZE}'
         ],
         extra_link_args=[]
+    ),
+    Extension(
+        "mhn.original.Likelihood",
+        ["./mhn/original/Likelihood.pyx"],
+        extra_compile_args=[
+            '/Ox' if IS_WINDOWS else '-O2'
+        ]
+    ),
+    Extension(
+        "mhn.original.PerformanceCriticalCode",
+        ["./mhn/original/PerformanceCriticalCode.pyx"],
+        extra_compile_args=[
+            '/Ox' if IS_WINDOWS else '-O2'
+        ]
+    ),
+    Extension(
+        "mhn.original.ModelConstruction",
+        ["./mhn/original/ModelConstruction.pyx"],
+        extra_compile_args=[
+            '/Ox' if IS_WINDOWS else '-O2'
+        ]
     )
 ]
 
 setup(
     name="mhn",
-    version="0.0.4",
+    version="0.0.5",
     packages=find_packages(),
     author="Stefan Vocht",
     description="Contains functions to train and work with Mutual Hazard Networks",
@@ -102,7 +123,6 @@ setup(
     include_dirs=[numpy.get_include()],
     install_requires=[
         'numpy>=1.19.0',
-        'numba>=0.53.0',                                # @TODO remove numba once the original code is written in Cython
         'scipy>=1.1.0'
     ]
 )

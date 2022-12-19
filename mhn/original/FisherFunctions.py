@@ -6,14 +6,11 @@
 import numpy as np
 from numpy.linalg import det, inv, norm
 
-from numba import njit
-
 from mhn.original import Likelihood, PerformanceCriticalCode
 from mhn.original import ModelConstruction
 from mhn.original import UtilityFunctions
 
 
-@njit
 def compute_fisher_efficient(theta: np.ndarray, pth: np.ndarray = None) -> np.ndarray:
     """
     Computes the fisher matrix with a more efficient algorithm
@@ -80,7 +77,6 @@ def compute_fisher_efficient(theta: np.ndarray, pth: np.ndarray = None) -> np.nd
     return fisher_mat
 
 
-@njit
 def derivative_pth(theta: np.ndarray, pth: np.ndarray, i: int, j: int) -> np.ndarray:
     """
     Computes the derivative of pth wrt. theta_ij
@@ -115,7 +111,6 @@ def numerical_deriv_pth(theta: np.ndarray, pth: np.ndarray, i: int, j: int, h: f
     return (pth_new - pth) / h
 
 
-@njit
 def compute_fisher(theta: np.ndarray, pth: np.ndarray = None) -> np.ndarray:
     """
     Computes the fisher matrix given a theta (not very efficient)

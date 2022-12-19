@@ -4,14 +4,13 @@
 
 import numpy as np
 from scipy.optimize import minimize
-from numba import njit
 
 from . import Likelihood
 from . import ModelConstruction
 
 from typing import Callable
 
-@njit(cache=True)
+
 def L1(theta: np.ndarray, eps: float = 1e-05) -> float:
     """
     Computes the L1 penalty
@@ -21,7 +20,6 @@ def L1(theta: np.ndarray, eps: float = 1e-05) -> float:
     return np.sum(np.sqrt(theta_**2 + eps))
 
 
-@njit(cache=True)
 def L1_(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     """
     Derivative of the L1 penalty
@@ -48,7 +46,6 @@ def score_reg(theta: np.ndarray, pD: np.ndarray, lam: float, n: int = None, pth_
     return -(Likelihood.score(theta, pD, pth_space) - lam * L1(theta))
 
 
-@njit(cache=True)
 def grad_reg(theta: np.ndarray, pD: np.ndarray, lam: float, n: int = 0, pth_space: np.ndarray = None) -> np.ndarray:
     """
     Gradient with L1 - regularization
