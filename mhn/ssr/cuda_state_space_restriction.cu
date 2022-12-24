@@ -409,6 +409,26 @@ __global__ void multiply_arrays_elementwise(const double *arr1, double *arr_inou
 }
 
 /**
+ * this function computes the diagonal of [I-Q] for the jacobi function
+ *
+ * @param[in] ptheta array containing the theta entries
+ * @param[in] state state representing current tumor sample
+ * @param[in] mutation_num number of mutations present in the current state / tumor sample
+ * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
+ * @param[out] dg this array will contain the diagonal of [I-Q] after calling this function, has size must have size 2^mutation_num
+*/
+static void compute_jacobi_diagonal(const double* ptheta, const State* state, const int mutation_num, const int n, double* dg) {
+	const int nx = 1 << mutation_num;
+
+	int block_num, thread_num;
+	determine_block_thread_num(block_num, thread_num, mutation_num);
+
+	// initialize the diagonal entries and xout
+	fill_array <<<block_num, thread_num >>> (dg, 1, nx);
+	cuda_subtract_q_diag(ptheta, state, n, mutation_num, dg, block_num, thread_num);
+}
+
+/**
  * this functions multiplies [I-Q]^(-1) with b
  * all arrays given to this function must be allocated using cudaMalloc()
  *
@@ -420,7 +440,7 @@ __global__ void multiply_arrays_elementwise(const double *arr1, double *arr_inou
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
  * @param[out] xout the results of this functio are stored in this array
  * @param[in, out] tmp this array is used to store temporary data, has to have size 2^mutation_num
- * @param[in, out] dg this array stores the diagonal of [I-Q], must have size 2^mutation_num
+ * @param[in] dg this array contains the diagonal of [I-Q]
 */
 static void cuda_jacobi(const double *ptheta, const double *b, const State *state, const int mutation_num, const bool transp, const int n, double *xout, double *tmp, double *dg) {
 
@@ -429,9 +449,6 @@ static void cuda_jacobi(const double *ptheta, const double *b, const State *stat
 	int block_num, thread_num;
 	determine_block_thread_num(block_num, thread_num, mutation_num);
 
-	// initialize the diagonal entries and xout
-	fill_array<<<block_num, thread_num >>>(dg, 1, nx);
-	cuda_subtract_q_diag(ptheta, state, n, mutation_num, dg, block_num, thread_num);
 	fill_array<<<block_num, thread_num >>>(xout, 1. / (1. * nx), nx);
 
 	// compute the product of [I-Q]^(-1) with b
@@ -521,21 +538,26 @@ static void cuda_restricted_gradient(const double *ptheta, const State *state, c
 	// get the number of mutated genes in the current sample and compute the size of the memory buffers
 	const int mutation_num = get_mutation_num(state);
 	const int nx = 1 << mutation_num;
-
 	const double one = 1;
 
 	// set all entries of p0_pD to zero, set the first entry to one
 	cudaMemset(p0_pD, 0, nx * sizeof(double));
-	cudaMemcpy(p0_pD, &one, sizeof(double), cudaMemcpyHostToDevice);
+	fill_array <<<1, 1>>> (p0_pD, 1., 1);
+	// cudaMemcpy(p0_pD, &one, sizeof(double), cudaMemcpyHostToDevice);
 
-	cuda_jacobi(ptheta, p0_pD, state, mutation_num, false, n, pth, tmp1, tmp2);
+	// compute the diagonal for the jacobi calls
+	double* dg = tmp2;  // rename tmp2 to dg for better readability
+	compute_jacobi_diagonal(ptheta, state, mutation_num, n, dg);
+
+	cuda_jacobi(ptheta, p0_pD, state, mutation_num, false, n, pth, tmp1, dg);
 
 	// set all entries of p0_pD to zero, set the last entry to 1/pth[last_index]
 	cudaMemset(p0_pD, 0, sizeof(double));
-	cudaMemcpy(p0_pD + nx - 1, &one, sizeof(double), cudaMemcpyHostToDevice);
+	fill_array <<<1, 1>>> (p0_pD + nx - 1, 1., 1);
+	// cudaMemcpy(p0_pD + nx - 1, &one, sizeof(double), cudaMemcpyHostToDevice);
 	divide_arrays_elementwise<<<1, 1>>>(p0_pD + nx - 1, pth + nx - 1, p0_pD + nx - 1, 1);
 
-	cuda_jacobi(ptheta, p0_pD, state, mutation_num, true, n, q, tmp1, tmp2);
+	cuda_jacobi(ptheta, p0_pD, state, mutation_num, true, n, q, tmp1, dg);
 
 	double *old_vec, *shuffled_vec, *swap_vec;
 	int block_num, thread_num;
@@ -707,8 +729,6 @@ int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, Sta
 
 		int mutation_num = get_mutation_num(&mutation_data[i]);
 		add_to_score<<<1, 1>>>(cuda_score, &pth[(1 << mutation_num) - 1]);
-
-		cudaDeviceSynchronize();
 	}
 
 	// copy the results to the CPU
