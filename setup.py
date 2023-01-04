@@ -18,19 +18,19 @@ with open("README.md", 'r') as f:
     long_description = f.read()
 
 
-def compile_cuda_code():
+def compile_cuda_code(folder, cuda_filename, lib_name):
     """
     This function compiles the CUDA code of cuda_state_space_restriction.cu containing the CUDA function for State Space Restriction
     """
     if IS_WINDOWS:
-        output_filename = "./mhn/ssr/CudaStateSpaceRestriction.dll"
+        output_filename = os.path.join(folder, f"{lib_name}.dll")
     else:
-        output_filename = "./mhn/ssr/libCudaStateSpaceRestriction.so"
+        output_filename = os.path.join(folder, f"lib{lib_name}.so")
 
+    cuda_filename = os.path.join(folder, cuda_filename)
     # check if the shared library file was modified after the source file
     try:
-        shared_lib_latest_version = (os.path.getmtime(
-            "mhn/ssr/cuda_state_space_restriction.cu") - os.path.getmtime(output_filename) < 0)
+        shared_lib_latest_version = (os.path.getmtime(cuda_filename) - os.path.getmtime(output_filename) < 0)
     except FileNotFoundError:
         shared_lib_latest_version = False
 
@@ -42,8 +42,7 @@ def compile_cuda_code():
         return
 
     # command to compile the CUDA code using nvcc
-    compile_command = ['nvcc', '-o', output_filename, '--shared',
-                       './mhn/ssr/cuda_state_space_restriction.cu', f'-DSTATE_SIZE={STATE_SIZE}']
+    compile_command = ['nvcc', '-o', output_filename, '--shared', cuda_filename, f'-DSTATE_SIZE={STATE_SIZE}']
     if not IS_WINDOWS:
         compile_command += ['-Xcompiler', '-fPIC']
 
@@ -57,7 +56,9 @@ nvcc_available = int(which('nvcc') is not None)
 libraries = []
 if nvcc_available:
     libraries.append(os.path.abspath("./mhn/ssr/CudaStateSpaceRestriction"))
-    compile_cuda_code()
+    libraries.append(os.path.abspath("./mhn/original/CudaFullStateSpace"))
+    compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction")
+    compile_cuda_code("./mhn/original/", "cuda_full_state_space.cu", "CudaFullStateSpace")
 
 
 # define compile options for the Cython files
@@ -85,6 +86,10 @@ ext_modules = [
     Extension(
         "mhn.original.Likelihood",
         ["./mhn/original/Likelihood.pyx"],
+        libraries=libraries,
+        library_dirs=["./mhn/original/"],
+        runtime_library_dirs=None if IS_WINDOWS else ["./mhn/original/"],
+        include_dirs=['./mhn/original/'],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2'
         ]

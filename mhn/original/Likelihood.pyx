@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 # by Stefan Vocht
 #
 # this script implements Likelihood.R in Cython
@@ -162,3 +164,36 @@ def grad(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t]
 
     free(<void *> r_vec)
     return g
+
+
+IF NVCC_AVAILABLE:
+    cdef extern from *:
+        """
+        #ifdef _WIN32
+        #define DLL_PREFIX __declspec(dllexport)
+        #else
+        #define DLL_PREFIX
+        #endif
+
+        int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, int n, double *pD, double *grad_out, double *score_out);
+        """
+        int cuda_full_state_space_gradient_score(double *ptheta, int n, double *pD, double *grad_out, double *score_out)
+
+
+    def cuda_gradient_and_score(double[:, :] theta, double[:] pD):
+        """
+        Computes the gradient and score for a given theta and a given empirical distribution
+
+        :param theta: theta matrix representing the MHN
+        :param pD: probability distribution according to the training data
+        :returns: tuple containing the gradient and the score
+        """
+
+        cdef int n = theta.shape[0]
+        cdef double score
+        cdef np.ndarray[np.double_t, ndim=2] gradient = np.empty((n, n), dtype=np.double)
+        cdef int error_code
+
+        error_code = cuda_full_state_space_gradient_score(&theta[0, 0], n, &pD[0], &gradient[0, 0], &score)
+
+        return gradient, score

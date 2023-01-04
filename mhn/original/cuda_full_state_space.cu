@@ -181,7 +181,7 @@ static void cuda_q_vec(const double* __restrict__ ptheta, const double* __restri
 	determine_block_thread_num(block_num, thread_num, n);
 
 	for (int i = 0; i < n; i++) {
-		cuda_restricted_kronvec<<<block_num, thread_num, n * sizeof(double)>>>(ptheta, i, x, diag, transp, n, yout);
+		cuda_kronvec<<<block_num, thread_num, n * sizeof(double)>>>(ptheta, i, x, diag, transp, n, yout);
 	}
 }
 
@@ -249,7 +249,7 @@ __global__ void cuda_subdiag(const double* __restrict__ ptheta, const int i, con
 */
 static void cuda_subtract_q_diag(const double* __restrict__ ptheta, const int n, double* __restrict__ dg, int block_num, int thread_num) {
 	for (int i = 0; i < n; i++) {
-		cuda_subdiag<<<block_num, thread_num, n * sizeof(double)>>>(ptheta i, n, dg);
+		cuda_subdiag<<<block_num, thread_num, n * sizeof(double)>>>(ptheta, i, n, dg);
 	}
 }
 
@@ -403,7 +403,7 @@ __global__ void print_vec(double *vec, int size) {
 }
 
 
-__global__ void log_array(double* __restrict__ input, double* __restrict__ output, int size){
+__global__ void log_array(const double* __restrict__ input, double* __restrict__ output, int size){
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -441,7 +441,6 @@ static void compute_score(const double* __restrict__ pD, const double* __restric
 static void cuda_gradient_computation(const double* __restrict__ ptheta, const int n, double* __restrict__ grad, double* __restrict__ pD, double* __restrict__ pth, double* __restrict__ q, double* __restrict__ tmp1, double* __restrict__ tmp2, double* __restrict__ score) {
 
 	const int nx = 1 << n;
-	const double one = 1;
 
 	// alias tmp1 and tmp2 for the first part of this function for better readability
 	double* p0 = tmp1;
@@ -463,17 +462,18 @@ static void cuda_gradient_computation(const double* __restrict__ ptheta, const i
 	// here p0 is used as temporary memory, because we do not need its contents any longer
 	cuda_jacobi(ptheta, pD, true, n, q, p0, dg);
 
-	compute_score(pD, pth, n, score, tmp1, tmp2);
-
 	double *old_vec, *shuffled_vec, *swap_vec;
 	int block_num, thread_num;
 
 	determine_block_thread_num(block_num, thread_num, n);
 
+	multiply_arrays_elementwise<<<block_num, thread_num>>>(pth, pD, nx);
+	compute_score(pD, pth, n, score, tmp1, tmp2);
+
 	for (int i = 0; i < n; i++) {
 		cudaMemset(tmp1, 0, nx * sizeof(double));
 
-		cuda_restricted_kronvec<<<block_num, thread_num, n*sizeof(double)>>>(ptheta, i, pth, true, false, n, tmp1);
+		cuda_kronvec<<<block_num, thread_num, n*sizeof(double)>>>(ptheta, i, pth, true, false, n, tmp1);
 		
 		// tmp1 contains the result of the call to cuda_restricted_kronvec above
 		multiply_arrays_elementwise<<<block_num, thread_num>>>(q, tmp1, nx);
@@ -512,14 +512,6 @@ __global__ void array_exp(double *arr, int size) {
 	}
 }
 
-__global__ void add_to_score(double *score, double *pth_end){
-	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
-
-	if(cuda_index == 0){
-		score[0] += log(pth_end[0]);
-	}
-}
-
 
 /**
  * this function computes the gradient and score for the current MHN for a given data set using CUDA
@@ -532,10 +524,10 @@ __global__ void add_to_score(double *score, double *pth_end){
  *
  * @return this function returns the score of the current MHN as d double value
 */
-int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, double *pD double *grad_out, double *score_out) {
+int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, int n, double *pD, double *grad_out, double *score_out) {
 	const int nx = 1 << n;
 
-	double *cuda_grad_out, *partial_grad;
+	double *cuda_grad_out;
 	double *cuda_pD, *pth, *q, *tmp1, *tmp2;
 	double *cuda_ptheta;
 	double *cuda_score;
@@ -546,7 +538,6 @@ int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, dou
 	double *d_memory;
 	cudaMalloc(&d_memory,
 				n*n * sizeof(double) +  // cuda_grad_out
-				n*n * sizeof(double) +  // partial_grad
 				nx  * sizeof(double) +  // p0_pD
 				nx  * sizeof(double) +  // pth
 				nx  * sizeof(double) +  // q
@@ -564,14 +555,13 @@ int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, dou
 	}
 
 	cuda_grad_out = d_memory;
-	partial_grad  = d_memory +   n*n;
-	cuda_pD       = d_memory + 2*n*n;
-	pth           = d_memory + 2*n*n +   nx;
-	q             = d_memory + 2*n*n + 2*nx;
-	tmp1          = d_memory + 2*n*n + 3*nx;
-	tmp2          = d_memory + 2*n*n + 4*nx;
-	cuda_ptheta   = d_memory + 2*n*n + 5*nx;
-	cuda_score    = d_memory + 3*n*n + 5*nx;
+	cuda_pD       = d_memory + n*n;
+	pth           = d_memory + n*n +   nx;
+	q             = d_memory + n*n + 2*nx;
+	tmp1          = d_memory + n*n + 3*nx;
+	tmp2          = d_memory + n*n + 4*nx;
+	cuda_ptheta   = d_memory + n*n + 5*nx;
+	cuda_score    = d_memory + 2*n*n + 5*nx;
 
 	// copy theta and pD to the GPU
 	cudaMemcpy(cuda_ptheta, ptheta, n*n * sizeof(double), cudaMemcpyHostToDevice);
