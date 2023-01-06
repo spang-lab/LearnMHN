@@ -10,7 +10,7 @@ cimport cython
 from libc.stdlib cimport malloc, free
 
 from .ModelConstruction cimport q_diag
-from .PerformanceCriticalCode cimport internal_kron_vec, loop_j
+from .PerformanceCriticalCode cimport internal_kron_vec, loop_j, compute_inverse
 
 from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot
 
@@ -70,7 +70,7 @@ cpdef np.ndarray[np.double_t] q_vec(double[:, :] theta, double[:] x, bint diag =
 
 cpdef np.ndarray[np.double_t] jacobi(double[:, :] theta, np.ndarray[np.double_t] b, bint transp = False):
     """
-    Returns the solution for [I - Q]^-1 x = b
+    Returns the solution for [I - Q] x = b
 
     :param theta: thetas used to construct Q
     :param b:
@@ -99,12 +99,15 @@ cpdef np.ndarray[np.double_t] generate_pTh(double[:, :] theta, p0 = None):
     :return:
     """
     cdef int n = theta.shape[1]
+    cdef np.ndarray[np.double_t] dg = 1 - q_diag(theta)
+    cdef np.ndarray[np.double_t] pth = np.empty(2**n, dtype=np.double)
 
     if p0 is None:
         p0 = np.zeros(2**n)
         p0[0] = 1
 
-    return jacobi(theta, p0)
+    compute_inverse(theta, dg, p0, pth, False)
+    return pth
 
 
 def score(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t] pth_space = None) -> float:
@@ -140,18 +143,22 @@ def grad(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t]
 
     cdef np.ndarray[np.double_t] p0, pth
 
+    cdef np.ndarray[np.double_t] dg = 1 - q_diag(theta)
+
     # distribution you get from our current model Theta (pth ~ "p_theta")
     if pth_space is None:
         # start distribution p_0 where no gene is mutated yet
         p0 = np.zeros(2 ** n)
         p0[0] = 1
-        pth = jacobi(theta, p0)
+        pth = np.empty(2**n, dtype=np.double)
+        compute_inverse(theta, dg, p0, pth, False)
 
     else:
         pth = pth_space
 
     # should be (pD / pth)^T * R_theta^-1 from equation 7
-    cdef np.ndarray[np.double_t] q = jacobi(theta, pD / pth, transp=True)
+    cdef np.ndarray[np.double_t] q = np.empty(2**n, dtype=np.double)
+    compute_inverse(theta, dg, pD / pth, q, True)
 
     cdef np.ndarray[np.double_t, ndim=2] g = np.zeros((n, n))
     cdef double *r_vec = <double *> malloc(nx * sizeof(double))
