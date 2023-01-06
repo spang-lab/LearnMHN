@@ -14,9 +14,9 @@ from libc.math cimport exp, log
 from mhn.ssr.state_storage cimport State, StateStorage
 
 import numpy as np
-cimport numpy as cnp
+cimport numpy as np
 
-cnp.import_array()
+np.import_array()
 
 cdef extern from *:
     """
@@ -295,7 +295,7 @@ cdef void restricted_q_diag(double[:, :] theta, State *state, double *dg):
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
-cdef double [:] restricted_jacobi(double[:, :] theta, double[:] b, State *state, bint transp = False):
+cdef np.ndarray[np.double_t] restricted_jacobi(double[:, :] theta, double[:] b, State *state, bint transp = False):
     """
     this functions multiplies [I-Q]^(-1) with b
 
@@ -314,7 +314,7 @@ cdef double [:] restricted_jacobi(double[:, :] theta, double[:] b, State *state,
 
     # make x a vector of size nx in which every entry is set to 1/nx,
     # will be the initial guess to the solution for the jacobi method
-    cdef double[:] x = np.full(nx, 1 / (1.0 * nx), dtype=np.double)
+    cdef np.ndarray[np.double_t] x = np.full(nx, 1 / (1.0 * nx), dtype=np.double)
     cdef double *q_vec_result = <double *> malloc(nx * sizeof(double))
 
     # compute the diagonal of [I-Q], store it in dg
@@ -351,16 +351,16 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
     cdef int mutation_num = get_mutation_num(state)
     cdef int nx = 1 << mutation_num
     cdef int nxhalf = nx / 2
-    p0 = np.zeros(nx, dtype=np.double)
+    cdef np.ndarray[np.double_t] p0 = np.zeros(nx, dtype=np.double)
     p0[0] = 1
 
     # compute parts of the probability distribution yielded by the current MHN
-    cdef double[:] pth = restricted_jacobi(theta, p0, state)
+    cdef np.ndarray[np.double_t] pth = restricted_jacobi(theta, p0, state)
 
     pD = np.zeros(nx) 
     pD[nx-1] = 1 / pth[nx-1]
 
-    cdef double[:] q = restricted_jacobi(theta, pD, state, transp=True)
+    cdef np.ndarray[np.double_t] q = restricted_jacobi(theta, pD, state, transp=True)
 
     cdef int i, j
 
@@ -434,9 +434,9 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateStorage mutation_data):
     cdef int n = theta.shape[0]
     cdef int data_size = mutation_data.data_size
     cdef int i, j
-    final_gradient = np.zeros((n, n))
+    cdef np.ndarray[np.double_t, ndim=2] final_gradient = np.zeros((n, n), dtype=np.double)
     cdef double *local_grad_sum
-    cdef double [:, :] local_gradient_container = np.empty((n, n), dtype=np.double)
+    cdef np.ndarray[np.double_t, ndim=2] local_gradient_container = np.empty((n, n), dtype=np.double)
     cdef double zero = 0
     cdef int incx = 1
     cdef double one = 1
@@ -474,7 +474,7 @@ IF NVCC_AVAILABLE:
         cdef int data_size = mutation_data.data_size
 
         cdef double score
-        cdef double[:] grad_out = np.empty(n * n)
+        cdef np.ndarray[np.double_t] grad_out = np.empty(n * n, dtype=np.double)
         cdef int error_code
         cdef const char *error_name
         cdef const char *error_description
@@ -485,7 +485,7 @@ IF NVCC_AVAILABLE:
             get_error_name_and_description(error_code, &error_name, &error_description)
             raise CUDAError(f'{error_name.decode("UTF-8")}: "{error_description.decode("UTF-8")}"')
 
-        return (np.asarray(grad_out).reshape((n, n)) / data_size), (score / data_size)
+        return (grad_out.reshape((n, n)) / data_size), (score / data_size)
 
 
 cpdef gradient_and_score(double[:, :] theta, StateStorage mutation_data):
