@@ -2,6 +2,7 @@
 # by Stefan Vocht
 # 
 # this file contains the Cython code equivalent to the original R code in InlineFunctions.R from the original MHN repo
+# as well as some functions to solve linear equations involving [I-Q]
 #
 
 cimport cython
@@ -286,7 +287,7 @@ cdef _compute_inverse_t(double[:, :] theta, double[:] dg, double[:] b, double[:]
 
 cpdef compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] xout, bint transp):
     """
-    Computes the solution for [I - Q]^-1 x = b
+    Computes the solution for [I - Q] x = b
 
     :param theta: thetas used to construct Q
     :param dg: vector containing the diagonal values of [I-Q]
