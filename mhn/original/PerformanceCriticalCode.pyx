@@ -158,3 +158,143 @@ cdef void loop_j(int i, int n, double *pr, double *pg):
         shuffled_vec = swap_vec
 
     free(ptmp)
+
+
+cdef _compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] xout):
+    """
+    Internal function to compute the solution for [I-Q] x = b using forward substitution
+    
+    :param theta: thetas used to construct Q
+    :param dg: vector containing the diagonal values of [I-Q]
+    :param b: a double vector 
+    :param xout: solution x as double vector
+    """
+
+    cdef int n = theta.shape[0]
+    cdef int nx = 1 << n
+    cdef int incx = 1
+
+    cdef int i, j, k
+    cdef int i_copy
+    cdef int bit_setter
+    cdef int modified_i
+
+    cdef double theta_product
+    cdef double xout_i
+
+    # we need the exponential form of theta, so we compute it here once
+    cdef double *exp_theta = <double *> malloc(n*n * sizeof(double))
+    for i in range(n):
+        for j in range(n):
+            exp_theta[i*n + j] = exp(theta[i, j])
+
+    # we compute the values of xout using forward substitution
+    # at the beginning we initialize xout with the values of b
+    # in each iteration i we compute the next final value of xout by dividing the current xout value by the ith diagonal entry
+    # we then use that final value to update the values of all xout entries that represent states with exactly one more
+    # mutation than the state represented by the ith xout entry
+    # each index of those other xout entries can be obtained by flipping a bit in i from zero to one
+    # if the jth bit is then set to one, this corresponds to the jth gene being mutated, so we have to add the product of
+    # theta_jj with all theta_jk, where the kth gene is mutated in i, and with xout[i] to the temporary value of the
+    # xout entry that we want to update
+    dcopy(&nx, &b[0], &incx, &xout[0], &incx)
+    for i in range(nx):
+        # get the final value for xout by dividing with the diagonal entry
+        xout[i] /= dg[i]
+        # cache the value for later
+        xout_i = xout[i]
+
+        # update the other xout entries that differ by exactly one bit flipped to one
+        # we use bit_setter to flip a zero at the jth position to become a one
+        bit_setter = 1
+        for j in range(n):
+            modified_i = (i | bit_setter)
+            if modified_i != i:
+                # compute the product of all thetas which correspond to genes that are mutated in i
+                theta_product = 1.
+                i_copy = i
+                for k in range(n):
+                    if i_copy & 1:
+                        theta_product *= exp_theta[j*n + k]
+                    i_copy >>= 1
+                xout[modified_i] += theta_product * exp_theta[j*n + j] * xout_i
+            bit_setter <<= 1
+    free(exp_theta)
+
+
+cdef _compute_inverse_t(double[:, :] theta, double[:] dg, double[:] b, double[:] xout):
+    """
+    Internal function to compute the solution for [I-Q]^T x = b using backward substitution
+
+    :param theta: thetas used to construct Q
+    :param dg: vector containing the diagonal values of [I-Q]
+    :param b: a double vector 
+    :param xout: solution x as double vector
+    """
+    cdef int n = theta.shape[0]
+    cdef int nx = 1 << n
+    cdef int incx = 1
+
+    cdef int i, j, k
+    cdef int i_copy
+    cdef int bit_setter
+    cdef int modified_i
+
+    cdef double theta_product
+    cdef double xout_i
+
+    # we need the exponential form of theta, so we compute it here once
+    cdef double *exp_theta = <double *> malloc(n * n * sizeof(double))
+    for i in range(n):
+        for j in range(n):
+            exp_theta[i * n + j] = exp(theta[i, j])
+
+    # initialize xout with the values of b
+    dcopy(&nx, &b[0], &incx, &xout[0], &incx)
+
+    # we compute the values of xout using backward substitution
+    # at the beginning we initialize xout with the values of b
+    # in each iteration i we compute the next final value of xout by dividing the current xout value by the ith diagonal entry
+    # we then use that final value to update the values of all xout entries that represent states with exactly one less
+    # mutation than the state represented by the ith xout entry
+    # each index of those other xout entries can be obtained by flipping a bit in i from one to zero
+    # if the jth bit is then set to zero, this corresponds to reversing the mutation of the jth gene, so we have to add the product of
+    # theta_jj with all theta_jk, where the kth gene is mutated in i, and with xout[i] to the temporary value of the
+    # xout entry that we want to update
+    for i in range(nx-1, -1, -1):
+        # get the final value for xout by dividing with the diagonal entry
+        xout[i] /= dg[i]
+        # cache the value for later
+        xout_i = xout[i]
+        # update the other xout entries that differ by exactly one bit flipped to zero
+        # we use bit_setter to flip a one at the jth position to become a zero
+        bit_setter = 1
+        for j in range(n):
+            modified_i = (i & (~bit_setter))
+            if modified_i != i:
+                # compute the product of all thetas which correspond to genes that are mutated in i
+                theta_product = 1.
+                i_copy = modified_i
+                for k in range(n):
+                    if i_copy & 1:
+                        theta_product *= exp_theta[j*n + k]
+                    i_copy >>= 1
+                xout[modified_i] += theta_product * exp_theta[j*n + j] * xout_i
+            bit_setter <<= 1
+    free(exp_theta)
+
+
+cpdef compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] xout, bint transp):
+    """
+    Computes the solution for [I - Q]^-1 x = b
+
+    :param theta: thetas used to construct Q
+    :param dg: vector containing the diagonal values of [I-Q]
+    :param b: a double vector
+    :param xout: solution x as double vector
+    :param transp: if True, returns solution for [I - Q]^T x = b
+    """
+    if transp:
+        _compute_inverse_t(theta, dg, b, xout)
+    else:
+        _compute_inverse(theta, dg, b, xout)
