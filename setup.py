@@ -74,9 +74,9 @@ ext_modules = [
         "mhn.ssr.state_space_restriction",
         ["./mhn/ssr/state_space_restriction.pyx"],
         libraries=libraries,
-        library_dirs=["./mhn/ssr/"],
-        runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/"],
-        include_dirs=['./mhn/ssr/'],
+        library_dirs=["./mhn/ssr/", ".mhn/original/"],
+        runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/", ".mhn/original/"],
+        include_dirs=['./mhn/ssr/', ".mhn/original/"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2',
             f'-DSTATE_SIZE={STATE_SIZE}'
