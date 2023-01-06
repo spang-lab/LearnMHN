@@ -1,6 +1,6 @@
 
 # by Stefan Vocht
-# 
+#
 # this file contains the Cython code equivalent to the original R code in InlineFunctions.R from the original MHN repo
 # as well as some functions to solve linear equations involving [I-Q]
 #
@@ -161,7 +161,7 @@ cdef void loop_j(int i, int n, double *pr, double *pg):
     free(ptmp)
 
 
-cdef _compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] xout):
+cdef void _compute_inverse(const double *theta, int n, const double *dg, const double *b, double *xout):
     """
     Internal function to compute the solution for [I-Q] x = b using forward substitution
     
@@ -170,8 +170,6 @@ cdef _compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] x
     :param b: a double vector 
     :param xout: solution x as double vector
     """
-
-    cdef int n = theta.shape[0]
     cdef int nx = 1 << n
     cdef int incx = 1
 
@@ -187,7 +185,7 @@ cdef _compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] x
     cdef double *exp_theta = <double *> malloc(n*n * sizeof(double))
     for i in range(n):
         for j in range(n):
-            exp_theta[i*n + j] = exp(theta[i, j])
+            exp_theta[i*n + j] = exp(theta[i*n + j])
 
     # we compute the values of xout using forward substitution
     # at the beginning we initialize xout with the values of b
@@ -198,7 +196,7 @@ cdef _compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] x
     # if the jth bit is then set to one, this corresponds to the jth gene being mutated, so we have to add the product of
     # theta_jj with all theta_jk, where the kth gene is mutated in i, and with xout[i] to the temporary value of the
     # xout entry that we want to update
-    dcopy(&nx, &b[0], &incx, &xout[0], &incx)
+    dcopy(&nx, b, &incx, xout, &incx)
     for i in range(nx):
         # get the final value for xout by dividing with the diagonal entry
         xout[i] /= dg[i]
@@ -223,7 +221,7 @@ cdef _compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] x
     free(exp_theta)
 
 
-cdef _compute_inverse_t(double[:, :] theta, double[:] dg, double[:] b, double[:] xout):
+cdef void _compute_inverse_t(const double *theta, int n, const double *dg, const double *b, double *xout):
     """
     Internal function to compute the solution for [I-Q]^T x = b using backward substitution
 
@@ -232,7 +230,6 @@ cdef _compute_inverse_t(double[:, :] theta, double[:] dg, double[:] b, double[:]
     :param b: a double vector 
     :param xout: solution x as double vector
     """
-    cdef int n = theta.shape[0]
     cdef int nx = 1 << n
     cdef int incx = 1
 
@@ -248,10 +245,10 @@ cdef _compute_inverse_t(double[:, :] theta, double[:] dg, double[:] b, double[:]
     cdef double *exp_theta = <double *> malloc(n * n * sizeof(double))
     for i in range(n):
         for j in range(n):
-            exp_theta[i * n + j] = exp(theta[i, j])
+            exp_theta[i*n + j] = exp(theta[i*n + j])
 
     # initialize xout with the values of b
-    dcopy(&nx, &b[0], &incx, &xout[0], &incx)
+    dcopy(&nx, b, &incx, xout, &incx)
 
     # we compute the values of xout using backward substitution
     # at the beginning we initialize xout with the values of b
@@ -295,7 +292,8 @@ cpdef compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] x
     :param xout: solution x as double vector
     :param transp: if True, returns solution for [I - Q]^T x = b
     """
+    cdef int n = theta.shape[0]
     if transp:
-        _compute_inverse_t(theta, dg, b, xout)
+        _compute_inverse_t(&theta[0, 0], n, &dg[0], &b[0], &xout[0])
     else:
-        _compute_inverse(theta, dg, b, xout)
+        _compute_inverse(&theta[0, 0], n, &dg[0], &b[0], &xout[0])
