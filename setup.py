@@ -126,6 +126,7 @@ setup(
                                                 )
                           ),
     include_dirs=[numpy.get_include()],
+    include_package_data=True,
     install_requires=[
         'numpy>=1.19.0',
         'scipy>=1.1.0'
