@@ -1,3 +1,4 @@
 include ./mhn/ssr/state_storage.pxd
 include ./mhn/original/PerformanceCriticalCode.pxd
 include ./mhn/original/ModelConstruction.pxd
+recursive-include ./mhn/ *.cu *.dll
