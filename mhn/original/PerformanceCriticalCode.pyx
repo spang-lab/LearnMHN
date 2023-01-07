@@ -161,6 +161,7 @@ cdef void loop_j(int i, int n, double *pr, double *pg):
     free(ptmp)
 
 
+@cython.cdivision(True)
 cdef void _compute_inverse(const double *theta, int n, const double *dg, const double *b, double *xout):
     """
     Internal function to compute the solution for [I-Q] x = b using forward substitution
@@ -221,6 +222,7 @@ cdef void _compute_inverse(const double *theta, int n, const double *dg, const d
     free(exp_theta)
 
 
+@cython.cdivision(True)
 cdef void _compute_inverse_t(const double *theta, int n, const double *dg, const double *b, double *xout):
     """
     Internal function to compute the solution for [I-Q]^T x = b using backward substitution
