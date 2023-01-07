@@ -1,7 +1,7 @@
 
 // by Stefan Vocht
-// this file contains the CUDA implementation of State Space Restrictions used to compute
-// the gradients for training a MHN
+// this file contains CUDA functions to compute
+// the gradients for training a MHN on full state-space
 
 
 #include "cuda_runtime.h"
@@ -38,7 +38,7 @@ inline void determine_block_thread_num(int &block_num, int &thread_num, const in
 		block_num = 256;
 		thread_num = 512;
 	}
-	// minimum 32 * STATE_SIZE threads, else for n = 32 * STATE_SIZE (which is the maximum possible n) not all thetas get loaded in kron_vec
+	// define a minimum number of blocks and threads per block
 	else if (n < 12) {
 		block_num = 32;
 		thread_num = 64;
@@ -50,7 +50,7 @@ inline void determine_block_thread_num(int &block_num, int &thread_num, const in
 }
 
 /**
- * this function is the cuda implementation of the kronvec function for state space restriction
+ * this function is the cuda implementation of the kronvec function for full state-space
  *
  * IMPORTANT: the result is added to the entries of pout! This makes the q_vec function more efficient.
  * If you need the result without adding, initialize pout with zeros.
@@ -58,12 +58,9 @@ inline void determine_block_thread_num(int &block_num, int &thread_num, const in
  * @param[in] ptheta array containing the values of theta
  * @param[in] i vector is multiplied with the ith kronecker product (ith summand in eq. 9 of the original paper)
  * @param[in] px vector that is multiplied with the kronecker product
- * @param[in] state current state used to compute the gradient
  * @param[in] diag if false, the diagonal of the kronecker product is set to zero
  * @param[in] transp if true, the kronecker product is transposed
  * @param[in] n total number of genes considered by the MHN, also column and row size of theta
- * @param[in] mutation_num number of mutations present in state
- * @param[in] count_before_i number of genes mutated that have a lower index than i
  * @param[out] pout vector which will contain the result of this multiplication
 */
 __global__ void cuda_kronvec(const double* __restrict__ ptheta, const int i, const double* __restrict__ px, const bool diag, const bool transp, const int n, double* __restrict__ pout) {
@@ -94,14 +91,9 @@ __global__ void cuda_kronvec(const double* __restrict__ ptheta, const int i, con
 	while (x_index + patch_size < nx) {
 		// for each entry the theta_ij that have to be multiplied to give us the correct result are given
 		// by the bit representation of its index:
-		// if the kth bit of the index is set to 1 and j is the kth mutated gene, we have to use theta_ij to compute the output
+		// if the kth bit of the index is set to 1 we have to use theta_ik to compute the output
 		// as patch_size is a power of two, (x_index) and (x_index + patch_size) only differ in a single bit,
-		// namely the (count_before_i)th one
-		// furthermore, if the ith gene is mutated, both output values have to be multiplied with theta_ii anyways
-		// so we can simply compute the product of thetas for both entries at once
-		// if the ith gene is not mutated, count_before_i is set to mutation_num - 1, which leads to the two indices
-		// only differing in the last bit (respectively the theta_i[j] for the spatially last mutated gene j).
-		// Hence we will just multiply the last theta to the (x_index + patch_size) entry at the end and get correct results
+		// namely the ith one
 		double theta_product = 1.;
 
 		int x_index_copy = x_index;
@@ -123,7 +115,7 @@ __global__ void cuda_kronvec(const double* __restrict__ ptheta, const int i, con
             x_index_copy >>= 1;
 		}
 
-		// if the ith gene is mutated we need to make computations involving the entries (x_index) and (x_index + patch_size)
+		// we now have to make computations involving the entries (x_index) and (x_index + patch_size)
 		// this is the part for which it was important to choose the correct patch_size and why we needed to compute two entries at once
 		// the following computations follow from the part of the shuffle algorithm where we multiply the 2x2 matrix containing theta_ii with px
         if (!transp) {
@@ -164,10 +156,8 @@ __global__ void cuda_kronvec(const double* __restrict__ ptheta, const int i, con
  *
  * @param[in] ptheta array containing the theta entries
  * @param[in] x vector that should be multiplied with Q(ptheta)
- * @param[in] state state representing current tumor sample
  * @param[out] yout array in which the result is stored
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
- * @param[in] mutation_num number of mutations present in the current state / tumor sample
  * @param[in] diag if false, the diag of Q is set to zero during multiplication
  * @param[in] transp if true, multiplication is done with the transposed Q
 */
@@ -191,10 +181,8 @@ static void cuda_q_vec(const double* __restrict__ ptheta, const double* __restri
  * we subtract it, because in jacobi() we need 1 - dg, so dg is initialized with 1 and we subtract the subdiags
  *
  * @param[in] ptheta array containing the theta entries
- * @param[in] state state representing current tumor sample
  * @param[in] i this function computes the ith subdiagonal
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
- * @param[in] mutation_num number of mutations present in the current state / tumor sample
  * @param[in, out] dg the subdiagonal is subtracted from the values in this array
 */
 __global__ void cuda_subdiag(const double* __restrict__ ptheta, const int i, const int n, double* __restrict__ dg) {
@@ -235,14 +223,11 @@ __global__ void cuda_subdiag(const double* __restrict__ ptheta, const int i, con
 }
 
 
-
 /**
- * subtracts the diag of q from the given dg array, result can be found in dg
+ * subtracts the diag of Q from the given dg array, result can be found in dg
  *
  * @param[in] ptheta array containing the theta entries
- * @param[in] state state representing current tumor sample
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
- * @param[in] mutation_num number of mutations present in the current state / tumor sample
  * @param[in, out] dg the subdiagonals are subtracted from the values in this array
  * @param[in] block_num number of blocks used for the CUDA kernels
  * @param[in] thread_num  number of threads used for the CUDA kernels
@@ -294,8 +279,6 @@ __global__ void multiply_arrays_elementwise(const double *arr1, double *arr_inou
  * this function computes the diagonal of [I-Q] for the jacobi function
  *
  * @param[in] ptheta array containing the theta entries
- * @param[in] state state representing current tumor sample
- * @param[in] mutation_num number of mutations present in the current state / tumor sample
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
  * @param[out] dg this array will contain the diagonal of [I-Q] after calling this function, has size must have size 2^mutation_num
 */
@@ -316,12 +299,10 @@ static void compute_jacobi_diagonal(const double* __restrict__ ptheta, const int
  *
  * @param[in] ptheta array containing the theta entries
  * @param[in] b array that is multiplied with [I-Q]^(-1)
- * @param[in] state state representing current tumor sample
- * @param[in] mutation_num number of mutations present in the current state / tumor sample
  * @param[in] transp if true, b is multiplied with the transposed [I-Q]^(-1)
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
  * @param[out] xout the results of this function are stored in this array
- * @param[in, out] tmp this array is used to store temporary data, has to have size 2^mutation_num
+ * @param[in, out] tmp this array is used to store temporary data, has to have size 2^n
  * @param[in] dg this array contains the diagonal of [I-Q]
 */
 static void cuda_jacobi(const double* __restrict__ ptheta, const double* __restrict__ b, const bool transp, const int n, double* __restrict__ xout, double* __restrict__ tmp, double* __restrict__ dg) {
@@ -412,7 +393,16 @@ __global__ void log_array(const double* __restrict__ input, double* __restrict__
 	}
 }
 
-
+/**
+ * computes the marginal log-likelihood score given the relative frequency of observed tumours and the probability distribution yielded by the MHN
+ *
+ * @param[in] pD relative frequency of observed tumours in the data
+ * @param[in] pth probability distribution yielded by the MHN
+ * @param[in] n number of genes considered by the MHN
+ * @param[out] score_out the marginal log-likelihood score is stored at this address
+ * @param[in, out] tmp1 allocated memory of size 2^n needed by this function to operate
+ * @param[in, out] tmp2 allocated memory of size >=1024 needed by this function to operate
+*/
 static void compute_score(const double* __restrict__ pD, const double* __restrict__ pth, int n, double* __restrict__ score_out, double* __restrict__ tmp1, double* __restrict__ tmp2){
 	int nx = 1 << n;
 	int block_num, thread_num;
@@ -426,19 +416,19 @@ static void compute_score(const double* __restrict__ pD, const double* __restric
 
 
 /**
- * compute the gradient for one tumor sample
+ * compute the gradient for a given relative frequency of observed tumours in the data
  *
  * @param[in] ptheta array containing the theta entries
- * @param[in] state state representing current tumor sample
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
  * @param[out] grad array that will contain the gradient at the end, size n*n
- * @param[in] p0_pD memory buffer needed for this function, size 2^mutation_num
- * @param[in] pth memory buffer needed for this function, size 2^mutation_num
- * @param[in] q memory buffer needed for this function, size 2^mutation_num
- * @param[in] tmp1 memory buffer needed for this function, size 2^mutation_num
- * @param[in] tmp2 memory buffer needed for this function, size 2^mutation_num
+ * @param[in] pD relative frequency of observed tumours in the data, size 2^n
+ * @param[in] pth memory buffer needed for this function, size 2^n
+ * @param[in] q memory buffer needed for this function, size 2^n
+ * @param[in] tmp1 memory buffer needed for this function, size 2^n
+ * @param[in] tmp2 memory buffer needed for this function, size 2^n
+ * @param[out] score the marginal log-likelihood score of the MHN will be stored here
 */
-static void cuda_gradient_computation(const double* __restrict__ ptheta, const int n, double* __restrict__ grad, double* __restrict__ pD, double* __restrict__ pth, double* __restrict__ q, double* __restrict__ tmp1, double* __restrict__ tmp2, double* __restrict__ score) {
+static void cuda_gradient_and_score_computation(const double* __restrict__ ptheta, const int n, double* __restrict__ grad, double* __restrict__ pD, double* __restrict__ pth, double* __restrict__ q, double* __restrict__ tmp1, double* __restrict__ tmp2, double* __restrict__ score) {
 
 	const int nx = 1 << n;
 
@@ -446,7 +436,7 @@ static void cuda_gradient_computation(const double* __restrict__ ptheta, const i
 	double* p0 = tmp1;
 	double* dg = tmp2;
 
-	// set all entries of p0_pD to zero, set the first entry to one
+	// set all entries of p0 to zero, set the first entry to one
 	cudaMemset(p0, 0, nx * sizeof(double));
 	fill_array <<<1, 1>>> (p0, 1., 1);
 
@@ -456,7 +446,6 @@ static void cuda_gradient_computation(const double* __restrict__ ptheta, const i
 	// q is here only used as temporary memory, because the memory is not needed yet for anything else
 	cuda_jacobi(ptheta, p0, false, n, pth, q, dg);
 
-	// cudaMemcpy(p0_pD + nx - 1, &one, sizeof(double), cudaMemcpyHostToDevice);
 	divide_arrays_elementwise<<<1, 1>>>(pD, pth, pD, nx);
 
 	// here p0 is used as temporary memory, because we do not need its contents any longer
@@ -484,8 +473,8 @@ static void cuda_gradient_computation(const double* __restrict__ ptheta, const i
 
 		// use the shuffle trick for a more efficient computation of the gradient
 		for (int j = 0; j < n; j++) {
-			// confusion warning: the p0_pD here has nothing to do with p0 or pD
-			// in this section p0_pD is used again, because we need an allocated array and p0_pD isnt needed anymore so we can just use that as memory
+			// confusion warning: the pD here has nothing to do with the former pD above
+			// in this section pD is used again, because we need an allocated array and pD isnt needed anymore so we can just use that as memory
 			shuffle<<<block_num, thread_num>>>(old_vec, shuffled_vec, nx);
 			if (i == j) {
 				sum_over_array <<<block_num, thread_num, thread_num * sizeof(double) >>> (shuffled_vec, pD, nx);
@@ -514,15 +503,15 @@ __global__ void array_exp(double *arr, int size) {
 
 
 /**
- * this function computes the gradient and score for the current MHN for a given data set using CUDA
+ * this function computes the gradient and score for the current MHN for a given observed frequency of tumors in data using CUDA
  *
  * @param[in] ptheta array containing the theta entries
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
- * @param[in] mutation_data array of States, where each state represents a tumor sample
- * @param[in] data_size number of tumor samples in mutation_data
+ * @param[in] pD observed frequency of tumors in data
  * @param[out] grad_out array of size n*n in which the gradient will be stored
+ * @param[out] score_out the marginal log-likelihood score is stored at this position
  *
- * @return this function returns the score of the current MHN as d double value
+ * @return CUDA error code converted to integer for better interoperability with Cython
 */
 int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, int n, double *pD, double *grad_out, double *score_out) {
 	const int nx = 1 << n;
@@ -580,7 +569,7 @@ int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, int n, doubl
 		return (int) cudaPeekAtLastError();
 	}
 
-	cuda_gradient_computation(cuda_ptheta, n, cuda_grad_out, cuda_pD, pth, q, tmp1, tmp2, cuda_score);
+	cuda_gradient_and_score_computation(cuda_ptheta, n, cuda_grad_out, cuda_pD, pth, q, tmp1, tmp2, cuda_score);
 
 	// copy the results to the CPU
 	cudaMemcpy(grad_out, cuda_grad_out, n*n * sizeof(double), cudaMemcpyDeviceToHost);
