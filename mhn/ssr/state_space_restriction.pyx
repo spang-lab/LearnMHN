@@ -296,7 +296,7 @@ cdef void restricted_derivative_ik(double[:, :] theta_mat, int i, double[:] x_ve
 @cython.wraparound(False)
 @cython.boundscheck(False)
 cdef void restricted_derivative_ik_diag(double[:, :] theta_mat, int i, State *state, int mutation_num, int k,
-                                double *pout) nogil:
+                                double *pout):
     """
     This function calculates the diagonal of dQ/d theta_ik
 
@@ -332,7 +332,7 @@ cdef void restricted_derivative_ik_diag(double[:, :] theta_mat, int i, State *st
     cdef double *old_vec
     cdef double *swap_vec
     cdef double theta
-    cdef double[:] x_vec = np.ones(nx, dtype=double)
+    cdef double[:] x_vec = np.ones(nx, dtype=np.double)
 
     # for the shuffle algorithm we have to initialize the pointers correctly
     if mutation_num & 1 == 1:
@@ -576,7 +576,7 @@ cdef double[:] restricted_expm(double[:, :] theta, double[:] b, State *state, do
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
-cdef double calc_gamma(double[:] theta, State *state, int i, int k):
+cdef double calc_gamma(double[:, :] theta, State *state, int i, int k):
     """
     this function calculates the derivative of the scaling factor gamma wrt. theta_ik
     :param theta: matrix containing the theta entries
@@ -618,10 +618,10 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
     cdef int n = 0 # Iteration number
     cdef int one = 1
     cdef double gfac = 1.0
-    pt = np.zeros(nx, dtype=double)
-    dp = np.zeros(nx, dtype=double)
+    pt = np.zeros(nx, dtype=np.double)
+    dp = np.zeros(nx, dtype=np.double)
     cdef double[:] q = b.copy()
-    cdef double[:] dq = np.zeros(nx, dtype=double)
+    cdef double[:] dq = np.zeros(nx, dtype=np.double)
     cdef double * temp = <double *> malloc(nx * sizeof(double))
     cdef double * temp2 = <double *> malloc(nx * sizeof(double))
     
