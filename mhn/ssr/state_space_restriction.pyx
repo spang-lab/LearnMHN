@@ -12,11 +12,12 @@ from libc.stdlib cimport malloc, free
 from libc.math cimport exp, log
 
 from mhn.ssr.state_storage cimport State, StateStorage
+from mhn.original.PerformanceCriticalCode cimport _compute_inverse, _compute_inverse_t
 
 import numpy as np
-cimport numpy as cnp
+cimport numpy as np
 
-cnp.import_array()
+np.import_array()
 
 cdef extern from *:
     """
@@ -491,14 +492,14 @@ cdef void restricted_q_diag(double[:, :] theta, State *state, double *dg):
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
-cdef double [:] restricted_jacobi(double[:, :] theta, double[:] b, State *state, bint transp = False):
+cdef np.ndarray[np.double_t] restricted_jacobi(double[:, :] theta, double[:] b, State *state, bint transp = False):
     """
     this functions multiplies [I-Q]^(-1) with b
 
     :param theta: matrix containing the theta entries
     :param b: array that is multiplied with [I-Q]^(-1)
     :param state: state representing current tumor sample
-    :param transp: if True, b is multiplied with the tranposed [I-Q]^(-1)
+    :param transp: if True, b is multiplied with the transposed [I-Q]^(-1)
     """
     cdef int mutation_num = get_mutation_num(state)
     cdef int nx = 1 << mutation_num
@@ -510,7 +511,7 @@ cdef double [:] restricted_jacobi(double[:, :] theta, double[:] b, State *state,
 
     # make x a vector of size nx in which every entry is set to 1/nx,
     # will be the initial guess to the solution for the jacobi method
-    cdef double[:] x = np.full(nx, 1 / (1.0 * nx), dtype=np.double)
+    cdef np.ndarray[np.double_t] x = np.full(nx, 1 / (1.0 * nx), dtype=np.double)
     cdef double *q_vec_result = <double *> malloc(nx * sizeof(double))
 
     # compute the diagonal of [I-Q], store it in dg
@@ -662,6 +663,56 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
     free(temp2)
 
 
+cdef compute_restricted_inverse(double[:, :] theta, double *dg, State *state, double[:] b, double[:] xout, bint transp = False):
+    """
+    this functions multiplies [I-Q]^(-1) with b and is much faster than restricted jacobi
+    
+    :param theta: matrix containing the theta entries
+    :param dg: vector containing the diagonal of [I-Q]
+    :param state: state representing current tumor sample
+    :param b: array that is multiplied with [I-Q]^(-1)
+    :param xout: vector which will contain the result at the end
+    :param transp: if True, b is multiplied with the transposed [I-Q]^(-1)
+    """
+    cdef int n = theta.shape[0]
+    cdef int mutation_num = get_mutation_num(state)
+    cdef int i, j
+    cdef int state_copy
+
+    cdef double *mutated_thetas = <double *> malloc(mutation_num * mutation_num * sizeof(double))
+    cdef int *mutation_pos = <int *> malloc(mutation_num * sizeof(int))
+
+    # we can use the compute_inverse functions from the full state-space code
+    # we only have to modify theta, such that the theta that we pass to the compute_inverse functions
+    # only contains the thetas that correspond to mutated genes in state
+
+    # first get the indices of the mutated genes
+    j = 0
+    state_copy = state[0].parts[0]
+    for i in range(n):
+        if state_copy & 1:
+            mutation_pos[j] = i
+            j += 1
+        if (i + 1) & 31:
+            state_copy >>= 1
+        else:
+            state_copy = state[0].parts[(i+1) >> 5]
+
+    # get only the thetas that correspond to mutated genes
+    for i in range(mutation_num):
+        for j in range(mutation_num):
+            mutated_thetas[i*mutation_num + j] = theta[mutation_pos[i], mutation_pos[j]]
+
+    # now simply call the compute_inverse functions with the "mutated" thetas and pass mutation_num instead of n
+    if transp:
+        _compute_inverse_t(mutated_thetas, mutation_num, dg, &b[0], &xout[0])
+    else:
+        _compute_inverse(mutated_thetas, mutation_num, dg, &b[0], &xout[0])
+
+    free(mutation_pos)
+    free(mutated_thetas)
+
+
 @cython.wraparound(False)
 @cython.boundscheck(False)
 cdef double restricted_gradient_and_score(double[:, :] theta, State *state, double[:, :] g):
@@ -677,16 +728,29 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
     cdef int mutation_num = get_mutation_num(state)
     cdef int nx = 1 << mutation_num
     cdef int nxhalf = nx / 2
-    p0 = np.zeros(nx, dtype=np.double)
+    cdef int incx = 1
+    cdef int incx2 = 2
+    cdef int incx0 = 0
+    cdef double one = 1.
+    cdef double mOne = -1.
+    cdef np.ndarray[np.double_t] p0 = np.zeros(nx, dtype=np.double)
     p0[0] = 1
 
-    # compute parts of the probability distribution yielded by the current MHN
-    cdef double[:] pth = restricted_jacobi(theta, p0, state)
+    # compute dg, the diagonal of [I-Q]
+    cdef double *dg = <double *> malloc(nx * sizeof(double))
+    restricted_q_diag(theta, state, dg)         # compute the diagonal of Q
+    daxpy(&nx, &one, &mOne, &incx0, dg, &incx)  # subtract 1 from each entry to get the diagonal of [Q-I]
+    dscal(&nx, &mOne, dg, &incx)                # scale with -1 to get the diagonal of [I-Q]
 
-    pD = np.zeros(nx) 
+    # compute parts of the probability distribution yielded by the current MHN
+    cdef np.ndarray[np.double_t] pth = np.empty(nx, dtype=np.double)
+    compute_restricted_inverse(theta, dg, state, p0, pth)
+
+    cdef np.ndarray[np.double_t] pD = np.zeros(nx)
     pD[nx-1] = 1 / pth[nx-1]
 
-    cdef double[:] q = restricted_jacobi(theta, pD, state, transp=True)
+    cdef np.ndarray[np.double_t] q = np.empty(nx, dtype=np.double)
+    compute_restricted_inverse(theta, dg, state, pD, q, True)
 
     cdef int i, j
 
@@ -700,10 +764,6 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
     cdef double *shuffled_vec
     cdef double *old_vec
     cdef double *swap_vec
-    cdef int incx = 1
-    cdef int incx2 = 2
-    cdef int incx0 = 0
-    cdef double one = 1.
 
     cdef double *ptmp = <double *> malloc(nx * sizeof(double))
 
@@ -745,6 +805,7 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
 
     free(ptmp)
     free(r_vec)
+    free(dg)
 
     return log(pth[nx - 1])
 
@@ -760,9 +821,9 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateStorage mutation_data):
     cdef int n = theta.shape[0]
     cdef int data_size = mutation_data.data_size
     cdef int i, j
-    final_gradient = np.zeros((n, n))
+    cdef np.ndarray[np.double_t, ndim=2] final_gradient = np.zeros((n, n), dtype=np.double)
     cdef double *local_grad_sum
-    cdef double [:, :] local_gradient_container = np.empty((n, n), dtype=np.double)
+    cdef np.ndarray[np.double_t, ndim=2] local_gradient_container = np.empty((n, n), dtype=np.double)
     cdef double zero = 0
     cdef int incx = 1
     cdef double one = 1
@@ -800,7 +861,7 @@ IF NVCC_AVAILABLE:
         cdef int data_size = mutation_data.data_size
 
         cdef double score
-        cdef double[:] grad_out = np.empty(n * n)
+        cdef np.ndarray[np.double_t] grad_out = np.empty(n * n, dtype=np.double)
         cdef int error_code
         cdef const char *error_name
         cdef const char *error_description
@@ -811,7 +872,7 @@ IF NVCC_AVAILABLE:
             get_error_name_and_description(error_code, &error_name, &error_description)
             raise CUDAError(f'{error_name.decode("UTF-8")}: "{error_description.decode("UTF-8")}"')
 
-        return (np.asarray(grad_out).reshape((n, n)) / data_size), (score / data_size)
+        return (grad_out.reshape((n, n)) / data_size), (score / data_size)
 
 
 cpdef gradient_and_score(double[:, :] theta, StateStorage mutation_data):

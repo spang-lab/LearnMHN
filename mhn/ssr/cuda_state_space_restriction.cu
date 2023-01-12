@@ -423,7 +423,7 @@ static void compute_jacobi_diagonal(const double* ptheta, const State* state, co
 	int block_num, thread_num;
 	determine_block_thread_num(block_num, thread_num, mutation_num);
 
-	// initialize the diagonal entries and xout
+	// initialize the diagonal entries
 	fill_array <<<block_num, thread_num >>> (dg, 1, nx);
 	cuda_subtract_q_diag(ptheta, state, n, mutation_num, dg, block_num, thread_num);
 }
@@ -436,9 +436,9 @@ static void compute_jacobi_diagonal(const double* ptheta, const State* state, co
  * @param[in] b array that is multiplied with [I-Q]^(-1)
  * @param[in] state state representing current tumor sample
  * @param[in] mutation_num number of mutations present in the current state / tumor sample
- * @param[in] transp if true, b is multiplied with the tranposed [I-Q]^(-1)
+ * @param[in] transp if true, b is multiplied with the transposed [I-Q]^(-1)
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
- * @param[out] xout the results of this functio are stored in this array
+ * @param[out] xout the results of this function are stored in this array
  * @param[in, out] tmp this array is used to store temporary data, has to have size 2^mutation_num
  * @param[in] dg this array contains the diagonal of [I-Q]
 */
@@ -449,6 +449,7 @@ static void cuda_jacobi(const double *ptheta, const double *b, const State *stat
 	int block_num, thread_num;
 	determine_block_thread_num(block_num, thread_num, mutation_num);
 
+    // initialize the entries of xout with 1/nx
 	fill_array<<<block_num, thread_num >>>(xout, 1. / (1. * nx), nx);
 
 	// compute the product of [I-Q]^(-1) with b
@@ -655,8 +656,9 @@ __global__ void add_to_score(double *score, double *pth_end){
  * @param[in] mutation_data array of States, where each state represents a tumor sample
  * @param[in] data_size number of tumor samples in mutation_data
  * @param[out] grad_out array of size n*n in which the gradient will be stored
+ * @param[out] score_out the marginal log-likelihood score is stored at this position
  *
- * @return this function returns the score of the current MHN as d double value
+ * @return CUDA error code converted to integer for better interoperability with Cython
 */
 int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out) {
 

@@ -70,12 +70,6 @@ class TestCythonGradient(unittest.TestCase):
         np.testing.assert_array_equal(np.around(gradient1, decimals=8), np.around(reversed_gradient, decimals=8))
         self.assertEqual(score1, score2)
 
-    def test_sample_position_permutation(self):
-        """
-        Permutation of the cancer samples should not change the gradient
-        """
-        self.assertEqual(True, False)  # add assertion here
-
 
 class TestCudaGradient(unittest.TestCase):
     """
