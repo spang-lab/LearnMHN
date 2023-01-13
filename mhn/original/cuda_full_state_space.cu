@@ -513,7 +513,7 @@ __global__ void array_exp(double *arr, int size) {
  *
  * @return CUDA error code converted to integer for better interoperability with Cython
 */
-int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, int n, double *pD, double *grad_out, double *score_out) {
+extern "C" int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, int n, double *pD, double *grad_out, double *score_out) {
 	const int nx = 1 << n;
 
 	double *cuda_grad_out;

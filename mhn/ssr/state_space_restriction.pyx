@@ -1,5 +1,3 @@
-# distutils: language = c++
-
 # by Stefan Vocht
 #
 # implement StateSpaceRestriction using Cython
@@ -173,9 +171,9 @@ cdef void restricted_kronvec(double[:, :] theta_mat, int i, double[:] x_vec, Sta
             else:
                 dscal(&nxhalf, &theta, px2, &incx)
  
-            old_vec = shuffled_vec;
-            shuffled_vec = swap_vec;
-            swap_vec = old_vec;
+            old_vec = shuffled_vec
+            shuffled_vec = swap_vec
+            swap_vec = old_vec
 
         elif i == j:
             theta = -exp(theta_i[j])
@@ -271,9 +269,9 @@ cdef void restricted_derivative_ik(double[:, :] theta_mat, int i, double[:] x_ve
                 if j == k:
                     dscal(&nxhalf, &zero, px1, &incx)
 
-            old_vec = shuffled_vec;
-            shuffled_vec = swap_vec;
-            swap_vec = old_vec;
+            old_vec = shuffled_vec
+            shuffled_vec = swap_vec
+            swap_vec = old_vec
 
         elif i == j:
             theta = -exp(theta_i[j])
@@ -369,9 +367,9 @@ cdef void restricted_derivative_ik_diag(double[:, :] theta_mat, int i, State *st
                 if j == k:
                     dscal(&nxhalf, &zero, px1, &incx)
 
-            old_vec = shuffled_vec;
-            shuffled_vec = swap_vec;
-            swap_vec = old_vec;
+            old_vec = shuffled_vec
+            shuffled_vec = swap_vec
+            swap_vec = old_vec
 
         elif i == j:
             theta = -exp(theta_i[j])
@@ -778,7 +776,7 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
         state_copy = state[0].parts[0]
         for j in range(n):
             if state_copy & 1:
-                # shuffle entries of old_vecs
+                # shuffle entries of old_vec
                 dcopy(&nxhalf, old_vec, &incx2, shuffled_vec, &incx)
                 dcopy(&nxhalf, old_vec+1, &incx2, shuffled_vec+nxhalf, &incx)
                 # add up the entries of the second half of the shuffled vector to get the partial derivative

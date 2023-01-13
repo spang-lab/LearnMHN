@@ -1,5 +1,3 @@
-# distutils: language = c++
-
 # by Stefan Vocht
 #
 # this script implements Likelihood.R in Cython
