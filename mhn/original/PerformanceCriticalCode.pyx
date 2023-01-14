@@ -299,3 +299,17 @@ cpdef compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] x
         _compute_inverse_t(&theta[0, 0], n, &dg[0], &b[0], &xout[0])
     else:
         _compute_inverse(&theta[0, 0], n, &dg[0], &b[0], &xout[0])
+
+
+
+cdef extern from "parallel_substitution.c":
+    void _parallel_compute_inverse(const double * theta, const int n, const double * dg, const double *b, double * xout)
+    int compute_index(int i, int n, int k, int binom_coef)
+
+
+cpdef test_omp_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] xout, bint transp):
+    cdef int n = theta.shape[0]
+    _parallel_compute_inverse(&theta[0, 0], n, &dg[0], &b[0], &xout[0])
+
+def compute_per_index(int i, int n, int k, int binom_coef):
+    return compute_index(i, n, k, binom_coef)
