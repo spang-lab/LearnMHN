@@ -306,8 +306,8 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
     cdef int n = 0 # Iteration number
     cdef int one = 1
     cdef double gfac = 1.0
-    pt = np.zeros(nx, dtype=np.double)
-    dp = np.zeros(nx, dtype=np.double)
+    # pt = np.zeros(nx, dtype=np.double)
+    # dp = np.zeros(nx, dtype=np.double)
     cdef double[:] q = b.copy()
     cdef double[:] dq = np.zeros(nx, dtype=np.double)
     cdef double * temp = <double *> malloc(nx * sizeof(double))
@@ -348,3 +348,74 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
 
     free(temp)
     free(temp2)
+
+
+cdef void empirical_distribution(State *current_state, State *former_state, double[:] delta):
+    """
+    Computes the empirical probability distribution used in eq. 13 in Rupp et al.(2021)
+    """
+    cdef int j
+    cdef int nx = delta.shape[0]
+    cdef double zero = 0.
+    cdef int incx = 1
+    cdef current_mutation_num = get_mutation_num(current_state)
+    dscal(&nx, &zero, &delta[0], &incx)
+
+    # will be the index of x_(k-1) in delta
+    cdef int xk_index = (1 << current_mutation_num) - 1
+    cdef bit_setter = 1
+    cdef int state_copy_current = current_state[0].parts[0]
+    cdef int state_copy_former = former_state[0].parts[0]
+
+    for j in range(32 * STATE_SIZE):
+        if state_copy_current & 1:
+            if not state_copy_former & 1:
+                xk_index &= ~bit_setter
+            bit_setter <<= 1
+        if (j + 1) & 31:
+            state_copy_current >>= 1
+            state_copy_former >>= 1
+        else:
+            state_copy_current = current_state[0].parts[(j+1) >> 5]
+            state_copy_former = former_state[0].parts[(j+1) >> 5]
+
+    delta[xk_index] = 1
+
+
+cpdef cython_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_data, double eps):
+    """
+    This function computes the log-likelihood score and its gradient for a given theta and data, where we know the ages
+    of the individual samples
+    
+    :param theta: theta matrix representing the MHN
+    :param mutation_data: data from which we learn the MHN
+    :param eps: accuracy
+    :returns: the gradient and the score as a tuple
+    """
+    cdef int n = theta.shape[0]
+    cdef int current_nx
+    cdef int data_size = mutation_data.data_size
+    cdef int k, i, j
+    cdef double t
+    cdef double score = 0
+    cdef np.ndarray[np.double_t, ndim=2] gradient = np.zeros((n, n), dtype=np.double)
+    cdef np.ndarray[np.double_t] pt
+    cdef np.ndarray[np.double_t] dp
+    cdef np.ndarray[np.double_t] b
+
+    for k in range(1, data_size):
+        current_nx = 1 << get_mutation_num(&mutation_data.states[k])
+        pt = np.empty(current_nx)
+        dp = np.empty(current_nx)
+        b = np.empty(current_nx)
+        t = mutation_data.state_ages[k] - mutation_data.state_ages[k-1]
+        assert t >= 0
+        empirical_distribution(&mutation_data.states[k], &mutation_data.states[k-1], b)
+        for i in range(n):
+            for j in range(n):
+                dua(theta, b, &mutation_data.states[k], t, i, j, eps, pt, dp)
+                gradient[i, j] += dp[current_nx-1] / pt[current_nx-1]
+
+        score += log(pt[current_nx-1])
+
+    return gradient, score
