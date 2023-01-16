@@ -23,5 +23,9 @@ cdef class StateStorage:
     cdef int max_mutation_num
 
 
+cdef class StateAgeStorage(StateStorage):
+    cdef double *state_ages
+
+
 
 

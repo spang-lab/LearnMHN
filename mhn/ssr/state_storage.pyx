@@ -4,6 +4,7 @@
 #
 
 from libc.stdlib cimport malloc, free
+from libc.string cimport memcpy
 
 from mhn.ssr.state_storage cimport State
 
@@ -57,7 +58,7 @@ cdef class StateStorage:
     It also makes sure that there aren't more than 32 mutations present in a single sample as this would break the algorithms
     """
 
-    def __cinit__(self, int[:, :] mutation_data):
+    def __init__(self, int[:, :] mutation_data):
 
         # the number of columns (number of genes) must not exceed 32 * STATE_SIZE
         if mutation_data.shape[1] > (32 * STATE_SIZE):
@@ -94,6 +95,22 @@ cdef class StateStorage:
 
     def __dealloc__(self):
         free(self.states)
+
+
+cdef class StateAgeStorage(StateStorage):
+    """
+    This class is used as a wrapper like the StateStorage class, but also contains age information for each sample
+    """
+
+    def __init__(self, int[:, :] mutation_data, double[:] ages):
+        super().__init__(mutation_data)
+        if ages.shape[0] != self.data_size:
+            raise ValueError("The number of given ages must align with the number of samples in the mutation data")
+        self.state_ages = <double *> malloc(self.data_size * sizeof(double))
+        memcpy(self.state_ages, &ages[0], self.data_size * sizeof(double))
+
+    def __dealloc__(self):
+        free(self.state_ages)
 
 
 def create_indep_model(StateStorage state_storage):
