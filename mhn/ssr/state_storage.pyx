@@ -52,6 +52,30 @@ cdef void fill_states(State *states, int[:, :] mutation_data):
                 current_state[0].parts[j >> 5] |=  1 << (j & 31)
 
 
+cdef void sort_by_age(State *states, double *ages, int state_num):
+    """
+    Simplistic sort algorithm to sort both states and ages according to the age values
+    """
+    cdef int i, j
+    cdef double tmp_age
+    cdef State tmp_state
+    cdef bint changing = True
+
+    for j in range(state_num):
+        changing = False
+        for i in range(state_num-j-1):
+            if ages[i] > ages[i+1]:
+                changing = True
+                tmp_age = ages[i]
+                tmp_state = states[i]
+                ages[i] = ages[i+1]
+                states[i] = states[i+1]
+                ages[i+1] = tmp_age
+                states[i+1] = tmp_state
+        if not changing:
+            break
+
+
 cdef class StateStorage:
     """
     This class is used as a wrapper such that the C array containing the States can be referenced in a Python script
@@ -108,6 +132,7 @@ cdef class StateAgeStorage(StateStorage):
             raise ValueError("The number of given ages must align with the number of samples in the mutation data")
         self.state_ages = <double *> malloc(self.data_size * sizeof(double))
         memcpy(self.state_ages, &ages[0], self.data_size * sizeof(double))
+        sort_by_age(self.states, self.state_ages, ages.shape[0])
 
     def __dealloc__(self):
         free(self.state_ages)
