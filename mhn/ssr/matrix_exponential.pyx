@@ -50,10 +50,10 @@ cdef void restricted_derivative_ik(double[:, :] theta_mat, int i, double[:] x_ve
     cdef int incx2 = 2
     cdef int j
 
-    # if we have no diagonal and the ith gene is not mutated, the result is always a zero vector
-    #if not diag and not (state[0].parts[i >> 5] >> (i & 31)) & 1:
-    #    dscal(&nx, &zero, pout, &incx)
-    #    return
+    # if the kth gene is not mutated and i != k (theta_ik no base rate), then the derivative is always zero
+    if i != k and not (state[0].parts[k >> 5] >> (k & 31)) & 1:
+        dscal(&nx, &zero, pout, &incx)
+        return
 
     cdef double *ptmp = <double *> malloc(nx * sizeof(double))
     cdef double *px1
@@ -146,7 +146,7 @@ cdef void restricted_derivative_ik_diag(double[:, :] theta_mat, int i, State *st
     cdef int incx2 = 2
     cdef int j
 
-    # if we have no diagonal and the ith gene is not mutated, the result is always a zero vector
+    # if the kth gene is not mutated and i != k (theta_ik no base rate), then the derivative is always zero
     if i != k and not (state[0].parts[k >> 5] >> (k & 31)) & 1:
         dscal(&nx, &zero, pout, &incx)
         return
@@ -334,8 +334,6 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
     cdef double done = 1.0
     cdef double zero = 0
     cdef double gfac = 1.0
-    # pt = np.zeros(nx, dtype=np.double)
-    # dp = np.zeros(nx, dtype=np.double)
     dscal(&nx, &zero, &pt[0], &one)
     dscal(&nx, &zero, &dp[0], &one)
     cdef double[:] q = b.copy()
@@ -348,40 +346,30 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
     cdef double dgam_inv = -1.0/gamma**2*dgamma
     cdef double gam_inv = 1/gamma
     cdef double ewg = exp(-1.0*gamma*t)
-    while eps < (1 - np.sum(pt)):
-        print("="*30)
-        print("q")
-        print(dasum(&nx, &q[0], &one))
+    cdef double mass_defect = 0.0
+    while eps < (1 - mass_defect):
+        mass_defect += ewg
         # pt = pt + exp(-gam*t)q
         daxpy(&nx, &ewg, &q[0], &one, &pt[0], &one)
-        print("pt")
-        print(dasum(&nx, &pt[0], &one))
         # dpt = dpt + exp(-gamma*t)w dq
-        print("dpt")
-        print(dasum(&nx, &dp[0], &one))
         daxpy(&nx, &ewg, &dq[0], &one, &dp[0], &one)
         # dpt = dpt + exp(-gamma*t)w dgamma(n/gamma-t)q
         gfac = ewg*dgamma*(n/gamma-t)
+        gfac = ewg*dgamma*(n/gamma-t)
         daxpy(&nx, &gfac, &q[0], &one, &dp[0], &one)
-        print("dpt")
-        print(dasum(&nx, &dp[0], &one))
 
         n += 1
         # dq = -1/gamma^2*dg*Q q + 1/gamma*dQ q
-        restricted_q_vec(theta, q, state, temp, True, False)  # TODO here is probably something wrong
+        restricted_q_vec(theta, q, state, temp, True, False)
         dscal(&nx, &dgam_inv, temp, &one)
         restricted_derivative_ik(theta, i, q, state, mutation_num, k, temp2)
         daxpy(&nx, &gam_inv, temp2, &one, temp, &one) # temp2 isn't needed anymore and its allocated memory can be reused
-        print("tmp2")
-        print(dasum(&nx, temp2, &one))
 
         # dq = dq + [1/gamma*Q+I]dq
         restricted_q_vec(theta, dq, state, temp2, True, False)
         daxpy(&nx, &gam_inv, temp2, &one, &dq[0], &one)
         for j in range(nx):
             dq[j] += temp[j] # +temp2[j]
-        print("dq")
-        print(dasum(&nx, &dq[0], &one))
 
         # q = [1/gamma*Q + I]q
         restricted_q_vec(theta, q, state, temp, True, False)
@@ -396,6 +384,10 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
 cdef void empirical_distribution(State *current_state, State *former_state, double[:] delta):
     """
     Computes the empirical probability distribution used in eq. 13 in Rupp et al.(2021)
+    
+    :param current_state: state of the current iteration in the score and gradient computation
+    :param former_state: state of the previous iteration in the score and gradient computation
+    :param delta: acts as container which will contain the distribution at the end, size: 2^(mutation_num of current_state)
     """
     cdef int j
     cdef int nx = delta.shape[0]
@@ -457,8 +449,8 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_dat
         for i in range(n):
             for j in range(n):
                 dua(theta, b, &mutation_data.states[k], t, i, j, eps, pt, dp)
-                print(pt)
-                print(dp)
+                # print(pt)
+                # print(dp)
                 gradient[i, j] += dp[current_nx-1] / pt[current_nx-1]
 
         score += log(pt[current_nx-1])
