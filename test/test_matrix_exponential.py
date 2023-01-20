@@ -64,6 +64,35 @@ class TestMatrixExponential(unittest.TestCase):
                 numerical_gradient = (new_score - old_score) / h
                 self.assertAlmostEqual(numerical_gradient, gradient[i, j], 3)
 
+    def test_sort_by_age(self):
+        """
+        StateAgeStorage should automatically sort the samples according to their age.
+        """
+        n = 6
+        sample_num = 5
+        assert sample_num < n, "This test needs the sample number to be smaller than n to work because of how the " \
+                               "data is constructed "
+        theta = ModelConstruction.random_theta(n)
+        np_data_matrix = np.zeros((sample_num, n), dtype=np.int32)
+        for i in range(sample_num):
+            np_data_matrix[i, i:] = 1
+        ages = np.linspace(0, 6, sample_num)
+
+        states_and_ages = state_storage.StateAgeStorage(np_data_matrix, ages)
+        grad1, score1 = matrix_exponential.cython_gradient_and_score(theta, states_and_ages, 1e-6)
+
+        permutation = np.random.permutation(sample_num)
+        np_data_matrix = np_data_matrix[permutation]
+        ages = ages[permutation]
+        states_and_ages = state_storage.StateAgeStorage(np_data_matrix, ages)
+        grad2, score2 = matrix_exponential.cython_gradient_and_score(theta, states_and_ages, 1e-6)
+
+        self.assertAlmostEqual(score1, score2, 8)
+        np.testing.assert_array_equal(np.around(grad1, decimals=5), np.around(grad2, decimals=5))
+
+
+
+
 
 if __name__ == '__main__':
     unittest.main()
