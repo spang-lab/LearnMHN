@@ -131,6 +131,8 @@ cdef class StateAgeStorage(StateStorage):
         if ages.shape[0] != self.data_size:
             raise ValueError("The number of given ages must align with the number of samples in the mutation data")
         self.state_ages = <double *> malloc(self.data_size * sizeof(double))
+        if not self.state_ages:
+            raise MemoryError()
         memcpy(self.state_ages, &ages[0], self.data_size * sizeof(double))
         sort_by_age(self.states, self.state_ages, ages.shape[0])
 
