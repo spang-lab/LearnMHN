@@ -9,7 +9,7 @@ to compute the log-likelihood score and its gradient for datasets that contain s
 
 cimport cython
 
-from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot, dnrm2
+from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot, dnrm2, dasum
 from libc.stdlib cimport malloc, free
 from libc.math cimport exp, log
 
@@ -147,9 +147,9 @@ cdef void restricted_derivative_ik_diag(double[:, :] theta_mat, int i, State *st
     cdef int j
 
     # if we have no diagonal and the ith gene is not mutated, the result is always a zero vector
-    #if not diag and not (state[0].parts[i >> 5] >> (i & 31)) & 1:
-    #    dscal(&nx, &zero, pout, &incx)
-    #    return
+    if i != k and not (state[0].parts[k >> 5] >> (k & 31)) & 1:
+        dscal(&nx, &zero, pout, &incx)
+        return
 
     cdef double *ptmp = <double *> malloc(nx * sizeof(double))
     cdef double *px1
@@ -300,7 +300,13 @@ cdef calc_gamma(double[:, :] theta, State *state, int i, int k):
     restricted_q_diag(theta, state, q_diag)
     cdef double num = ddot(&nx, deriv_q_diag, &one, q_diag, &one)
     cdef double denom = dnrm2(&nx, q_diag, &one)
+    free(deriv_q_diag)
+    free(q_diag)
     return denom, num / denom
+
+
+def py_calc_gamma(double[:, :] theta, StateAgeStorage states_and_ages, int i, int k):
+    return calc_gamma(theta, &states_and_ages.states[0], i, k)
 
 
 @cython.wraparound(False)
@@ -341,43 +347,47 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
     gamma, dgamma = calc_gamma(theta, state, i, k)
     cdef double dgam_inv = -1.0/gamma**2*dgamma
     cdef double gam_inv = 1/gamma
-    cdef double ewg = exp(-1.0*gamma*t)*w
+    cdef double ewg = exp(-1.0*gamma*t)
     while eps < (1 - np.sum(pt)):
         print("="*30)
+        print("q")
+        print(dasum(&nx, &q[0], &one))
         # pt = pt + exp(-gam*t)q
         daxpy(&nx, &ewg, &q[0], &one, &pt[0], &one)
         print("pt")
-        print(pt[0])
+        print(dasum(&nx, &pt[0], &one))
         # dpt = dpt + exp(-gamma*t)w dq
         print("dpt")
-        print(dp[0])
+        print(dasum(&nx, &dp[0], &one))
         daxpy(&nx, &ewg, &dq[0], &one, &dp[0], &one)
         # dpt = dpt + exp(-gamma*t)w dgamma(n/gamma-t)q
         gfac = ewg*dgamma*(n/gamma-t)
         daxpy(&nx, &gfac, &q[0], &one, &dp[0], &one)
         print("dpt")
-        print(dp[0])
+        print(dasum(&nx, &dp[0], &one))
 
         n += 1
         # dq = -1/gamma^2*dg*Q q + 1/gamma*dQ q
         restricted_q_vec(theta, q, state, temp, True, False)  # TODO here is probably something wrong
         dscal(&nx, &dgam_inv, temp, &one)
-        restricted_derivative_ik_diag(theta, i, state, mutation_num, k, temp2)
+        restricted_derivative_ik(theta, i, q, state, mutation_num, k, temp2)
         daxpy(&nx, &gam_inv, temp2, &one, temp, &one) # temp2 isn't needed anymore and its allocated memory can be reused
-        print("dq")
-        print(dq[0])
+        print("tmp2")
+        print(dasum(&nx, temp2, &one))
 
         # dq = dq + [1/gamma*Q+I]dq
         restricted_q_vec(theta, dq, state, temp2, True, False)
         daxpy(&nx, &gam_inv, temp2, &one, &dq[0], &one)
         for j in range(nx):
-            dq[j] += temp[j]+temp2[j]
+            dq[j] += temp[j] # +temp2[j]
+        print("dq")
+        print(dasum(&nx, &dq[0], &one))
 
         # q = [1/gamma*Q + I]q
         restricted_q_vec(theta, q, state, temp, True, False)
         daxpy(&nx, &gam_inv, temp, &one, &q[0], &one)
 
-        w *= gamma*t/n
+        ewg *= gamma*t/n
 
     free(temp)
     free(temp2)
