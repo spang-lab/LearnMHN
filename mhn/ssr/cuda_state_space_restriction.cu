@@ -266,7 +266,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
  * @param[in] diag if false, the diag of Q is set to zero during multiplication
  * @param[in] transp if true, multiplication is done with the transposed Q
 */
-static void cuda_q_vec(const double *ptheta, const double *x, const State *state, double *yout, const int n, const int mutation_num, const bool diag, const bool transp) {
+void cuda_q_vec(const double *ptheta, const double *x, const State *state, double *yout, const int n, const int mutation_num, const bool diag, const bool transp) {
 	
 	const int nx = 1 << mutation_num;
 	cudaMemset(yout, 0, nx * sizeof(double));
@@ -365,7 +365,7 @@ __global__ void cuda_subdiag(const double *ptheta, const State state, const int 
  * @param[in] block_num number of blocks used for the CUDA kernels
  * @param[in] thread_num  number of threads used for the CUDA kernels
 */
-static void cuda_subtract_q_diag(const double *ptheta, const State *state, const int n, const int mutation_num, double *dg, int block_num, int thread_num) {
+void cuda_subtract_q_diag(const double *ptheta, const State *state, const int n, const int mutation_num, double *dg, int block_num, int thread_num) {
 	for (int i = 0; i < n; i++) {
 		cuda_subdiag<<<block_num, thread_num, n * sizeof(double)>>>(ptheta, *state, i, n, mutation_num, dg);
 	}
@@ -417,7 +417,7 @@ __global__ void multiply_arrays_elementwise(const double *arr1, double *arr_inou
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
  * @param[out] dg this array will contain the diagonal of [I-Q] after calling this function, has size must have size 2^mutation_num
 */
-static void compute_jacobi_diagonal(const double* ptheta, const State* state, const int mutation_num, const int n, double* dg) {
+void compute_jacobi_diagonal(const double* ptheta, const State* state, const int mutation_num, const int n, double* dg) {
 	const int nx = 1 << mutation_num;
 
 	int block_num, thread_num;
@@ -442,7 +442,7 @@ static void compute_jacobi_diagonal(const double* ptheta, const State* state, co
  * @param[in, out] tmp this array is used to store temporary data, has to have size 2^mutation_num
  * @param[in] dg this array contains the diagonal of [I-Q]
 */
-static void cuda_jacobi(const double *ptheta, const double *b, const State *state, const int mutation_num, const bool transp, const int n, double *xout, double *tmp, double *dg) {
+void cuda_jacobi(const double *ptheta, const double *b, const State *state, const int mutation_num, const bool transp, const int n, double *xout, double *tmp, double *dg) {
 
 	const int nx = 1 << mutation_num;
 
@@ -534,7 +534,7 @@ __global__ void print_vec(double *vec, int size) {
  * @param[in] tmp1 memory buffer needed for this function, size 2^mutation_num
  * @param[in] tmp2 memory buffer needed for this function, size 2^mutation_num
 */
-static void cuda_restricted_gradient(const double *ptheta, const State *state, const int n, double *grad, double *p0_pD, double *pth, double *q, double *tmp1, double *tmp2) {
+void cuda_restricted_gradient(const double *ptheta, const State *state, const int n, double *grad, double *p0_pD, double *pth, double *q, double *tmp1, double *tmp2) {
 
 	// get the number of mutated genes in the current sample and compute the size of the memory buffers
 	const int mutation_num = get_mutation_num(state);
