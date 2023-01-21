@@ -18,7 +18,6 @@ typedef struct {
 } State;
 
 
-// computes the number of mutations present in a given state
 /**
  * Computes the number of mutations present in a given state
  *

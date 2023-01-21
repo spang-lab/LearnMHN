@@ -60,7 +60,6 @@ int count_ones(uint64_t x) {
 }
 
 
-// computes the number of mutations present in a given state
 /**
  * Computes the number of mutations present in a given state
  *
