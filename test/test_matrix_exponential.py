@@ -18,12 +18,13 @@ class TestMatrixExponential(unittest.TestCase):
         q = ModelConstruction.build_q(theta)
         all_mutated_data = np.ones((1, n), dtype=np.int32)
         b = np.random.random(2**n)
+        eps = 1e-4
 
         for t in np.arange(0, 6, 0.6):
             container = state_storage.StateAgeStorage(all_mutated_data, np.array([t]))
             result1 = scipy.linalg.expm(t * q).dot(b)
-            result2 = matrix_exponential.restricted_expm(theta, b, container, 1e-8)
-            np.testing.assert_array_equal(np.around(result1, decimals=3), np.around(result2, decimals=3))
+            result2 = matrix_exponential.restricted_expm(theta, b, container, eps)
+            self.assertTrue(np.abs(result2 - result1).sum() < eps)
 
     def test_calc_gamma_numerically(self):
         n = 6

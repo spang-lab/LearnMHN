@@ -248,8 +248,9 @@ cdef double[:] cython_restricted_expm(double[:, :] theta, double[:] b, State *st
     cdef double *q_vec_result = <double *> malloc(nx * sizeof(double))
     cdef double[:] q = b.copy()
     cdef double mass_defect = 0.0
+    cdef double b_sum = np.sum(b)
 
-    while eps < (1 - mass_defect):
+    while eps < b_sum * (1 - mass_defect):
         mass_defect += egtw
         daxpy(&nx, &egtw, &q[0], &i_one, &pt[0], &i_one)
         n += 1
@@ -303,10 +304,6 @@ cdef calc_gamma(double[:, :] theta, State *state, int i, int k):
     free(deriv_q_diag)
     free(q_diag)
     return denom, num / denom
-
-
-def py_calc_gamma(double[:, :] theta, StateAgeStorage states_and_ages, int i, int k):
-    return calc_gamma(theta, &states_and_ages.states[0], i, k)
 
 
 @cython.wraparound(False)
@@ -420,7 +417,7 @@ cdef void empirical_distribution(State *current_state, State *former_state, doub
 cpdef cython_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_data, double eps):
     """
     This function computes the log-likelihood score and its gradient for a given theta and data, where we know the ages
-    of the individual samples
+    of the individual samples (see Rupp et al. (2021) eq. (13)-(15))
     
     :param theta: theta matrix representing the MHN
     :param mutation_data: data from which we learn the MHN
@@ -449,8 +446,6 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_dat
         for i in range(n):
             for j in range(n):
                 dua(theta, b, &mutation_data.states[k], t, i, j, eps, pt, dp)
-                # print(pt)
-                # print(dp)
                 gradient[i, j] += dp[current_nx-1] / pt[current_nx-1]
 
         score += log(pt[current_nx-1])
