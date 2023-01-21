@@ -30,12 +30,25 @@ double calc_gamma(cublasHandle_t handle, const double *theta, int n, const State
 }
 
 
+// TODO optimize this later
+__global__ void zero_mask(double *arr, int k, int size){
+    int stride = blockDim.x * gridDim.x;
+	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-void dua(cublasHandle_t handle, const double *theta, int n, double *bq, const State *state, double t, int i, int k, double eps, double gamma, double dgamma, double *pt, double *dp, double *dq, double *tmp, double *tmp2){
+	for (int j = cuda_index; j < size; j += stride) {
+		arr[k] = ((j >> k) & 1) * arr[k];
+	}
+}
+
+
+void dua(cublasHandle_t handle, const double *theta, int n, double *bq, const State *state, double t, int i, int k, double eps, double gamma, double dgamma, double *pt, double *dp, double *dq, double *tmp, double *tmp2, int count_before_i){
 
     int mutation_num = get_mutation_num(state);
     int nx = 1 << mutation_num;
     int nn = 0;
+
+    int block_num, thread_num;
+    determine_block_thread_num(block_num, thread_num, mutation_num);
 
     cudaMemset(pt, 0, nx * sizeof(double));
     cudaMemset(dp, 0, nx * sizeof(double));
@@ -55,13 +68,23 @@ void dua(cublasHandle_t handle, const double *theta, int n, double *bq, const St
         cublasDaxpy(handle, nx, &ewg, dq, 1, dp, 1);
 
         gfac = ewg*dgamma*(nn/gamma - t);
-        cublasDaxpy(handle, nx, &gfac, q, 1, dp, 1);
+        cublasDaxpy(handle, nx, &gfac, bq, 1, dp, 1);
 
         nn += 1;
 
-        cuda_q_vec(theta, q, state, tmp, n, mutation_num, true, false);
+        cuda_q_vec(theta, bq, state, tmp, n, mutation_num, true, false);
         cublasDscal(handle, nx, &dgam_inv, tmp, 1);
-        
+        cudaMemset(tmp2, 0, nx * sizeof(double));
+        cuda_restricted_kronvec<<<block_num, thread_num, n * sizeof(double)>>>(theta, i, bq, state, true, false, n, mutation_num, count_before_i, tmp2);
+        zero_mask<<<block_num, thread_num>>>(tmp2, k, nx);
+        cublasDaxpy(handle, &gam_inv, tmp2, 1, tmp, 1);
+
+        cuda_q_vec(theta, dq, state, tmp2, n, mutation_num, true, false);
+        cublasDaxpy(handle, nx, &gam_inv, tmp2, 1, dq, 1);
+        add_arrays<<<block_num, thread_num>>>(tmp, dq, nx);
+
+        cuda_q_vec(theta, bq, state, tmp, n, mutation_num, true, false);
+        cublasDaxpy(handle, nx, &gam_inv, tmp, 1, bq, 1);
 
         ewg *= gamma*t / nn;
     }
@@ -153,6 +176,7 @@ extern "C"
                 // compute the derivative of the diagonal using the shuffle trick
                 cudaMemset(deriv_dg, 0, current_nx * sizeof(double));
                 cuda_subdiag<<<block_num, thread_num>>>(theta, &mutation_data[k], i, n, current_mutation_num, deriv_dg);
+                multiply_arrays_elementwise<<<block_num, thread_num>>>(dg, deriv_dg, current_nx);
 
                 uint32_t state_copy = mutation_data[k]->parts[0];
 
