@@ -138,6 +138,8 @@ extern "C"
         double *cuda_grad, *cuda_score;
         double *cuda_theta;
         double *dg, *deriv_dg;
+        double *cuda_dgamma;
+        double dgamma;
 
         int block_num, thread_num;
 
@@ -152,6 +154,7 @@ extern "C"
         cudaMalloc(&cuda_grad, n*n * sizeof(double));
         cudaMalloc(&cuda_score, sizeof(double));
         cudaMalloc(&cuda_theta, n*n * sizeof(double));
+        cudaMalloc(&cuda_dgamma, sizeof(double));
 
         cudaMemcpy(cuda_theta, ptheta, n*n * sizeof(double), cudaMemcpyHostToDevice);
 
@@ -159,6 +162,7 @@ extern "C"
         for (int k = 1; k < data_size; k++){
             int current_mutation_num = get_mutation_num(&mutation_data[k]);
             int current_nx = 1 << current_mutation_num;
+            int current_nx_half = current_nx / 2;
 
             determine_block_thread_num(block_num, thread_num, current_mutation_num);
 
@@ -171,6 +175,9 @@ extern "C"
 
             double gamma = calc_gamma(handle, cuda_theta, n, &mutation_data[k], dg);
 
+            uint32_t state_copy_i = mutation_data[k]->parts[0];
+            int count_before_i = 0;  // counts the number of mutations that occured before the ith index
+
             for (int i = 0; i < n; i++){
 
                 // compute the derivative of the diagonal using the shuffle trick
@@ -178,28 +185,63 @@ extern "C"
                 cuda_subdiag<<<block_num, thread_num>>>(theta, &mutation_data[k], i, n, current_mutation_num, deriv_dg);
                 multiply_arrays_elementwise<<<block_num, thread_num>>>(dg, deriv_dg, current_nx);
 
-                uint32_t state_copy = mutation_data[k]->parts[0];
+                uint32_t state_copy_j = mutation_data[k]->parts[0];
 
                 for(int j = 0; j < n; j++){
+                    if (state_copy_j & 1){
+                        // shuffle deriv_dg
+                        cublasDcopy(handle, current_nx_half, deriv_dg, 2, dq, 1);
+                        cublasDcopy(handle, current_nx_half, deriv_dg+1, 2, dq + current_nx_half, 1);
+                        cublasDcopy(handle, current_nx, dq, 1, deriv_dg, 1);   // this should be optimized by switching pointers
 
-                    if (state_copy & 1){
+                        if (i == j){
+                            sum_over_array<<<block_num, thread_num, thread_num * sizeof(double)>>>(deriv_dg, dq, current_nx);
+                            sum_over_array<<<1, block_num, block_num * sizeof(double)>>>(dq, cuda_dgamma, block_num);
+                            cudaMemcpy(&dgamma, cuda_dgamma, sizeof(double), cudaMemcpyDeviceToHost);
+                        } else {
+                            sum_over_array<<<block_num, thread_num, thread_num * sizeof(double)>>>(deriv_dg + current_nx_half, dq, current_nx_half);
+                            sum_over_array<<<1, block_num, block_num * sizeof(double)>>>(dq, cuda_dgamma, block_num);
+                            cudaMemcpy(&dgamma, cuda_dgamma, sizeof(double), cudaMemcpyDeviceToHost);
+                        }
 
                     } else if (i == j){
-
+                        sum_over_array<<<block_num, thread_num, thread_num * sizeof(double)>>>(deriv_dg, dq, current_nx);
+                        sum_over_array<<<1, block_num, block_num * sizeof(double)>>>(dq, cuda_dgamma, block_num);
+                        cudaMemcpy(&dgamma, cuda_dgamma, sizeof(double), cudaMemcpyDeviceToHost);
                     }
 
+                    if ((state_copy_j & 1) || i == j){
+                        dua(handle, cuda_theta, n, bq, &mutation_data[k], t, i, j, eps, gamma, dgamma, pt, dp, dq, tmp, tmp2, count_before_i);
+                        // add result to gradient
+                        divide_arrays_elementwise<<<1, 1>>>(dp + current_nx - 1, pt + current_nx - 1, dp + current_nx - 1, 1);
+                        add_arrays<<<1, 1>>>(dp + current_nx - 1, cuda_grad + i*n + j, 1);
+                    }
 
-                    // if the mutation state of the next gene is stored on the current state_copy, make a bit shift to the right
-                    // else state_copy becomes the next integer stored in the given state (x >> 5  <=> x // 32, x & 31 <=> x % 32)
+                    // if the mutation state of the next gene is stored on the current state_copy_j, make a bit shift to the right
+                    // else state_copy_j becomes the next integer stored in the given state (x >> 5  <=> x // 32, x & 31 <=> x % 32)
                     if ((j + 1) & 31){
-                        state_copy >>= 1;
+                        state_copy_j >>= 1;
                     }
                     else {
-                        state_copy = state->parts[(j + 1) >> 5];
+                        state_copy_j = state->parts[(j + 1) >> 5];
                     }
                 }
+
+                count_before_i += (state_copy_i & 1);
+
+                if ((i + 1) & 31){
+                     state_copy_i >>= 1;
+                }
+                else {
+                    state_copy_i = state->parts[(i + 1) >> 5];
+                }
             }
+            // update total score
+            add_to_score<<<1, 1>>>(cuda_score, pt + current_nx - 1);
         }
+
+        cudaMemcpy(grad_out, cuda_grad, n*n * sizeof(double), cudaMemcpyDeviceToHost);
+        cudaMemcpy(score_out, cuda_score, sizeof(double), cudaMemcpyDeviceToHost);
 
         cudaFree(bq);
         cudaFree(dq);
@@ -212,6 +254,7 @@ extern "C"
         cudaFree(cuda_grad);
         cudaFree(cuda_score);
         cudaFree(cuda_theta);
+        cudaFree(cuda_dgamma);
 
         cublasDestroy(handle);
     }
