@@ -21,7 +21,7 @@ double calc_gamma(cublasHandle_t handle, const double *theta, int n, const State
     int nx = 1 << mutation_num;
     int block_num, thread_num;
     double gamma;
-    determine_block_thread_num(block_num, thread_num);
+    determine_block_thread_num(block_num, thread_num, mutation_num);
 
     cudaMemset(dg, 0, nx * sizeof(double));
     cuda_subtract_q_diag(theta, state, n, mutation_num, dg, block_num, thread_num);
@@ -75,9 +75,9 @@ void dua(cublasHandle_t handle, const double *theta, int n, double *bq, const St
         cuda_q_vec(theta, bq, state, tmp, n, mutation_num, true, false);
         cublasDscal(handle, nx, &dgam_inv, tmp, 1);
         cudaMemset(tmp2, 0, nx * sizeof(double));
-        cuda_restricted_kronvec<<<block_num, thread_num, n * sizeof(double)>>>(theta, i, bq, state, true, false, n, mutation_num, count_before_i, tmp2);
+        cuda_restricted_kronvec<<<block_num, thread_num, n * sizeof(double)>>>(theta, i, bq, *state, true, false, n, mutation_num, count_before_i, tmp2);
         zero_mask<<<block_num, thread_num>>>(tmp2, k, nx);
-        cublasDaxpy(handle, &gam_inv, tmp2, 1, tmp, 1);
+        cublasDaxpy(handle, nx, &gam_inv, tmp2, 1, tmp, 1);
 
         cuda_q_vec(theta, dq, state, tmp2, n, mutation_num, true, false);
         cublasDaxpy(handle, nx, &gam_inv, tmp2, 1, dq, 1);
@@ -160,7 +160,8 @@ extern "C"
 
 
         for (int k = 1; k < data_size; k++){
-            int current_mutation_num = get_mutation_num(&mutation_data[k]);
+            const State *current_state = &mutation_data[k];
+            int current_mutation_num = get_mutation_num(current_state);
             int current_nx = 1 << current_mutation_num;
             int current_nx_half = current_nx / 2;
 
@@ -168,24 +169,24 @@ extern "C"
 
             cudaMemset(bq, 0, current_nx * sizeof(double));
 
-            int xk_index = empirical_distribution_index(&mutation_data[k], &mutation_data[k-1]);
+            int xk_index = empirical_distribution_index(current_state, &mutation_data[k-1]);
             fill_array<<<1, 1>>>(bq + xk_index, 1.0, sizeof(double));
 
             double t = ages[k] - ages[k-1];
 
-            double gamma = calc_gamma(handle, cuda_theta, n, &mutation_data[k], dg);
+            double gamma = calc_gamma(handle, cuda_theta, n, current_state, dg);
 
-            uint32_t state_copy_i = mutation_data[k]->parts[0];
+            uint32_t state_copy_i = current_state->parts[0];
             int count_before_i = 0;  // counts the number of mutations that occured before the ith index
 
             for (int i = 0; i < n; i++){
 
                 // compute the derivative of the diagonal using the shuffle trick
                 cudaMemset(deriv_dg, 0, current_nx * sizeof(double));
-                cuda_subdiag<<<block_num, thread_num>>>(theta, &mutation_data[k], i, n, current_mutation_num, deriv_dg);
+                cuda_subdiag<<<block_num, thread_num>>>(cuda_theta, *current_state, i, n, current_mutation_num, deriv_dg);
                 multiply_arrays_elementwise<<<block_num, thread_num>>>(dg, deriv_dg, current_nx);
 
-                uint32_t state_copy_j = mutation_data[k]->parts[0];
+                uint32_t state_copy_j = current_state->parts[0];
 
                 for(int j = 0; j < n; j++){
                     if (state_copy_j & 1){
@@ -211,7 +212,7 @@ extern "C"
                     }
 
                     if ((state_copy_j & 1) || i == j){
-                        dua(handle, cuda_theta, n, bq, &mutation_data[k], t, i, j, eps, gamma, dgamma, pt, dp, dq, tmp, tmp2, count_before_i);
+                        dua(handle, cuda_theta, n, bq, current_state, t, i, j, eps, gamma, dgamma, pt, dp, dq, tmp, tmp2, count_before_i);
                         // add result to gradient
                         divide_arrays_elementwise<<<1, 1>>>(dp + current_nx - 1, pt + current_nx - 1, dp + current_nx - 1, 1);
                         add_arrays<<<1, 1>>>(dp + current_nx - 1, cuda_grad + i*n + j, 1);
@@ -223,7 +224,7 @@ extern "C"
                         state_copy_j >>= 1;
                     }
                     else {
-                        state_copy_j = state->parts[(j + 1) >> 5];
+                        state_copy_j = current_state->parts[(j + 1) >> 5];
                     }
                 }
 
@@ -233,7 +234,7 @@ extern "C"
                      state_copy_i >>= 1;
                 }
                 else {
-                    state_copy_i = state->parts[(i + 1) >> 5];
+                    state_copy_i = current_state->parts[(i + 1) >> 5];
                 }
             }
             // update total score
@@ -257,6 +258,8 @@ extern "C"
         cudaFree(cuda_dgamma);
 
         cublasDestroy(handle);
+
+        return (int) cudaGetLastError();
     }
 
 }

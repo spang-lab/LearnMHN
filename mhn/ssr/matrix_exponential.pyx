@@ -306,6 +306,10 @@ cdef calc_gamma(double[:, :] theta, State *state, int i, int k):
     return denom, num / denom
 
 
+def py_calc_gamma(double[:, :] theta, StateAgeStorage states_and_ages, int i, int k):
+    return calc_gamma(theta, states_and_ages.states, i, k)
+
+
 @cython.wraparound(False)
 @cython.boundscheck(False)
 cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, int k, double eps, double[:] pt, double[:] dp) except *:
@@ -351,7 +355,6 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
         # dpt = dpt + exp(-gamma*t)w dq
         daxpy(&nx, &ewg, &dq[0], &one, &dp[0], &one)
         # dpt = dpt + exp(-gamma*t)w dgamma(n/gamma-t)q
-        gfac = ewg*dgamma*(n/gamma-t)
         gfac = ewg*dgamma*(n/gamma-t)
         daxpy(&nx, &gfac, &q[0], &one, &dp[0], &one)
 
@@ -451,3 +454,33 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_dat
         score += log(pt[current_nx-1])
 
     return gradient, score
+
+
+IF NVCC_AVAILABLE:
+
+    cdef extern from *:
+        """
+        #ifdef _WIN32
+        #define DLL_PREFIX __declspec(dllexport)
+        #else
+        #define DLL_PREFIX
+        #endif
+
+        int DLL_PREFIX cuda_functional();
+        int DLL_PREFIX cuda_gradient_and_score_dua(const double *ptheta, int n, const State *mutation_data, const double *ages, int data_size, double eps, double *grad_out, double *score_out);
+        """
+        int cuda_gradient_and_score_dua(const double *ptheta, int n, const State *mutation_data, const double *ages, int data_size, double eps, double *grad_out, double *score_out)
+        int cuda_functional()
+
+
+    cpdef cuda_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_data, double eps):
+
+        cdef int n = theta.shape[0]
+        cdef np.ndarray[np.double_t, ndim=2] grad_out = np.empty((n, n), dtype=np.double)
+        cdef double score
+
+        cuda_gradient_and_score_dua(&theta[0, 0], n, mutation_data.states, mutation_data.state_ages, mutation_data.data_size,
+                                    eps, &grad_out[0, 0], &score)
+        print(cuda_functional())
+
+        return grad_out, score

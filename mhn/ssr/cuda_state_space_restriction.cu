@@ -65,7 +65,7 @@ int count_ones(uint64_t x) {
  *
  * @param[in] state A pointer to a State of which we want to count the number of mutations it contains
 */
-int get_mutation_num(const State *state){
+int DLL_PREFIX get_mutation_num(const State *state){
 	int mutation_num = 0;
 	for(int i = 0; i < STATE_SIZE; i++){
 		mutation_num += count_ones32(state->parts[i]);
@@ -117,7 +117,7 @@ inline void determine_block_thread_num(int &block_num, int &thread_num, const in
  * @param[in] count_before_i number of genes mutated that have a lower index than i
  * @param[out] pout vector which will contain the result of this multiplication
 */
-__global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const int i, const double* __restrict__ px, const State state, const bool diag, const bool transp, const int n, const int mutation_num, int count_before_i, double* __restrict__ pout) {
+__global__ void DLL_PREFIX cuda_restricted_kronvec(const double* __restrict__ ptheta, const int i, const double* __restrict__ px, const State state, const bool diag, const bool transp, const int n, const int mutation_num, int count_before_i, double* __restrict__ pout) {
 	const int stride = blockDim.x * gridDim.x;
 	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -265,7 +265,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
  * @param[in] diag if false, the diag of Q is set to zero during multiplication
  * @param[in] transp if true, multiplication is done with the transposed Q
 */
-void cuda_q_vec(const double *ptheta, const double *x, const State *state, double *yout, const int n, const int mutation_num, const bool diag, const bool transp) {
+void DLL_PREFIX cuda_q_vec(const double *ptheta, const double *x, const State *state, double *yout, const int n, const int mutation_num, const bool diag, const bool transp) {
 	
 	const int nx = 1 << mutation_num;
 	cudaMemset(yout, 0, nx * sizeof(double));
@@ -298,7 +298,7 @@ void cuda_q_vec(const double *ptheta, const double *x, const State *state, doubl
  * @param[in] mutation_num number of mutations present in the current state / tumor sample
  * @param[in, out] dg the subdiagonal is subtracted from the values in this array
 */
-__global__ void cuda_subdiag(const double *ptheta, const State state, const int i, const int n, const int mutation_num, double *dg) {
+__global__ void DLL_PREFIX cuda_subdiag(const double *ptheta, const State state, const int i, const int n, const int mutation_num, double *dg) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -364,14 +364,14 @@ __global__ void cuda_subdiag(const double *ptheta, const State state, const int 
  * @param[in] block_num number of blocks used for the CUDA kernels
  * @param[in] thread_num  number of threads used for the CUDA kernels
 */
-void cuda_subtract_q_diag(const double *ptheta, const State *state, const int n, const int mutation_num, double *dg, int block_num, int thread_num) {
+void DLL_PREFIX cuda_subtract_q_diag(const double *ptheta, const State *state, const int n, const int mutation_num, double *dg, int block_num, int thread_num) {
 	for (int i = 0; i < n; i++) {
 		cuda_subdiag<<<block_num, thread_num, n * sizeof(double)>>>(ptheta, *state, i, n, mutation_num, dg);
 	}
 }
 
 
-__global__ void fill_array(double *arr, double x, const int size){
+__global__ void DLL_PREFIX fill_array(double *arr, double x, const int size){
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -380,7 +380,7 @@ __global__ void fill_array(double *arr, double x, const int size){
 	}
 }
 
-__global__ void add_arrays(const double *arr1, double *arr_inout, const int size) {
+__global__ void DLL_PREFIX add_arrays(const double *arr1, double *arr_inout, const int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -389,7 +389,7 @@ __global__ void add_arrays(const double *arr1, double *arr_inout, const int size
 	}
 }
 
-__global__ void divide_arrays_elementwise(const double *arr1, const double *arr2, double *out, const int size) {
+__global__ void DLL_PREFIX divide_arrays_elementwise(const double *arr1, const double *arr2, double *out, const int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -398,7 +398,7 @@ __global__ void divide_arrays_elementwise(const double *arr1, const double *arr2
 	}
 }
 
-__global__ void multiply_arrays_elementwise(const double *arr1, double *arr_inout, const int size) {
+__global__ void DLL_PREFIX multiply_arrays_elementwise(const double *arr1, double *arr_inout, const int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -416,7 +416,7 @@ __global__ void multiply_arrays_elementwise(const double *arr1, double *arr_inou
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
  * @param[out] dg this array will contain the diagonal of [I-Q] after calling this function, has size must have size 2^mutation_num
 */
-void compute_jacobi_diagonal(const double* ptheta, const State* state, const int mutation_num, const int n, double* dg) {
+void DLL_PREFIX compute_jacobi_diagonal(const double* ptheta, const State* state, const int mutation_num, const int n, double* dg) {
 	const int nx = 1 << mutation_num;
 
 	int block_num, thread_num;
@@ -441,7 +441,7 @@ void compute_jacobi_diagonal(const double* ptheta, const State* state, const int
  * @param[in, out] tmp this array is used to store temporary data, has to have size 2^mutation_num
  * @param[in] dg this array contains the diagonal of [I-Q]
 */
-void cuda_jacobi(const double *ptheta, const double *b, const State *state, const int mutation_num, const bool transp, const int n, double *xout, double *tmp, double *dg) {
+void DLL_PREFIX cuda_jacobi(const double *ptheta, const double *b, const State *state, const int mutation_num, const bool transp, const int n, double *xout, double *tmp, double *dg) {
 
 	const int nx = 1 << mutation_num;
 
@@ -466,7 +466,7 @@ void cuda_jacobi(const double *ptheta, const double *b, const State *state, cons
  * @param[out] to_shuffle_vec array in which the shuffled vector is stored
  * @param[in] nx size of both vectors
 */
-__global__ void shuffle(const double* __restrict__ old_vec, double* __restrict__ to_shuffle_vec, const int nx) {
+__global__ void DLL_PREFIX shuffle(const double* __restrict__ old_vec, double* __restrict__ to_shuffle_vec, const int nx) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -481,7 +481,7 @@ __global__ void shuffle(const double* __restrict__ old_vec, double* __restrict__
  * inspired by https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf
  * computes the sum of all entries in a given array
 */
-__global__ void sum_over_array(const double *arr, double *result, int size) {
+__global__ void DLL_PREFIX sum_over_array(const double *arr, double *result, int size) {
 
 	extern __shared__ double sdata[];
 
@@ -509,7 +509,7 @@ __global__ void sum_over_array(const double *arr, double *result, int size) {
 }
 
 
-__global__ void print_vec(double *vec, int size) {
+__global__ void DLL_PREFIX print_vec(double *vec, int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -533,7 +533,7 @@ __global__ void print_vec(double *vec, int size) {
  * @param[in] tmp1 memory buffer needed for this function, size 2^mutation_num
  * @param[in] tmp2 memory buffer needed for this function, size 2^mutation_num
 */
-void cuda_restricted_gradient(const double *ptheta, const State *state, const int n, double *grad, double *p0_pD, double *pth, double *q, double *tmp1, double *tmp2) {
+void DLL_PREFIX cuda_restricted_gradient(const double *ptheta, const State *state, const int n, double *grad, double *p0_pD, double *pth, double *q, double *tmp1, double *tmp2) {
 
 	// get the number of mutated genes in the current sample and compute the size of the memory buffers
 	const int mutation_num = get_mutation_num(state);
@@ -629,7 +629,7 @@ void cuda_restricted_gradient(const double *ptheta, const State *state, const in
 	}
 }
 
-__global__ void array_exp(double *arr, int size) {
+__global__ void DLL_PREFIX array_exp(double *arr, int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -638,7 +638,7 @@ __global__ void array_exp(double *arr, int size) {
 	}
 }
 
-__global__ void add_to_score(double *score, double *pth_end){
+__global__ void DLL_PREFIX add_to_score(double *score, double *pth_end){
 	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(cuda_index == 0){

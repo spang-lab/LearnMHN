@@ -2,6 +2,18 @@
 #define CUDA_STATE_SPACE_RESTRICTION_H
 
 
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+
+#include <stdio.h>
+#include <math.h>
+#include <chrono>
+#include <iostream>
+
+
 // on Windows we need to add a prefix in front of the function we want to use in other code
 // on Linux this is not needed, so we define DLL_PREFIX depending on which os this code is compiled on
 #ifdef _WIN32
@@ -33,7 +45,24 @@ int get_mutation_num(const State *state);
  * @param[out] thread_num number of threads that should be used for the CUDA kernels
  * @param[in] mutation_num number of mutations present in the current state
 */
-inline void determine_block_thread_num(int &block_num, int &thread_num, const int mutation_num);
+inline void determine_block_thread_num(int &block_num, int &thread_num, const int mutation_num) {
+
+	// block_num and thread_num have to be powers of two, else cuda_restricted_kronvec will not work
+	// maximum 256 blocks with 1024 threads
+	if (mutation_num >= 17) {
+		block_num = 256;
+		thread_num = 512;
+	}
+	// minimum 32 * STATE_SIZE threads, else for n = 32 * STATE_SIZE (which is the maximum possible n) not all thetas get loaded in kron_vec
+	else if (mutation_num < 12) {
+		block_num = 32;
+		thread_num = 64;
+	}
+	else {
+		block_num = 1 << (mutation_num / 2);
+		thread_num = 1 << (mutation_num / 2 + (mutation_num & 1));
+	}
+}
 
 
 /**
