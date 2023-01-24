@@ -1,5 +1,5 @@
-#ifndef CUDA_STATE_SPACE_RESTRICTION_H
-#define CUDA_STATE_SPACE_RESTRICTION_H
+#ifndef CUDA_STATE_SPACE_RESTRICTION_H_
+#define CUDA_STATE_SPACE_RESTRICTION_H_
 
 
 #include "cuda_runtime.h"
@@ -45,24 +45,7 @@ int get_mutation_num(const State *state);
  * @param[out] thread_num number of threads that should be used for the CUDA kernels
  * @param[in] mutation_num number of mutations present in the current state
 */
-inline void determine_block_thread_num(int &block_num, int &thread_num, const int mutation_num) {
-
-	// block_num and thread_num have to be powers of two, else cuda_restricted_kronvec will not work
-	// maximum 256 blocks with 1024 threads
-	if (mutation_num >= 17) {
-		block_num = 256;
-		thread_num = 512;
-	}
-	// minimum 32 * STATE_SIZE threads, else for n = 32 * STATE_SIZE (which is the maximum possible n) not all thetas get loaded in kron_vec
-	else if (mutation_num < 12) {
-		block_num = 32;
-		thread_num = 64;
-	}
-	else {
-		block_num = 1 << (mutation_num / 2);
-		thread_num = 1 << (mutation_num / 2 + (mutation_num & 1));
-	}
-}
+void determine_block_thread_num(int &block_num, int &thread_num, const int mutation_num);
 
 
 /**
@@ -224,7 +207,7 @@ extern "C"
      *
      * @return CUDA error code converted to integer for better interoperability with Cython
     */
-    int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out);
+    int cuda_gradient_and_score_implementation(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out);
 
     /**
      * This function is used by state_space_restriction.pyx to get the error name and description if an error occurred
@@ -233,7 +216,7 @@ extern "C"
      * @param[out] error_name the name of the error will be stored in this variable
      * @param[out] error_description the description of the error will be stored in this variable
     */
-    void DLL_PREFIX get_error_name_and_description(int error, const char **error_name, const char **error_description);
+    void get_error_name_and_description(int error, const char **error_name, const char **error_description);
 
 
     /**
@@ -242,6 +225,6 @@ extern "C"
      *
      * @return 1, if everything works as it should, else 0
     */
-    int DLL_PREFIX cuda_functional();
+    int cuda_functional();
 }
 #endif

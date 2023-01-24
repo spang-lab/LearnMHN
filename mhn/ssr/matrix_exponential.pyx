@@ -467,7 +467,7 @@ IF NVCC_AVAILABLE:
         #endif
 
         int DLL_PREFIX cuda_functional();
-        int DLL_PREFIX cuda_gradient_and_score_dua(const double *ptheta, int n, const State *mutation_data, const double *ages, int data_size, double eps, double *grad_out, double *score_out);
+        int DLL_PREFIX cuda_gradient_and_score_dua(double *ptheta, int n, State *mutation_data, double *ages, int data_size, double eps, double *grad_out, double *score_out);
         """
         int cuda_gradient_and_score_dua(const double *ptheta, int n, const State *mutation_data, const double *ages, int data_size, double eps, double *grad_out, double *score_out)
         int cuda_functional()
@@ -476,11 +476,13 @@ IF NVCC_AVAILABLE:
     cpdef cuda_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_data, double eps):
 
         cdef int n = theta.shape[0]
-        cdef np.ndarray[np.double_t, ndim=2] grad_out = np.empty((n, n), dtype=np.double)
+        cdef np.ndarray[np.double_t] grad_out = np.empty(n*n, dtype=np.double)
         cdef double score
 
+        # TODO theta muss noch geexpt werden
+
         cuda_gradient_and_score_dua(&theta[0, 0], n, mutation_data.states, mutation_data.state_ages, mutation_data.data_size,
-                                    eps, &grad_out[0, 0], &score)
+                                   eps, &grad_out[0], &score)
         print(cuda_functional())
 
-        return grad_out, score
+        return grad_out.reshape((n, n)), score

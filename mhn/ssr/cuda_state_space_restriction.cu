@@ -81,7 +81,7 @@ int DLL_PREFIX get_mutation_num(const State *state){
  * @param[out] thread_num number of threads that should be used for the CUDA kernels
  * @param[in] mutation_num number of mutations present in the current state
 */
-inline void determine_block_thread_num(int &block_num, int &thread_num, const int mutation_num) {
+void DLL_PREFIX determine_block_thread_num(int &block_num, int &thread_num, const int mutation_num) {
 
 	// block_num and thread_num have to be powers of two, else cuda_restricted_kronvec will not work
 	// maximum 256 blocks with 1024 threads
@@ -714,6 +714,7 @@ extern "C"
 
         // initialize the gradient on the GPU with zero
         cudaMemset(cuda_grad_out, 0, n*n * sizeof(double));
+		cudaMemset(cuda_score, 0, sizeof(double));
 
         // for the functions we need theta in its exponential form
         array_exp<<<32, 64>>>(cuda_ptheta, n*n);

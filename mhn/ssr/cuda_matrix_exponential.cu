@@ -9,11 +9,87 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-#include <cublas_v2.h>
+// #include <cublas_v2.h>
 
 #include <cmath>
 
 #include "cuda_state_space_restriction.cuh"
+
+
+// currently, cublas is not working with Cython on Windows
+// so I wrote my own functions replacing the BLAS ones
+// if cublas should work in the future, one can simply use the cublas calls that are commented out right now
+// as for now, I aliased cublasHandle_t with int so that the code works without cublas
+#ifndef CUBLAS_H_
+#define cublasHandle_t int
+#define cublasCreate(handle) *handle = 1
+#endif
+
+
+__global__ void myDaxpy(int size, double alpha, const double *x, double *y){
+    int stride = blockDim.x * gridDim.x;
+	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
+
+    for(int i = cuda_index; i < size; i += stride){
+        y[i] += alpha * x[i];
+    }
+}
+
+
+__global__ void myDscal(int size, double alpha, double *x){
+    int stride = blockDim.x * gridDim.x;
+	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
+
+    for(int i = cuda_index; i < size; i += stride){
+        x[i] *= alpha;
+    }    
+}
+
+
+/**
+ * inspired by https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf
+ * computes part of the nrm2 for a given array
+*/
+__global__ void DLL_PREFIX _compute_partial_dnrm2(const double *arr, double *result, int size) {
+
+	extern __shared__ double sdata[];
+
+	unsigned int tid = threadIdx.x;
+	unsigned int stride = blockDim.x * gridDim.x;
+	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+	double partial_sum = 0;
+    double current_val;
+
+	for (unsigned int s = i; s < size; s += stride) {
+		partial_sum += arr[s];
+	}
+
+	sdata[tid] = partial_sum;
+	__syncthreads();
+
+	for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
+		if (tid < s) {
+            current_val = sdata[tid + s];
+			sdata[tid] += (current_val * current_val);
+		}
+		__syncthreads();
+	}
+
+	if (tid == 0) result[blockIdx.x] = sdata[0];
+}
+
+
+double myDnrm2(int size, double *x, int block_num, int thread_num){
+    double *buffer;
+    double nrm2;
+    cudaMalloc(&buffer, block_num * sizeof(double));
+    _compute_partial_dnrm2<<<block_num, thread_num, thread_num * sizeof(double)>>>(x, buffer, size);
+    _compute_partial_dnrm2<<<1, block_num, block_num * sizeof(double)>>>(buffer, buffer, block_num);
+    cudaMemcpy(&nrm2, buffer, sizeof(double), cudaMemcpyDeviceToHost);
+    cudaFree(buffer);
+    return sqrt(nrm2);
+}
 
 
 double calc_gamma(cublasHandle_t handle, const double *theta, int n, const State *state, double *dg){
@@ -25,7 +101,8 @@ double calc_gamma(cublasHandle_t handle, const double *theta, int n, const State
 
     cudaMemset(dg, 0, nx * sizeof(double));
     cuda_subtract_q_diag(theta, state, n, mutation_num, dg, block_num, thread_num);
-    cublasDnrm2(handle, nx, dg, 1, &gamma);
+    // cublasDnrm2(handle, nx, dg, 1, &gamma);
+    gamma = myDnrm2(nx, dg, block_num, thread_num);
     return gamma;
 }
 
@@ -63,28 +140,35 @@ void dua(cublasHandle_t handle, const double *theta, int n, double *bq, const St
     while (eps < (1 - mass_defect)){
         mass_defect += ewg;
 
-        cublasDaxpy(handle, nx, &ewg, bq, 1, pt, 1);
+        // cublasDaxpy(handle, nx, &ewg, bq, 1, pt, 1);
+        myDaxpy<<<block_num, thread_num>>>(nx, ewg, bq, pt);
 
-        cublasDaxpy(handle, nx, &ewg, dq, 1, dp, 1);
+        // cublasDaxpy(handle, nx, &ewg, dq, 1, dp, 1);
+        myDaxpy<<<block_num, thread_num>>>(nx, ewg, dq, dp);
 
         gfac = ewg*dgamma*(nn/gamma - t);
-        cublasDaxpy(handle, nx, &gfac, bq, 1, dp, 1);
+        // cublasDaxpy(handle, nx, &gfac, bq, 1, dp, 1);
+        myDaxpy<<<block_num, thread_num>>>(nx, gfac, bq, dp);
 
         nn += 1;
 
         cuda_q_vec(theta, bq, state, tmp, n, mutation_num, true, false);
-        cublasDscal(handle, nx, &dgam_inv, tmp, 1);
+        // cublasDscal(handle, nx, &dgam_inv, tmp, 1);
+        myDscal<<<block_num, thread_num>>>(nx, dgam_inv, tmp);
         cudaMemset(tmp2, 0, nx * sizeof(double));
         cuda_restricted_kronvec<<<block_num, thread_num, n * sizeof(double)>>>(theta, i, bq, *state, true, false, n, mutation_num, count_before_i, tmp2);
         zero_mask<<<block_num, thread_num>>>(tmp2, k, nx);
-        cublasDaxpy(handle, nx, &gam_inv, tmp2, 1, tmp, 1);
+        // cublasDaxpy(handle, nx, &gam_inv, tmp2, 1, tmp, 1);
+        myDaxpy<<<block_num, thread_num>>>(nx, gam_inv, tmp2, tmp);
 
         cuda_q_vec(theta, dq, state, tmp2, n, mutation_num, true, false);
-        cublasDaxpy(handle, nx, &gam_inv, tmp2, 1, dq, 1);
+        // cublasDaxpy(handle, nx, &gam_inv, tmp2, 1, dq, 1);
+        myDaxpy<<<block_num, thread_num>>>(nx, gam_inv, tmp2, dq);
         add_arrays<<<block_num, thread_num>>>(tmp, dq, nx);
 
         cuda_q_vec(theta, bq, state, tmp, n, mutation_num, true, false);
-        cublasDaxpy(handle, nx, &gam_inv, tmp, 1, bq, 1);
+        // cublasDaxpy(handle, nx, &gam_inv, tmp, 1, bq, 1);
+        myDaxpy<<<block_num, thread_num>>>(nx, gam_inv, tmp, bq);
 
         ewg *= gamma*t / nn;
     }
@@ -129,6 +213,7 @@ extern "C"
 
         int nx = 1 << max_mutation_num;
 
+        
         cublasHandle_t handle;
         cublasCreate(&handle);
 
@@ -157,6 +242,12 @@ extern "C"
         cudaMalloc(&cuda_dgamma, sizeof(double));
 
         cudaMemcpy(cuda_theta, ptheta, n*n * sizeof(double), cudaMemcpyHostToDevice);
+
+        // for the functions we need theta in its exponential form
+        array_exp<<<32, 64>>>(cuda_theta, n*n);
+
+        cudaMemset(cuda_score, 0, sizeof(double));
+        cudaMemset(cuda_grad, 0, n*n * sizeof(double));
 
 
         for (int k = 1; k < data_size; k++){
@@ -191,9 +282,12 @@ extern "C"
                 for(int j = 0; j < n; j++){
                     if (state_copy_j & 1){
                         // shuffle deriv_dg
-                        cublasDcopy(handle, current_nx_half, deriv_dg, 2, dq, 1);
-                        cublasDcopy(handle, current_nx_half, deriv_dg+1, 2, dq + current_nx_half, 1);
-                        cublasDcopy(handle, current_nx, dq, 1, deriv_dg, 1);   // this should be optimized by switching pointers
+                        // cublasDcopy(handle, current_nx_half, deriv_dg, 2, dq, 1);
+                        // cublasDcopy(handle, current_nx_half, deriv_dg+1, 2, dq + current_nx_half, 1);
+                        // cublasDcopy(handle, current_nx, dq, 1, deriv_dg, 1);   // this should be optimized by switching pointers
+
+                        shuffle<<<block_num, thread_num>>>(deriv_dg, dq, current_nx);
+                        cudaMemcpy(deriv_dg, dq, current_nx * sizeof(double), cudaMemcpyDeviceToDevice);
 
                         if (i == j){
                             sum_over_array<<<block_num, thread_num, thread_num * sizeof(double)>>>(deriv_dg, dq, current_nx);
@@ -257,7 +351,7 @@ extern "C"
         cudaFree(cuda_theta);
         cudaFree(cuda_dgamma);
 
-        cublasDestroy(handle);
+        // cublasDestroy(handle);
 
         return (int) cudaGetLastError();
     }
