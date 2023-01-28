@@ -306,6 +306,10 @@ cdef calc_gamma(double[:, :] theta, State *state, int i, int k):
     return denom, num / denom
 
 
+def py_calc_gamma(double[:, :] theta, StateAgeStorage states_and_ages, int i, int k):
+    return calc_gamma(theta, states_and_ages.states, i, k)
+
+
 @cython.wraparound(False)
 @cython.boundscheck(False)
 cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, int k, double eps, double[:] pt, double[:] dp) except *:
@@ -351,7 +355,6 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
         # dpt = dpt + exp(-gamma*t)w dq
         daxpy(&nx, &ewg, &dq[0], &one, &dp[0], &one)
         # dpt = dpt + exp(-gamma*t)w dgamma(n/gamma-t)q
-        gfac = ewg*dgamma*(n/gamma-t)
         gfac = ewg*dgamma*(n/gamma-t)
         daxpy(&nx, &gfac, &q[0], &one, &dp[0], &one)
 
@@ -434,20 +437,59 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_dat
     cdef np.ndarray[np.double_t] pt
     cdef np.ndarray[np.double_t] dp
     cdef np.ndarray[np.double_t] b
+    cdef State *current_state
+    cdef int state_copy
 
     for k in range(1, data_size):
-        current_nx = 1 << get_mutation_num(&mutation_data.states[k])
+        current_state = &mutation_data.states[k]
+        current_nx = 1 << get_mutation_num(current_state)
         pt = np.empty(current_nx)
         dp = np.empty(current_nx)
         b = np.empty(current_nx)
         t = mutation_data.state_ages[k] - mutation_data.state_ages[k-1]
         assert t >= 0
-        empirical_distribution(&mutation_data.states[k], &mutation_data.states[k-1], b)
+        empirical_distribution(current_state, &mutation_data.states[k-1], b)
         for i in range(n):
+            state_copy = current_state[0].parts[0]
             for j in range(n):
-                dua(theta, b, &mutation_data.states[k], t, i, j, eps, pt, dp)
-                gradient[i, j] += dp[current_nx-1] / pt[current_nx-1]
+                if state_copy & 1 or i == j:
+                    dua(theta, b, current_state, t, i, j, eps, pt, dp)
+                    gradient[i, j] += dp[current_nx-1] / pt[current_nx-1]
+
+                if (j + 1) & 31:
+                    state_copy >>= 1
+                else:
+                    state_copy = current_state[0].parts[(j + 1) >> 5]
 
         score += log(pt[current_nx-1])
 
     return gradient, score
+
+
+IF NVCC_AVAILABLE:
+
+    cdef extern from *:
+        """
+        #ifdef _WIN32
+        #define DLL_PREFIX __declspec(dllexport)
+        #else
+        #define DLL_PREFIX
+        #endif
+
+        int DLL_PREFIX cuda_functional();
+        int DLL_PREFIX cuda_gradient_and_score_dua(double *ptheta, int n, State *mutation_data, double *ages, int data_size, double eps, double *grad_out, double *score_out);
+        """
+        int cuda_gradient_and_score_dua(const double *ptheta, int n, const State *mutation_data, const double *ages, int data_size, double eps, double *grad_out, double *score_out)
+        int cuda_functional()
+
+
+    cpdef cuda_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_data, double eps):
+
+        cdef int n = theta.shape[0]
+        cdef np.ndarray[np.double_t] grad_out = np.empty(n*n, dtype=np.double)
+        cdef double score
+
+        cuda_gradient_and_score_dua(&theta[0, 0], n, mutation_data.states, mutation_data.state_ages, mutation_data.data_size,
+                                   eps, &grad_out[0], &score)
+
+        return grad_out.reshape((n, n)), score

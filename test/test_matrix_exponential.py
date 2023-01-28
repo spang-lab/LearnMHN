@@ -50,7 +50,7 @@ class TestMatrixExponential(unittest.TestCase):
         theta = ModelConstruction.random_theta(n)
         np_data_matrix = np.zeros((sample_num, n), dtype=np.int32)
         for i in range(sample_num):
-            np_data_matrix[i, i:] = 1
+            np_data_matrix[i, :i] = 1
 
         ages = np.linspace(0, 6, sample_num)
         states_and_ages = state_storage.StateAgeStorage(np_data_matrix, ages)
@@ -76,7 +76,7 @@ class TestMatrixExponential(unittest.TestCase):
         theta = ModelConstruction.random_theta(n)
         np_data_matrix = np.zeros((sample_num, n), dtype=np.int32)
         for i in range(sample_num):
-            np_data_matrix[i, i:] = 1
+            np_data_matrix[i, :i] = 1
         ages = np.linspace(0, 6, sample_num)
 
         states_and_ages = state_storage.StateAgeStorage(np_data_matrix, ages)
@@ -92,8 +92,29 @@ class TestMatrixExponential(unittest.TestCase):
         np.testing.assert_array_equal(np.around(grad1, decimals=5), np.around(grad2, decimals=5))
 
 
+class TestCudaMatrixExponential(unittest.TestCase):
 
+    def setUp(self) -> None:
+        np.random.seed(0)
 
+    def test_compare_with_cython(self):
+        n = 6
+        sample_num = 5
+        assert sample_num < n, "This test needs the sample number to be smaller than n to work because of how the " \
+                               "data is constructed "
+        theta = ModelConstruction.random_theta(n)
+        np_data_matrix = np.zeros((sample_num, n), dtype=np.int32)
+        for i in range(sample_num):
+            np_data_matrix[i, :i+1] = 1
+
+        ages = np.linspace(0, 6, sample_num)
+        states_and_ages = state_storage.StateAgeStorage(np_data_matrix, ages)
+
+        grad1, score1 = matrix_exponential.cython_gradient_and_score(theta, states_and_ages, 1e-6)
+        grad2, score2 = matrix_exponential.cuda_gradient_and_score(theta, states_and_ages, 1e-6)
+
+        self.assertAlmostEqual(np.max(np.abs(grad2 - grad1)), 0, 5)
+        self.assertAlmostEqual(score1, score2, 5)
 
 if __name__ == '__main__':
     unittest.main()
