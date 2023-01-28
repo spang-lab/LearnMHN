@@ -13,7 +13,8 @@
 
 #include <cmath>
 
-#include "cuda_state_space_restriction.cuh"
+// not the most elegant way, but gets the job done
+#include "cuda_state_space_restriction.cu"
 
 
 // currently, cublas is not working with Cython on Windows
@@ -62,7 +63,8 @@ __global__ void DLL_PREFIX _compute_partial_dnrm2(const double *arr, double *res
     double current_val;
 
 	for (unsigned int s = i; s < size; s += stride) {
-		partial_sum += arr[s];
+        current_val = arr[s];
+		partial_sum += (current_val * current_val);
 	}
 
 	sdata[tid] = partial_sum;
@@ -70,8 +72,7 @@ __global__ void DLL_PREFIX _compute_partial_dnrm2(const double *arr, double *res
 
 	for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
 		if (tid < s) {
-            current_val = sdata[tid + s];
-			sdata[tid] += (current_val * current_val);
+			sdata[tid] += sdata[tid + s];
 		}
 		__syncthreads();
 	}
@@ -85,7 +86,7 @@ double myDnrm2(int size, double *x, int block_num, int thread_num){
     double nrm2;
     cudaMalloc(&buffer, block_num * sizeof(double));
     _compute_partial_dnrm2<<<block_num, thread_num, thread_num * sizeof(double)>>>(x, buffer, size);
-    _compute_partial_dnrm2<<<1, block_num, block_num * sizeof(double)>>>(buffer, buffer, block_num);
+    sum_over_array<<<1, block_num, block_num * sizeof(double)>>>(buffer, buffer, block_num);
     cudaMemcpy(&nrm2, buffer, sizeof(double), cudaMemcpyDeviceToHost);
     cudaFree(buffer);
     return sqrt(nrm2);
@@ -113,7 +114,7 @@ __global__ void zero_mask(double *arr, int k, int size){
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
 	for (int j = cuda_index; j < size; j += stride) {
-		arr[k] = ((j >> k) & 1) * arr[k];
+		arr[j] = ((j >> k) & 1) * arr[j];
 	}
 }
 
@@ -157,7 +158,9 @@ void dua(cublasHandle_t handle, const double *theta, int n, double *bq, const St
         myDscal<<<block_num, thread_num>>>(nx, dgam_inv, tmp);
         cudaMemset(tmp2, 0, nx * sizeof(double));
         cuda_restricted_kronvec<<<block_num, thread_num, n * sizeof(double)>>>(theta, i, bq, *state, true, false, n, mutation_num, count_before_i, tmp2);
-        zero_mask<<<block_num, thread_num>>>(tmp2, k, nx);
+        if (i != k){
+            zero_mask<<<block_num, thread_num>>>(tmp2, k, nx);
+        }  
         // cublasDaxpy(handle, nx, &gam_inv, tmp2, 1, tmp, 1);
         myDaxpy<<<block_num, thread_num>>>(nx, gam_inv, tmp2, tmp);
 
@@ -258,10 +261,7 @@ extern "C"
 
             determine_block_thread_num(block_num, thread_num, current_mutation_num);
 
-            cudaMemset(bq, 0, current_nx * sizeof(double));
-
             int xk_index = empirical_distribution_index(current_state, &mutation_data[k-1]);
-            fill_array<<<1, 1>>>(bq + xk_index, 1.0, sizeof(double));
 
             double t = ages[k] - ages[k-1];
 
@@ -306,6 +306,9 @@ extern "C"
                     }
 
                     if ((state_copy_j & 1) || i == j){
+                        cudaMemset(bq, 0, current_nx * sizeof(double));
+                        fill_array<<<1, 1>>>(bq + xk_index, 1.0, 1);
+                        dgamma /= gamma;
                         dua(handle, cuda_theta, n, bq, current_state, t, i, j, eps, gamma, dgamma, pt, dp, dq, tmp, tmp2, count_before_i);
                         // add result to gradient
                         divide_arrays_elementwise<<<1, 1>>>(dp + current_nx - 1, pt + current_nx - 1, dp + current_nx - 1, 1);

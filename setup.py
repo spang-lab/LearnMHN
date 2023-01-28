@@ -60,8 +60,7 @@ if nvcc_available:
     libraries.append(os.path.abspath("./mhn/ssr/CudaMatrixExponential"))
     libraries.append(os.path.abspath("./mhn/original/CudaFullStateSpace"))
     compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction")
-    compile_cuda_code("./mhn/ssr/", "cuda_matrix_exponential.cu", "CudaMatrixExponential",
-                      "-lCudaStateSpaceRestriction", "-L mhn/ssr/")
+    compile_cuda_code("./mhn/ssr/", "cuda_matrix_exponential.cu", "CudaMatrixExponential")
     compile_cuda_code("./mhn/original/", "cuda_full_state_space.cu", "CudaFullStateSpace")
 
 

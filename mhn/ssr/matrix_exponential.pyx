@@ -437,19 +437,29 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_dat
     cdef np.ndarray[np.double_t] pt
     cdef np.ndarray[np.double_t] dp
     cdef np.ndarray[np.double_t] b
+    cdef State *current_state
+    cdef int state_copy
 
     for k in range(1, data_size):
-        current_nx = 1 << get_mutation_num(&mutation_data.states[k])
+        current_state = &mutation_data.states[k]
+        current_nx = 1 << get_mutation_num(current_state)
         pt = np.empty(current_nx)
         dp = np.empty(current_nx)
         b = np.empty(current_nx)
         t = mutation_data.state_ages[k] - mutation_data.state_ages[k-1]
         assert t >= 0
-        empirical_distribution(&mutation_data.states[k], &mutation_data.states[k-1], b)
+        empirical_distribution(current_state, &mutation_data.states[k-1], b)
         for i in range(n):
+            state_copy = current_state[0].parts[0]
             for j in range(n):
-                dua(theta, b, &mutation_data.states[k], t, i, j, eps, pt, dp)
-                gradient[i, j] += dp[current_nx-1] / pt[current_nx-1]
+                if state_copy & 1 or i == j:
+                    dua(theta, b, current_state, t, i, j, eps, pt, dp)
+                    gradient[i, j] += dp[current_nx-1] / pt[current_nx-1]
+
+                if (j + 1) & 31:
+                    state_copy >>= 1
+                else:
+                    state_copy = current_state[0].parts[(j + 1) >> 5]
 
         score += log(pt[current_nx-1])
 
@@ -479,10 +489,7 @@ IF NVCC_AVAILABLE:
         cdef np.ndarray[np.double_t] grad_out = np.empty(n*n, dtype=np.double)
         cdef double score
 
-        # TODO theta muss noch geexpt werden
-
         cuda_gradient_and_score_dua(&theta[0, 0], n, mutation_data.states, mutation_data.state_ages, mutation_data.data_size,
                                    eps, &grad_out[0], &score)
-        print(cuda_functional())
 
         return grad_out.reshape((n, n)), score
