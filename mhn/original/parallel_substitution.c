@@ -26,23 +26,30 @@ int compute_binom_coef(int n, int k){
 }
 
 
-int compute_index(int i, int n, int k){
+int compute_index(int i, int n, int k, int binom_coef){
     int index = 0;
     int bit_setter = 1;
     int separator = 0;
-    int binom_coef;
+    // int binom_coef;
     int current_n = n;
 
+    // binom_coef = compute_binom_coef(current_n, k);
+
     for(int j = 0; j < n; j++){
-        //binom_coef = ((current_n-k) * binom_coef) / current_n;
-        binom_coef = compute_binom_coef(current_n-1, k);
+        binom_coef = ((current_n-k) * binom_coef) / current_n;
+        //binom_coef = compute_binom_coef(current_n-1, k);
         separator += binom_coef;
 
         if(i < separator){
             separator -= binom_coef;
         } else {
             index |= bit_setter;
-            // binom_coef = (k * binom_coef) / (current_n - k);
+            if (current_n == k){
+                binom_coef = 1;
+            } else {
+                binom_coef = (k * binom_coef) / (current_n - k);
+            }
+            
             k -= 1;
             if(k == 0)
                 break;
@@ -81,7 +88,7 @@ void _parallel_compute_inverse(const double * restrict theta, const int n, const
             binom_coef = compute_binom_coef(n, j);
             #pragma omp for
             for(i = 0; i < binom_coef; i++){
-                index = compute_index(i, n, j);
+                index = compute_index(i, n, j, binom_coef);
                 bit_setter = 1;
                 xout_element = xout[index];
                 for(k = 0; k < n; k++){
