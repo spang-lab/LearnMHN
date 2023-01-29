@@ -580,3 +580,149 @@ extern "C" int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, i
 
 	return (int) cudaGetLastError();
 }
+
+
+
+
+
+int compute_binom_coef(int n, int k){
+    if(k>n || k < 0)
+        return 0;
+    int res = 1;
+    if (k > n - k)
+        k = n-k;
+
+    for(int i = 0; i < k; ++i){
+        res *= (n-i);
+        res /= (i+1);
+    }
+    return res;
+}
+
+
+__device__ int compute_index(int i, int n, int k, int binom_coef){
+    int index = 0;
+    int bit_setter = 1;
+    int separator = 0;
+    // int binom_coef;
+    int current_n = n;
+
+    // binom_coef = compute_binom_coef(current_n, k);
+
+    for(int j = 0; j < n; j++){
+        binom_coef = ((current_n-k) * binom_coef) / current_n;
+        //binom_coef = compute_binom_coef(current_n-1, k);
+        separator += binom_coef;
+
+        if(i < separator){
+            separator -= binom_coef;
+        } else {
+            index |= bit_setter;
+            if (current_n == k){
+                binom_coef = 1;
+            } else {
+                binom_coef = (k * binom_coef) / (current_n - k);
+            }
+            
+            k -= 1;
+            if(k == 0)
+                break;
+        }
+        current_n -= 1;
+        bit_setter <<= 1;
+    }
+
+    return index;
+}
+
+
+__global__ void scale_array(double *arr, double alpha, int size){
+	const int stride = blockDim.x * gridDim.x;
+	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
+
+	for(int i = cuda_index; i < size; i++){
+		arr[i] *= alpha;
+	}
+}
+
+#define PRINTLN(STUFF) printf(STUFF "\n")
+
+__global__ void compute_inverse_level(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, int j, int binom_coef){
+	const int stride = blockDim.x * gridDim.x;
+	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
+
+	extern __shared__ double local_theta[];
+
+	for(int i = threadIdx.x; i < n*n; i += blockDim.x){
+		local_theta[i] = theta[i];
+	}
+
+	for(int i = cuda_index; i < binom_coef; i += stride){
+		// PRINTLN("Enter");
+		int index = compute_index(i, n, j, binom_coef);
+		int bit_setter = 1;
+		double xout_element = xout[index];
+		for(int k = 0; k < n; k++){
+			// PRINTLN("k");
+			int modified_index = (index & (~bit_setter));
+			if (modified_index != index){
+				double theta_product = 1.;
+				int ind_copy = index;
+				for(int r = 0; r < n; r++){
+					theta_product *= 1 + (ind_copy & 1) * (local_theta[k*n + r] - 1);
+					ind_copy >>= 1;
+				}
+				xout_element += theta_product * xout[modified_index];
+			}
+			bit_setter <<= 1;
+		}
+		xout[index] = xout_element / dg[index];
+	}
+}
+
+
+void _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout){
+
+	for(int j = 0; j <= n; j++){
+		// printf("j %d\n", j);
+		// fflush(stdout);
+		int binom_coef = compute_binom_coef(n, j);
+		int block_num = 1 + (binom_coef / 128);
+		compute_inverse_level<<<block_num, 128, n*n * sizeof(double)>>>(theta, n, dg, xout, j, binom_coef);
+		cudaDeviceSynchronize();
+	}
+}
+
+
+extern "C" void DLL_PREFIX gpu_compute_inverse(double *theta, int n, double *b, double *xout){
+
+
+	int nx = 1 << n;
+	int block_num, thread_num;
+
+	determine_block_thread_num(block_num, thread_num, n);
+
+	double *d_theta;
+	double *d_b, *d_xout;
+	double *d_dg;
+
+	cudaMalloc(&d_theta, n*n * sizeof(double));
+	cudaMalloc(&d_xout, nx * sizeof(double));
+	cudaMalloc(&d_dg, nx * sizeof(double));
+
+	cudaMemcpy(d_theta, theta, n*n * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_xout, b, nx * sizeof(double), cudaMemcpyHostToDevice);
+
+	cudaMemset(d_dg, 0, nx * sizeof(double));
+	cuda_subtract_q_diag(d_theta, n, d_dg, block_num, thread_num);
+	scale_array<<<block_num, thread_num>>>(d_dg, -1, nx);
+
+	_compute_inverse(d_theta, n, d_dg, d_xout);
+
+
+	cudaMemcpy(xout, d_xout, nx * sizeof(double), cudaMemcpyDeviceToHost);
+
+	cudaFree(d_theta);
+	cudaFree(d_xout);
+	cudaFree(d_dg);
+}
