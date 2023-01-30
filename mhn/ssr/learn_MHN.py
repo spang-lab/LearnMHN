@@ -45,9 +45,7 @@ def reg_state_space_restriction_score(theta: np.ndarray, states: StateStorage, l
     theta = theta.reshape((n, n))
 
     # grad, score = state_space_restriction.gradient_and_score(theta, states)
-    print("Start computing gradient")
     grad, score = state_space_restriction.gradient_and_score(theta, states)
-    print("Finish")
     score_grad_container[0] = grad
 
     return -(score - lam * L1(theta))
@@ -85,7 +83,7 @@ def learn_MHN(states: StateStorage, init: np.ndarray = None, lam: float = 0, max
 
     :param states: a StateStorage object containing all mutation states observed in the data
     :param init: starting point for the training (initial theta)
-    :param lam: tuning parameter for regularization
+    :param lam: tuning parameter lambda for regularization
     :param maxit: maximum number of training iterations
     :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
     :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)

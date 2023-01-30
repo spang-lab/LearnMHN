@@ -13,7 +13,7 @@ from numpy import genfromtxt
 
 class StateSpaceOptimizer:
     """
-    This optimizer uses state space restriction to optimize a MHN
+    This optimizer uses state space restriction to optimize an MHN
     """
     def __init__(self):
         self.__data = None
@@ -124,12 +124,12 @@ class StateSpaceOptimizer:
             with open(filename, 'wb') as f:
                 np.save(f, theta)
 
-    def train(self, lam: float = 0, maxit: int = 5000, trace: bool = False,
+    def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
               reltol: float = 1e-7, round_result: bool = True) -> np.ndarray:
         """
         Use this function to learn a new MHN from the data given to this optimizer.
 
-        :param lam: tuning parameter for regularization
+        :param lam: tuning parameter lambda for regularization (default: 1/(number of samples in the dataset))
         :param maxit: maximum number of training iterations
         :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
         :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
@@ -138,6 +138,9 @@ class StateSpaceOptimizer:
         """
         if self.__data is None:
             raise ValueError("You have to load data before training!")
+
+        if lam is None:
+            lam = 1 / self.__data.get_data_shape()[0]
 
         self.__result = None
         self.__backup_current_step = 0

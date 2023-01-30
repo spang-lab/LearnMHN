@@ -71,7 +71,7 @@ def learn_MHN(pD: np.ndarray, init: np.ndarray = None, lam: float = 0, maxit: in
 
     :param pD: probability distribution used to train the new model
     :param init: starting point for the training (initial theta)
-    :param lam: tuning parameter for regularization
+    :param lam: tuning parameter lambda for regularization
     :param maxit: maximum number of training iterations
     :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
     :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
