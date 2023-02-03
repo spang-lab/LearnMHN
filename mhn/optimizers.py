@@ -10,14 +10,12 @@ import abc
 import numpy as np
 
 from mhn.ssr import regularized_optimization as reg_optim
-from .ssr.state_containers import StateContainer
+from .ssr.state_containers import StateContainer, StateAgeContainer
 from .ssr.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
-from .ssr.state_space_restriction import gradient_and_score, cython_gradient_and_score
+from mhn.ssr import state_space_restriction as marginalized_funcs
 
-if cuda_available() == CUDA_AVAILABLE:
-    from .ssr.state_space_restriction import cuda_gradient_and_score
-else:
-    cuda_gradient_and_score = None
+from mhn.ssr import matrix_exponential as mat_exp
+
 
 
 class _Optimizer(abc.ABC):
@@ -132,11 +130,12 @@ class _Optimizer(abc.ABC):
         return self.__result
 
     @property
-    def bin_datamatrix(self) -> np.ndarray:
+    @abc.abstractmethod
+    def training_data(self):
         """
-        The mutation matrix used as training data to learn an MHN
+        This method returns all the data given to this optimizer to train a new MHN
         """
-        return self._bin_datamatrix
+        pass
 
     @staticmethod
     def _preprocess_binary_matrix(data_matrix: np.ndarray) -> np.ndarray:
@@ -169,8 +168,13 @@ class _Optimizer(abc.ABC):
         Device.AUTO: (default) automatically select the device that best fits the data
         Device.CPU:  use the CPU implementations to compute the scores and gradients
         Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
+
+        The Device enum is part of this optimizer class.
         """
-        pass
+        if not isinstance(device, _Optimizer.Device):
+            raise ValueError(f"The given device is not an instance of {_Optimizer.Device}")
+
+        return self
 
     class Device(Enum):
         """
@@ -181,11 +185,12 @@ class _Optimizer(abc.ABC):
 
 class StateSpaceOptimizer(_Optimizer):
     """
-    This optimizer uses state space restriction to optimize an MHN
+    This optimizer uses state-space restriction to optimize an MHN on data with no age information for the individual
+    samples.
     """
     def __init__(self):
         super().__init__()
-        self._gradient_and_score_func = gradient_and_score
+        self._gradient_and_score_func = marginalized_funcs.gradient_and_score
 
     def load_data_matrix(self, data_matrix: np.ndarray):
         """
@@ -217,6 +222,73 @@ class StateSpaceOptimizer(_Optimizer):
         self.load_data_matrix(data_matrix)
         return self
 
+    def set_device(self, device: "StateSpaceOptimizer.Device"):
+        """
+        Set the device that should be used for training. You have three options:
+
+        Device.AUTO: (default) automatically select the device that best fits the data
+        Device.CPU:  use the CPU implementations to compute the scores and gradients
+        Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
+
+        The Device enum is part of this optimizer class.
+        """
+        super().set_device(device)
+        if device == _Optimizer.Device.GPU:
+            if cuda_available() != CUDA_AVAILABLE:
+                raise CUDAError(cuda_available())
+
+            self._gradient_and_score_func = marginalized_funcs.cuda_gradient_and_score
+        else:
+            self._gradient_and_score_func = {
+                _Optimizer.Device.AUTO: marginalized_funcs.gradient_and_score,
+                _Optimizer.Device.CPU: marginalized_funcs.cython_gradient_and_score
+            }[device]
+        return self
+
+    @property
+    def training_data(self) -> np.ndarray:
+        """
+        This method returns all the data given to this optimizer to train a new MHN
+        """
+        return self._bin_datamatrix
+
+
+class DUAOptimizer(_Optimizer):
+    """
+    This optimizer can make use of age information for each state in the data and can learn an MHN from that using
+    methods described in Rupp et al.(2021).
+    """
+
+    def __init__(self):
+        super().__init__()
+        # the matrix exponential functions expect an additional parameter eps for the accuracy of the result
+        # therefore, we have two separate "gradient_and_score" members, one that takes eps as parameter, and one that
+        # does not and which we use in the train() method
+        # the eps can be specified as parameter in the train() method
+        self.__gradient_and_score_func_with_eps = mat_exp.cython_gradient_and_score
+        self._gradient_and_score_func = lambda theta, data: self.__gradient_and_score_func_with_eps(theta, data, 1e-2)
+        self._state_ages = None
+
+    def load_data(self, data_matrix: np.ndarray, state_ages: np.ndarray):
+        """
+        Load training data consisting of a binary data matrix containing the observed states and an array containing
+        the ages of each state in the data matrix
+
+        :param data_matrix: two-dimensional numpy array which should have dtype=np.int32
+        :param state_ages: one-dimensional numpy array which should have dtype=np.double
+        """
+        data_matrix = self._preprocess_binary_matrix(data_matrix)
+        if data_matrix.shape[0] != state_ages.shape[0]:
+            raise ValueError("The number of samples in the data matrix must align with the number of ages given")
+
+        if not np.all(state_ages[:-1] <= state_ages[1:]):
+            warnings.warn("The data is not sorted by age yet. This should be no problem, but if you expected your data"
+                          "to be sorted by age, something went wrong.")
+        self._data = StateAgeContainer(data_matrix, state_ages)
+        self._bin_datamatrix = data_matrix
+        self._state_ages = state_ages
+        return self
+
     def set_device(self, device: _Optimizer.Device):
         """
         Set the device that should be used for training. You have three options:
@@ -224,14 +296,39 @@ class StateSpaceOptimizer(_Optimizer):
         Device.AUTO: (default) automatically select the device that best fits the data
         Device.CPU:  use the CPU implementations to compute the scores and gradients
         Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
-        """
-        if not isinstance(device, _Optimizer.Device):
-            raise ValueError(f"The given device is not an instance of {_Optimizer.Device}")
-        if device == _Optimizer.Device.GPU and cuda_gradient_and_score is None:
-            raise CUDAError(cuda_available())
-        self._gradient_and_score_func = {
-            _Optimizer.Device.AUTO: gradient_and_score,
-            _Optimizer.Device.CPU: cython_gradient_and_score,
-            _Optimizer.Device.GPU: cuda_gradient_and_score
-        }[device]
 
+        The Device enum is part of this optimizer class.
+        """
+        super().set_device(device)
+        if device == _Optimizer.Device.GPU:
+            if cuda_available() != CUDA_AVAILABLE:
+                raise CUDAError(cuda_available())
+            warnings.warn("You should probably use the CPU implementation, as the GPU implementation of the "
+                          "matrix exponential is currently much slower than the CPU one.")
+            self.__gradient_and_score_func_with_eps = mat_exp.cuda_gradient_and_score
+        else:
+            self.__gradient_and_score_func_with_eps = mat_exp.cython_gradient_and_score
+        return self
+
+    def train(self, lam: float = 0, eps: float = 1e-2, maxit: int = 5000, trace: bool = False,
+              reltol: float = 1e-7, round_result: bool = True) -> np.ndarray:
+        """
+        Use this function to learn a new MHN from the data given to this optimizer.
+
+        :param lam: tuning parameter for the L1 regularization
+        :param eps: accuracy of the matrix exponential
+        :param maxit: maximum number of training iterations
+        :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
+        :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
+        :param round_result: if True, the result is rounded to two decimal places
+        :return: trained model
+        """
+        self._gradient_and_score_func = lambda theta, data: self.__gradient_and_score_func_with_eps(theta, data, eps)
+        super().train(lam, maxit, trace, reltol, round_result)
+
+    @property
+    def training_data(self) -> (np.ndarray, np.ndarray):
+        """
+        This method returns all the data given to this optimizer to train a new MHN
+        """
+        return self._bin_datamatrix, self._state_ages
