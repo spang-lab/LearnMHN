@@ -17,7 +17,6 @@ from mhn.ssr import state_space_restriction as marginalized_funcs
 from mhn.ssr import matrix_exponential as mat_exp
 
 
-
 class _Optimizer(abc.ABC):
     """
     This abstract Optimizer class is the base class for the other Optimizer classes and cannot be instantiated alone
@@ -133,7 +132,7 @@ class _Optimizer(abc.ABC):
     @abc.abstractmethod
     def training_data(self):
         """
-        This method returns all the data given to this optimizer to train a new MHN
+        This property returns all the data given to this optimizer to train a new MHN
         """
         pass
 
@@ -248,7 +247,7 @@ class StateSpaceOptimizer(_Optimizer):
     @property
     def training_data(self) -> np.ndarray:
         """
-        This method returns all the data given to this optimizer to train a new MHN
+        This property returns all the data given to this optimizer to train a new MHN
         """
         return self._bin_datamatrix
 
@@ -329,6 +328,6 @@ class DUAOptimizer(_Optimizer):
     @property
     def training_data(self) -> (np.ndarray, np.ndarray):
         """
-        This method returns all the data given to this optimizer to train a new MHN
+        This property returns all the data given to this optimizer to train a new MHN
         """
         return self._bin_datamatrix, self._state_ages
