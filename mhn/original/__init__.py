@@ -21,6 +21,7 @@ PerformanceCriticalCode:
     contains functions that dominate the runtime of score and gradient computations and must therefore be implemented
     efficiently
 """
+# author(s): Stefan Vocht
 
 
 from . import PerformanceCriticalCode

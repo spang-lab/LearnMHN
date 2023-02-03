@@ -1,6 +1,9 @@
-# by Stefan Vocht
-#
-# this script implements the UtilityFunctions.R in python
+"""
+This submodule implements the UtilityFunctions.R from the original R implementation in Python
+
+It contains functions useful for preprocessing data to be used as training data.
+"""
+# author(s): Stefan Vocht
 
 import numpy as np
 
@@ -62,7 +65,3 @@ def KL_div(p: np.ndarray, q: np.ndarray) -> float:
     :return: KL-divergence of p and q
     """
     return p.dot(np.log(p)) - p.dot(np.log(q))
-
-
-if __name__ == '__main__':
-    print(KL_div(np.array([.1,.3]), np.array([.4,.1])))
