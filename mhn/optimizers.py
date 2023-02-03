@@ -145,7 +145,10 @@ class StateSpaceOptimizer:
                 "init": self.__init,
                 "maxit": maxit,
                 "reltol": reltol,
-                "score": result.fun
+                "score": result.fun,
+                "message": result.message,
+                "status": result.status,
+                "nit": result.nit
             })
 
         return self.__result

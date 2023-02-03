@@ -164,48 +164,48 @@ class MHN:
 
         return (A, B)
 
-    def mcmc_sampling(self, events: np.array, n_samples: int = 50, burn_in: float = 0.2):
+    # def mcmc_sampling(self, events: np.array, n_samples: int = 50, burn_in: float = 0.2):
 
-        restr_diag = self.get_restr_diag(events=events)
-        mutation_num = events.sum()
+    #     restr_diag = self.get_restr_diag(events=events)
+    #     mutation_num = events.sum()
 
-        def proposal():
-            S = np.nonzero(events)[0].tolist()
-            S_pos = list(range(len(S)))
-            sigma = []
-            Q_val = 1
-            bin_state = 0
-            for _ in range(mutation_num):
-                probs = np.exp(self.log_theta[np.ix_(S, S)].sum(
-                    axis=0) - self.log_theta[S, S]) / (1 - restr_diag[bin_state + (1 << np.array(S_pos))])
-                i = np.random.choice(
-                    np.arange(len(S)),
-                    p=probs/probs.sum())
-                sigma.append(S.pop(i))
+    #     def proposal():
+    #         S = np.nonzero(events)[0].tolist()
+    #         S_pos = list(range(len(S)))
+    #         sigma = []
+    #         Q_val = 1
+    #         bin_state = 0
+    #         for _ in range(mutation_num):
+    #             probs = np.exp(self.log_theta[np.ix_(S, S)].sum(
+    #                 axis=0) - self.log_theta[S, S]) / (1 - restr_diag[bin_state + (1 << np.array(S_pos))])
+    #             i = np.random.choice(
+    #                 np.arange(len(S)),
+    #                 p=probs/probs.sum())
+    #             sigma.append(S.pop(i))
 
-                Q_val *= (probs[i] / probs.sum())
-                bin_state += (1 << S_pos.pop(i))
+    #             Q_val *= (probs[i] / probs.sum())
+    #             bin_state += (1 << S_pos.pop(i))
 
-            return sigma, Q_val / self.order_prob(sigma=sigma)
+    #         return sigma, Q_val / self.order_prob(sigma=sigma)
 
-        samples = list()
+    #     samples = list()
 
-        n = 0
-        last_sigma, last_p = proposal()
-        samples.append(last_sigma)
+    #     n = 0
+    #     last_sigma, last_p = proposal()
+    #     samples.append(last_sigma)
 
-        while n < int((1 + burn_in) * n_samples):
-            sigma, p = proposal()
+    #     while n < int((1 + burn_in) * n_samples):
+    #         sigma, p = proposal()
 
-            if np.random.random() <= min(1, p/last_p):
-                samples.append(sigma)
-                last_sigma = sigma
-                last_p = p
-            else:
-                samples.append(last_sigma)
-            n += 1
+    #         if np.random.random() <= min(1, p/last_p):
+    #             samples.append(sigma)
+    #             last_sigma = sigma
+    #             last_p = p
+    #         else:
+    #             samples.append(last_sigma)
+    #         n += 1
 
-        return samples[-n_samples:]
+    #     return samples[-n_samples:]
 
 
 if __name__ == "__main__":
