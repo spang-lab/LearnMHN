@@ -1,12 +1,13 @@
-# by Stefan Vocht
-#
-# this script contains classes that can be used to optimize a MHN for given data
-#
+"""
+This submodule contains Optimizer classes to learn an MHN from mutation data.
+"""
+# author(s): Stefan Vocht
+
 import warnings
 from enum import Enum
-from abc import ABC, abstractmethod
+import abc
 
-from .ssr.learn_MHN import learn_MHN, build_regularized_score_func, build_regularized_gradient_func
+from .ssr.regularized_optimization import learn_MHN, build_regularized_score_func, build_regularized_gradient_func
 from .ssr.state_storage import StateStorage
 from .ssr.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
 from .ssr.state_space_restriction import gradient_and_score, cython_gradient_and_score
@@ -20,7 +21,7 @@ import numpy as np
 from numpy import genfromtxt
 
 
-class _Optimizer(ABC):
+class _Optimizer(abc.ABC):
     """
     This abstract Optimizer class is the base class for the other Optimizer classes and cannot be instantiated alone
     """
@@ -125,7 +126,7 @@ class _Optimizer(ABC):
     @property
     def result(self) -> np.ndarray:
         """
-        The resulting Theta matrix after training, same as the return value of the train() method.
+        The resulting theta matrix after training, same as the return value of the train() method.
         This property mainly exists as a kind of backup to ensure that the result of the training is not lost, if the
         user forgets to save the returned value of the train() method in a variable.
         """
@@ -161,7 +162,7 @@ class _Optimizer(ABC):
 
         return data_matrix
 
-    @abstractmethod
+    @abc.abstractmethod
     def set_device(self, device: "_Optimizer.Device"):
         """
         Set the device that should be used for training. You have three options:
