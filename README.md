@@ -35,7 +35,7 @@ from mhn.original import FisherFunctions
 Lastly, you can train a MHN using state-space restriction. The corresponding functions
 can be imported with
 ```python
-from mhn.ssr import state_space_restriction, state_storage
+from mhn.ssr import state_space_restriction, state_containers
 ```
 
 ## Using the CUDA implementation of State-Space Restriction

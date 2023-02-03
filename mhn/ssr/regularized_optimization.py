@@ -8,7 +8,7 @@ from scipy.optimize import minimize
 
 from typing import Callable
 
-from .state_storage import StateStorage, create_indep_model
+from .state_containers import StateContainer, create_indep_model
 from . import state_space_restriction
 
 
@@ -30,7 +30,7 @@ def L1_(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     return theta_ / np.sqrt(theta_**2 + eps)
 
 
-def reg_state_space_restriction_score(theta: np.ndarray, states: StateStorage, lam: float,
+def reg_state_space_restriction_score(theta: np.ndarray, states: StateContainer, lam: float,
                                       n: int, score_grad_container: list) -> float:
     """
     Computes the score using state space restriction with L1 regularization
@@ -53,7 +53,7 @@ def reg_state_space_restriction_score(theta: np.ndarray, states: StateStorage, l
     return -(score - lam * L1(theta))
 
 
-def reg_state_space_restriction_gradient(theta: np.ndarray, states: StateStorage, lam: float,
+def reg_state_space_restriction_gradient(theta: np.ndarray, states: StateContainer, lam: float,
                                          n: int, score_grad_container: list) -> np.ndarray:
     """
     Computes the gradient using state space restriction with L1 regularization
@@ -81,7 +81,7 @@ def build_regularized_score_func(gradient_and_score_function: Callable):
     This function gets a function which can compute a gradient and a score at the same time and returns a function
     which computes the score and adds a L1 regularization
     """
-    def reg_score_func(theta: np.ndarray, states: StateStorage, lam: float,
+    def reg_score_func(theta: np.ndarray, states: StateContainer, lam: float,
                                           n: int, score_grad_container: list) -> float:
         """
         Computes the score using state space restriction with L1 regularization
@@ -106,7 +106,7 @@ def build_regularized_gradient_func(gradient_and_score_function: Callable):
     This function gets a function which can compute a gradient and a score at the same time and returns a function
     which computes the gradient and adds the gradient of the L1 regularization
     """
-    def reg_gradient_func(theta: np.ndarray, states: StateStorage, lam: float,
+    def reg_gradient_func(theta: np.ndarray, states: StateContainer, lam: float,
                                              n: int, score_grad_container: list) -> np.ndarray:
         """
         Computes the gradient state space restriction with L1 regularization
@@ -127,14 +127,14 @@ def build_regularized_gradient_func(gradient_and_score_function: Callable):
     return reg_gradient_func
 
 
-def learn_MHN(states: StateStorage, init: np.ndarray = None, lam: float = 0, maxit: int = 5000,
+def learn_MHN(states: StateContainer, init: np.ndarray = None, lam: float = 0, maxit: int = 5000,
               trace: bool = False, reltol: float = 1e-07, round_result: bool = True, callback: Callable = None,
               score_func: Callable = reg_state_space_restriction_score,
               jacobi: Callable = reg_state_space_restriction_gradient) -> np.ndarray:
     """
     This function is used to train a MHN, it is very similar to the learn_MHN function from the original MHN
 
-    :param states: a StateStorage object containing all mutation states observed in the data
+    :param states: a StateContainer object containing all mutation states observed in the data
     :param init: starting point for the training (initial theta)
     :param lam: tuning parameter for regularization
     :param maxit: maximum number of training iterations

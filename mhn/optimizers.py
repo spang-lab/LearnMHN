@@ -7,8 +7,10 @@ import warnings
 from enum import Enum
 import abc
 
-from .ssr.regularized_optimization import learn_MHN, build_regularized_score_func, build_regularized_gradient_func
-from .ssr.state_storage import StateStorage
+import numpy as np
+
+from mhn.ssr import regularized_optimization as reg_optim
+from .ssr.state_containers import StateContainer
 from .ssr.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
 from .ssr.state_space_restriction import gradient_and_score, cython_gradient_and_score
 
@@ -16,9 +18,6 @@ if cuda_available() == CUDA_AVAILABLE:
     from .ssr.state_space_restriction import cuda_gradient_and_score
 else:
     cuda_gradient_and_score = None
-
-import numpy as np
-from numpy import genfromtxt
 
 
 class _Optimizer(abc.ABC):
@@ -114,11 +113,11 @@ class _Optimizer(abc.ABC):
         else:
             callback_func = self.__total_callback_func
 
-        score_func = build_regularized_score_func(self._gradient_and_score_func)
-        gradient_func = build_regularized_gradient_func(self._gradient_and_score_func)
+        score_func = reg_optim.build_regularized_score_func(self._gradient_and_score_func)
+        gradient_func = reg_optim.build_regularized_gradient_func(self._gradient_and_score_func)
 
-        self.__result = learn_MHN(self._data, self.__init_theta, lam, maxit, trace, reltol,
-                                  round_result, callback_func, score_func, gradient_func)
+        self.__result = reg_optim.learn_MHN(self._data, self.__init_theta, lam, maxit, trace, reltol,
+                                            round_result, callback_func, score_func, gradient_func)
 
         self.__backup_current_step = None
         return self.__result
@@ -153,7 +152,7 @@ class _Optimizer(abc.ABC):
         """
         if len(data_matrix.shape) != 2:
             raise ValueError("The given data matrix must be two-dimensional")
-        # StateStorage only accepts numpy arrays with dtype=np.int32
+        # StateContainer only accepts numpy arrays with dtype=np.int32
         if data_matrix.dtype != np.int32:
             data_matrix = data_matrix.astype(dtype=np.int32)
             warnings.warn("The dtype of the given data matrix is changed to np.int32")
@@ -196,7 +195,7 @@ class StateSpaceOptimizer(_Optimizer):
         :return: this optimizer object
         """
         data_matrix = self._preprocess_binary_matrix(data_matrix)
-        self._data = StateStorage(data_matrix)
+        self._data = StateContainer(data_matrix)
         self._bin_datamatrix = data_matrix
         return self
 
@@ -213,7 +212,7 @@ class StateSpaceOptimizer(_Optimizer):
         :param last_col: (Optional) last column of the CSV file that is part of the binary matrix without the row names
         :return: this optimizer object
         """
-        data_matrix = genfromtxt(src, delimiter=delimiter, dtype=np.int32)
+        data_matrix = np.genfromtxt(src, delimiter=delimiter, dtype=np.int32)
         data_matrix = data_matrix[first_row: last_row, first_col: last_col]
         self.load_data_matrix(data_matrix)
         return self

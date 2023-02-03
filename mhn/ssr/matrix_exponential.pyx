@@ -13,7 +13,7 @@ from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot, dnrm2, dasum
 from libc.stdlib cimport malloc, free
 from libc.math cimport exp, log
 
-from mhn.ssr.state_storage cimport State, StateAgeStorage
+from mhn.ssr.state_containers cimport State, StateAgeContainer
 from mhn.ssr.state_space_restriction cimport get_mutation_num, restricted_q_vec, restricted_q_diag
 
 import numpy as np
@@ -266,13 +266,13 @@ cdef double[:] cython_restricted_expm(double[:, :] theta, double[:] b, State *st
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
-def restricted_expm(double[:, :] theta, double[:] b, StateAgeStorage state_with_age, double eps):
+def restricted_expm(double[:, :] theta, double[:] b, StateAgeContainer state_with_age, double eps):
     """
     this functions multiplies expm(tQ) with a vector b, this is a Python wrapper for the internal function cython_restricted_expm
 
     :param theta: matrix containing the theta entries
     :param b: array that is multiplied with expm(tQ)
-    :param state_with_age: StateAgeStorage containing exactly one state with its corresponding age
+    :param state_with_age: StateAgeContainer containing exactly one state with its corresponding age
     :param eps: accuracy
     """
     if state_with_age.data_size != 1:
@@ -306,7 +306,7 @@ cdef calc_gamma(double[:, :] theta, State *state, int i, int k):
     return denom, num / denom
 
 
-def py_calc_gamma(double[:, :] theta, StateAgeStorage states_and_ages, int i, int k):
+def py_calc_gamma(double[:, :] theta, StateAgeContainer states_and_ages, int i, int k):
     return calc_gamma(theta, states_and_ages.states, i, k)
 
 
@@ -417,7 +417,7 @@ cdef void empirical_distribution(State *current_state, State *former_state, doub
     delta[xk_index] = 1
 
 
-cpdef cython_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_data, double eps):
+cpdef cython_gradient_and_score(double[:, :] theta, StateAgeContainer mutation_data, double eps):
     """
     This function computes the log-likelihood score and its gradient for a given theta and data, where we know the ages
     of the individual samples (see Rupp et al. (2021) eq. (13)-(15))
@@ -483,7 +483,7 @@ IF NVCC_AVAILABLE:
         int cuda_functional()
 
 
-    cpdef cuda_gradient_and_score(double[:, :] theta, StateAgeStorage mutation_data, double eps):
+    cpdef cuda_gradient_and_score(double[:, :] theta, StateAgeContainer mutation_data, double eps):
 
         cdef int n = theta.shape[0]
         cdef np.ndarray[np.double_t] grad_out = np.empty(n*n, dtype=np.double)

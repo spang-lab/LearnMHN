@@ -1,7 +1,7 @@
 import unittest
 
 from mhn.original import ModelConstruction
-from mhn.ssr import matrix_exponential, state_storage
+from mhn.ssr import matrix_exponential, state_containers
 
 import numpy as np
 import scipy
@@ -21,7 +21,7 @@ class TestMatrixExponential(unittest.TestCase):
         eps = 1e-4
 
         for t in np.arange(0, 6, 0.6):
-            container = state_storage.StateAgeStorage(all_mutated_data, np.array([t]))
+            container = state_containers.StateAgeContainer(all_mutated_data, np.array([t]))
             result1 = scipy.linalg.expm(t * q).dot(b)
             result2 = matrix_exponential.restricted_expm(theta, b, container, eps)
             self.assertTrue(np.abs(result2 - result1).sum() < eps)
@@ -31,7 +31,7 @@ class TestMatrixExponential(unittest.TestCase):
         theta = ModelConstruction.random_theta(n)
         np_data_matrix = np.zeros((1, 6), dtype=np.int32)
         np_data_matrix[:, 2:4] = 1
-        container = state_storage.StateAgeStorage(np_data_matrix, np.array([0.5]))
+        container = state_containers.StateAgeContainer(np_data_matrix, np.array([0.5]))
         h = 1e-10
         for i in range(n):
             for j in range(n):
@@ -53,7 +53,7 @@ class TestMatrixExponential(unittest.TestCase):
             np_data_matrix[i, :i] = 1
 
         ages = np.linspace(0, 6, sample_num)
-        states_and_ages = state_storage.StateAgeStorage(np_data_matrix, ages)
+        states_and_ages = state_containers.StateAgeContainer(np_data_matrix, ages)
         h = 1e-10
 
         gradient, old_score = matrix_exponential.cython_gradient_and_score(theta, states_and_ages, 1e-6)
@@ -67,7 +67,7 @@ class TestMatrixExponential(unittest.TestCase):
 
     def test_sort_by_age(self):
         """
-        StateAgeStorage should automatically sort the samples according to their age.
+        StateAgeContainer should automatically sort the samples according to their age.
         """
         n = 6
         sample_num = 5
@@ -79,13 +79,13 @@ class TestMatrixExponential(unittest.TestCase):
             np_data_matrix[i, :i] = 1
         ages = np.linspace(0, 6, sample_num)
 
-        states_and_ages = state_storage.StateAgeStorage(np_data_matrix, ages)
+        states_and_ages = state_containers.StateAgeContainer(np_data_matrix, ages)
         grad1, score1 = matrix_exponential.cython_gradient_and_score(theta, states_and_ages, 1e-6)
 
         permutation = np.random.permutation(sample_num)
         np_data_matrix = np_data_matrix[permutation]
         ages = ages[permutation]
-        states_and_ages = state_storage.StateAgeStorage(np_data_matrix, ages)
+        states_and_ages = state_containers.StateAgeContainer(np_data_matrix, ages)
         grad2, score2 = matrix_exponential.cython_gradient_and_score(theta, states_and_ages, 1e-6)
 
         self.assertAlmostEqual(score1, score2, 8)
@@ -108,7 +108,7 @@ class TestCudaMatrixExponential(unittest.TestCase):
             np_data_matrix[i, :i+1] = 1
 
         ages = np.linspace(0, 6, sample_num)
-        states_and_ages = state_storage.StateAgeStorage(np_data_matrix, ages)
+        states_and_ages = state_containers.StateAgeContainer(np_data_matrix, ages)
 
         grad1, score1 = matrix_exponential.cython_gradient_and_score(theta, states_and_ages, 1e-6)
         grad2, score2 = matrix_exponential.cuda_gradient_and_score(theta, states_and_ages, 1e-6)

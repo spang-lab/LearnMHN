@@ -67,8 +67,8 @@ if nvcc_available:
 # define compile options for the Cython files
 ext_modules = [
     Extension(
-        "mhn.ssr.state_storage",
-        ["./mhn/ssr/state_storage.pyx"],
+        "mhn.ssr.state_containers",
+        ["./mhn/ssr/state_containers.pyx"],
         extra_compile_args=[
             f'-DSTATE_SIZE={STATE_SIZE}'
         ]

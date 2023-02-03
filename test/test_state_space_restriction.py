@@ -6,7 +6,7 @@
 import unittest
 import numpy as np
 from mhn.ssr import state_space_restriction
-from mhn.ssr.state_storage import StateStorage
+from mhn.ssr.state_containers import StateContainer
 from mhn.original import Likelihood, UtilityFunctions, ModelConstruction
 
 
@@ -40,7 +40,7 @@ class TestCythonGradient(unittest.TestCase):
                 new_score = Likelihood.score(theta_copy, pD)
                 numerical_gradient[i, j] = (new_score - original_score) / h
 
-        analytic_gradient, _ = state_space_restriction.cython_gradient_and_score(theta, StateStorage(random_sample))
+        analytic_gradient, _ = state_space_restriction.cython_gradient_and_score(theta, StateContainer(random_sample))
         np.testing.assert_array_equal(np.around(numerical_gradient, decimals=3), np.around(analytic_gradient, decimals=3))
 
     def test_gene_position_permutation(self):
@@ -56,14 +56,14 @@ class TestCythonGradient(unittest.TestCase):
         random_sample[:, 0] = 1
         random_sample[:, -1] = 1
         # compute original gradient and score
-        gradient1, score1 = state_space_restriction.cython_gradient_and_score(theta, StateStorage(random_sample))
+        gradient1, score1 = state_space_restriction.cython_gradient_and_score(theta, StateContainer(random_sample))
         # permute the sample and theta, compute gradient and score and reverse the permutation
         permutation = np.random.permutation(n)
         reverse = np.empty(n, int)
         reverse[permutation] = np.arange(n)
         permutation_sample = random_sample[:, permutation]
         permutation_theta = theta[permutation][:, permutation]
-        gradient2, score2 = state_space_restriction.cython_gradient_and_score(permutation_theta, StateStorage(permutation_sample))
+        gradient2, score2 = state_space_restriction.cython_gradient_and_score(permutation_theta, StateContainer(permutation_sample))
         reversed_gradient = gradient2[reverse][:, reverse]
         np.testing.assert_array_equal(permutation_sample[:, reverse], random_sample)
         # compare gradients and scores
@@ -91,9 +91,9 @@ class TestCudaGradient(unittest.TestCase):
         # make sure that there are mutations in two different "parts" of the "State" C struct
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
-        state_storage = StateStorage(random_sample)
-        gradient1, score1 = state_space_restriction.cython_gradient_and_score(theta, state_storage)
-        gradient2, score2 = state_space_restriction.cuda_gradient_and_score(theta, state_storage)
+        state_containers = StateContainer(random_sample)
+        gradient1, score1 = state_space_restriction.cython_gradient_and_score(theta, state_containers)
+        gradient2, score2 = state_space_restriction.cuda_gradient_and_score(theta, state_containers)
         self.assertEqual(round(score1, 8), round(score2, 8))
         np.testing.assert_array_equal(np.around(gradient1, decimals=8), np.around(gradient2, decimals=8))
 
@@ -110,14 +110,14 @@ class TestCudaGradient(unittest.TestCase):
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
         # compute original gradient and score
-        gradient1, score1 = state_space_restriction.cuda_gradient_and_score(theta, StateStorage(random_sample))
+        gradient1, score1 = state_space_restriction.cuda_gradient_and_score(theta, StateContainer(random_sample))
         # permute the sample and theta, compute gradient and score and reverse the permutation
         permutation = np.random.permutation(n)
         reverse = np.empty(n, int)
         reverse[permutation] = np.arange(n)
         permutation_sample = random_sample[:, permutation]
         permutation_theta = theta[permutation][:, permutation]
-        gradient2, score2 = state_space_restriction.cuda_gradient_and_score(permutation_theta.copy(), StateStorage(permutation_sample))
+        gradient2, score2 = state_space_restriction.cuda_gradient_and_score(permutation_theta.copy(), StateContainer(permutation_sample))
         reversed_gradient = gradient2[reverse][:, reverse]
         np.testing.assert_array_equal(permutation_sample[:, reverse], random_sample)
         # compare gradients and scores

@@ -6,7 +6,7 @@
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 
-from mhn.ssr.state_storage cimport State
+from mhn.ssr.state_containers cimport State
 
 import numpy as np
 import warnings
@@ -76,7 +76,7 @@ cdef void sort_by_age(State *states, double *ages, int state_num):
             break
 
 
-cdef class StateStorage:
+cdef class StateContainer:
     """
     This class is used as a wrapper such that the C array containing the States can be referenced in a Python script
     It also makes sure that there aren't more than 32 mutations present in a single sample as this would break the algorithms
@@ -121,9 +121,9 @@ cdef class StateStorage:
         free(self.states)
 
 
-cdef class StateAgeStorage(StateStorage):
+cdef class StateAgeContainer(StateContainer):
     """
-    This class is used as a wrapper like the StateStorage class, but also contains age information for each sample
+    This class is used as a wrapper like the StateContainer class, but also contains age information for each sample
     """
 
     def __init__(self, int[:, :] mutation_data, double[:] ages):
@@ -140,12 +140,12 @@ cdef class StateAgeStorage(StateStorage):
         free(self.state_ages)
 
 
-def create_indep_model(StateStorage state_storage):
+def create_indep_model(StateContainer state_container):
     """
-    Compute an independence model from the data stored in the StateStorage object
+    Compute an independence model from the data stored in the StateContainer object
     """
 
-    cdef int n = state_storage.gene_num
+    cdef int n = state_container.gene_num
 
     cdef int i, j
     cdef int sum_of_occurance
@@ -154,9 +154,9 @@ def create_indep_model(StateStorage state_storage):
 
     for i in range(n):
         sum_of_occurance = 0
-        for j in range(state_storage.data_size):
-            sum_of_occurance += (state_storage.states[j].parts[i >> 5] >> (i & 31)) & 1
+        for j in range(state_container.data_size):
+            sum_of_occurance += (state_container.states[j].parts[i >> 5] >> (i & 31)) & 1
 
-        theta[i, i] = np.log(sum_of_occurance / (state_storage.data_size - sum_of_occurance + 1e-10))
+        theta[i, i] = np.log(sum_of_occurance / (state_container.data_size - sum_of_occurance + 1e-10))
 
     return np.around(theta, decimals=2)
