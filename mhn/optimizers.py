@@ -162,11 +162,12 @@ class _Optimizer(abc.ABC):
     @abc.abstractmethod
     def set_device(self, device: "_Optimizer.Device"):
         """
-        Set the device that should be used for training. You have three options:
+        Set the device that should be used for training.
 
-        Device.AUTO: (default) automatically select the device that best fits the data
-        Device.CPU:  use the CPU implementations to compute the scores and gradients
-        Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
+        You have three options:
+            Device.AUTO: (default) automatically select the device that best fits the data
+            Device.CPU:  use the CPU implementations to compute the scores and gradients
+            Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
 
         The Device enum is part of this optimizer class.
         """
@@ -223,11 +224,12 @@ class StateSpaceOptimizer(_Optimizer):
 
     def set_device(self, device: "StateSpaceOptimizer.Device"):
         """
-        Set the device that should be used for training. You have three options:
+        Set the device that should be used for training.
 
-        Device.AUTO: (default) automatically select the device that best fits the data
-        Device.CPU:  use the CPU implementations to compute the scores and gradients
-        Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
+        You have three options:
+            Device.AUTO: (default) automatically select the device that best fits the data
+            Device.CPU:  use the CPU implementations to compute the scores and gradients
+            Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
 
         The Device enum is part of this optimizer class.
         """
@@ -290,11 +292,12 @@ class DUAOptimizer(_Optimizer):
 
     def set_device(self, device: _Optimizer.Device):
         """
-        Set the device that should be used for training. You have three options:
+        Set the device that should be used for training.
 
-        Device.AUTO: (default) automatically select the device that best fits the data
-        Device.CPU:  use the CPU implementations to compute the scores and gradients
-        Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
+        You have three options:
+            Device.AUTO: (default) automatically select the device that best fits the data
+            Device.CPU:  use the CPU implementations to compute the scores and gradients
+            Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
 
         The Device enum is part of this optimizer class.
         """
