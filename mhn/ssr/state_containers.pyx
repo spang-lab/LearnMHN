@@ -144,7 +144,7 @@ cdef class StateAgeContainer(StateContainer):
 
 def create_indep_model(StateContainer state_container):
     """
-    Compute an independence model from the data stored in the StateContainer object, where tha baseline hazard Theta_ii
+    Compute an independence model from the data stored in the StateContainer object, where the baseline hazard Theta_ii
     of each event is set to its empirical odds and the hazard ratios (off-diagonal entries) are set to exactly 1.
     The independence model is returned in logarithmic representation.
 

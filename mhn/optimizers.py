@@ -19,7 +19,7 @@ from mhn.ssr import matrix_exponential as mat_exp
 
 class _Optimizer(abc.ABC):
     """
-    This abstract Optimizer class is the base class for the other Optimizer classes and cannot be instantiated alone
+    This abstract Optimizer class is the base class for the other Optimizer classes and cannot be instantiated alone.
     """
     def __init__(self):
         self._data = None
@@ -38,14 +38,15 @@ class _Optimizer(abc.ABC):
     def set_init_theta(self, init: np.ndarray):
         """
         Use this method to set a theta as starting point for learning a new MHN.
-        If none is given, the optimization starts with an independence model.
+        If none is given, the optimization starts with an independence model, where the baseline hazard Theta_ii
+        of each event is set to its empirical odds and the hazard ratios (off-diagonal entries) are set to exactly 1.
         """
         self.__init_theta = init
         return self
 
     def set_callback_func(self, callback=None):
         """
-        Use this method to set a callback function called after each iteration in the BFGS algorithm
+        Use this method to set a callback function called after each iteration in the BFGS algorithm.
         """
         if callback is not None and not hasattr(callback, '__call__'):
             raise ValueError("callback has to be a function!")
@@ -55,7 +56,7 @@ class _Optimizer(abc.ABC):
     def save_progress(self, steps: int = -1, always_new_file: bool = False, filename: str = 'theta_backup.npy'):
         """
         If you want to regularly save the progress during training, you can use this function and define the number
-        of steps between each progress save
+        of steps between each progress save.
 
         :param filename: file name of the backup file
         :param steps: number of training iterations between each progress backup
@@ -132,7 +133,7 @@ class _Optimizer(abc.ABC):
     @abc.abstractmethod
     def training_data(self):
         """
-        This property returns all the data given to this optimizer to train a new MHN
+        This property returns all the data given to this optimizer to train a new MHN.
         """
         pass
 
@@ -178,7 +179,7 @@ class _Optimizer(abc.ABC):
 
     class Device(Enum):
         """
-        A small Enum which can represent device types
+        A small Enum which can represent device types.
         """
         AUTO, CPU, GPU = range(3)
 
@@ -251,7 +252,7 @@ class StateSpaceOptimizer(_Optimizer):
     @property
     def training_data(self) -> np.ndarray:
         """
-        This property returns all the data given to this optimizer to train a new MHN
+        This property returns all the data given to this optimizer to train a new MHN.
         """
         return self._bin_datamatrix
 
@@ -334,6 +335,6 @@ class DUAOptimizer(_Optimizer):
     @property
     def training_data(self) -> (np.ndarray, np.ndarray):
         """
-        This property returns all the data given to this optimizer to train a new MHN
+        This property returns all the data given to this optimizer to train a new MHN.
         """
         return self._bin_datamatrix, self._state_ages
