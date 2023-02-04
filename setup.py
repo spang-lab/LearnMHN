@@ -47,7 +47,7 @@ def compile_cuda_code(folder, cuda_filename, lib_name):
         compile_command += ['-Xcompiler', '-fPIC']
 
     # execute command and print the output
-    print(subprocess.run(compile_command, stdout=subprocess.PIPE).stdout.decode('utf-8'))
+    print(subprocess.run(compile_command, stdout=subprocess.PIPE).stdout.decode('utf-8', "ignore"))
 
 
 # check if nvcc (the cuda compiler) is available on the device

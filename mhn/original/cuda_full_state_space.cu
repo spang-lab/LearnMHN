@@ -415,6 +415,8 @@ static void compute_score(const double* __restrict__ pD, const double* __restric
 }
 
 
+void _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp);
+
 /**
  * compute the gradient for a given relative frequency of observed tumours in the data
  *
@@ -431,30 +433,33 @@ static void compute_score(const double* __restrict__ pD, const double* __restric
 static void cuda_gradient_and_score_computation(const double* __restrict__ ptheta, const int n, double* __restrict__ grad, double* __restrict__ pD, double* __restrict__ pth, double* __restrict__ q, double* __restrict__ tmp1, double* __restrict__ tmp2, double* __restrict__ score) {
 
 	const int nx = 1 << n;
+	int block_num, thread_num;
+	determine_block_thread_num(block_num, thread_num, n);
 
 	// alias tmp1 and tmp2 for the first part of this function for better readability
 	double* p0 = tmp1;
 	double* dg = tmp2;
 
 	// set all entries of p0 to zero, set the first entry to one
-	cudaMemset(p0, 0, nx * sizeof(double));
-	fill_array <<<1, 1>>> (p0, 1., 1);
+	cudaMemset(pth, 0, nx * sizeof(double));
+	fill_array <<<1, 1>>> (pth, 1., 1);
 
 	// compute the diagonal for the jacobi calls
 	compute_jacobi_diagonal(ptheta, n, dg);
 
 	// q is here only used as temporary memory, because the memory is not needed yet for anything else
-	cuda_jacobi(ptheta, p0, false, n, pth, q, dg);
+	// cuda_jacobi(ptheta, p0, false, n, pth, q, dg);
+	// cudaMemcpy(pth, p0, nx * sizeof(double), cudaMemcpyDeviceToDevice);
+	_compute_inverse(ptheta, n, dg, pth, false);
 
-	divide_arrays_elementwise<<<1, 1>>>(pD, pth, pD, nx);
+	divide_arrays_elementwise<<<block_num, thread_num>>>(pD, pth, pD, nx);
 
 	// here p0 is used as temporary memory, because we do not need its contents any longer
-	cuda_jacobi(ptheta, pD, true, n, q, p0, dg);
+	// cuda_jacobi(ptheta, pD, true, n, q, p0, dg);
+	cudaMemcpy(q, pD, nx * sizeof(double), cudaMemcpyDeviceToDevice);
+	_compute_inverse(ptheta, n, dg, q, true);
 
 	double *old_vec, *shuffled_vec, *swap_vec;
-	int block_num, thread_num;
-
-	determine_block_thread_num(block_num, thread_num, n);
 
 	multiply_arrays_elementwise<<<block_num, thread_num>>>(pth, pD, nx);
 	compute_score(pD, pth, n, score, tmp1, tmp2);
@@ -681,15 +686,52 @@ __global__ void compute_inverse_level(const double * __restrict__ theta, const i
 }
 
 
-void _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout){
+__global__ void compute_inverse_level_t(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, int j, int binom_coef){
+	const int stride = blockDim.x * gridDim.x;
+	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
+
+	extern __shared__ double local_theta[];
+
+	for(int i = threadIdx.x; i < n*n; i += blockDim.x){
+		local_theta[i] = theta[i];
+	}
+
+	for(int i = binom_coef - cuda_index - 1; i >= 0; i -= stride){
+		// PRINTLN("Enter");
+		int index = compute_index(i, n, j, binom_coef);
+		int bit_setter = 1;
+		double xout_element = xout[index];
+		for(int k = 0; k < n; k++){
+			// PRINTLN("k");
+			int modified_index = (index | bit_setter);
+			if (modified_index != index){
+				double theta_product = 1.;
+				int ind_copy = modified_index;
+				for(int r = 0; r < n; r++){
+					theta_product *= 1 + (ind_copy & 1) * (local_theta[k*n + r] - 1);
+					ind_copy >>= 1;
+				}
+				xout_element += theta_product * xout[modified_index];
+			}
+			bit_setter <<= 1;
+		}
+		xout[index] = xout_element / dg[index];
+	}
+}
+
+
+void _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp){
 
 	for(int j = 0; j <= n; j++){
 		// printf("j %d\n", j);
 		// fflush(stdout);
 		int binom_coef = compute_binom_coef(n, j);
 		int block_num = 1 + (binom_coef / 128);
-		compute_inverse_level<<<block_num, 128, n*n * sizeof(double)>>>(theta, n, dg, xout, j, binom_coef);
-		cudaDeviceSynchronize();
+		if(transp){
+			compute_inverse_level_t<<<block_num, 128, n*n * sizeof(double)>>>(theta, n, dg, xout, n-j, binom_coef);
+		} else {
+			compute_inverse_level<<<block_num, 128, n*n * sizeof(double)>>>(theta, n, dg, xout, j, binom_coef);
+		}
 	}
 }
 
@@ -713,11 +755,14 @@ extern "C" void DLL_PREFIX gpu_compute_inverse(double *theta, int n, double *b, 
 	cudaMemcpy(d_theta, theta, n*n * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_xout, b, nx * sizeof(double), cudaMemcpyHostToDevice);
 
-	cudaMemset(d_dg, 0, nx * sizeof(double));
-	cuda_subtract_q_diag(d_theta, n, d_dg, block_num, thread_num);
-	scale_array<<<block_num, thread_num>>>(d_dg, -1, nx);
+	array_exp<<<32, 64>>>(d_theta, n*n);
 
-	_compute_inverse(d_theta, n, d_dg, d_xout);
+	// cudaMemset(d_dg, 0, nx * sizeof(double));
+	fill_array<<<block_num, thread_num>>>(d_dg, 1, nx);
+	cuda_subtract_q_diag(d_theta, n, d_dg, block_num, thread_num);
+	// scale_array<<<block_num, thread_num>>>(d_dg, -1, nx);
+
+	_compute_inverse(d_theta, n, d_dg, d_xout, true);
 
 
 	cudaMemcpy(xout, d_xout, nx * sizeof(double), cudaMemcpyDeviceToHost);
