@@ -556,7 +556,7 @@ cpdef gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     If CUDA is not available on your device, this function will always use the Cython implementation.
     """
     IF NVCC_AVAILABLE:
-        if mutation_data.get_max_mutation_num() > 12:
+        if mutation_data.get_max_mutation_num() > 18:
             return cuda_gradient_and_score(theta, mutation_data)
         else:
             return cython_gradient_and_score(theta, mutation_data)
