@@ -194,7 +194,8 @@ class StateSpaceOptimizer(_Optimizer):
 
     def load_data_matrix(self, data_matrix: np.ndarray):
         """
-        Load binary mutation data stored in a numpy array
+        Load mutation data stored in a numpy array, where the rows represent samples and columns represent genes.
+        Mutations of genes are represented by 1s, intact genes are represented by 0s.
 
         :param data_matrix: two-dimensional numpy array which should have dtype=np.int32
         :return: this optimizer object
@@ -207,14 +208,15 @@ class StateSpaceOptimizer(_Optimizer):
     def load_data_from_csv(self, src: str, delimiter: str = ';',
                            first_row: int = None, last_row: int = None, first_col: int = None, last_col: int = None):
         """
-        Load binary mutation data from a CSV file
+        Load mutation data from a CSV file. The rows have to represent samples and the columns represent genes.
+        Mutations of genes are represented by 1s, intact genes are represented by 0s.
 
         :param src: path to the CSV file
         :param delimiter:  delimiter used in the CSV file (default: ';')
-        :param first_row: (Optional) first row of the CSV file that is part of the binary matrix without the column names
-        :param last_row: (Optional) last row of the CSV file that is part of the binary matrix without the column names
-        :param first_col: (Optional) first column of the CSV file that is part of the binary matrix without the row names
-        :param last_col: (Optional) last column of the CSV file that is part of the binary matrix without the row names
+        :param first_row: (Optional) first row of the CSV file that is part of the data matrix without the column names
+        :param last_row: (Optional) last row of the CSV file that is part of the data matrix without the column names
+        :param first_col: (Optional) first column of the CSV file that is part of the data matrix without the row names
+        :param last_col: (Optional) last column of the CSV file that is part of the data matrix without the row names
         :return: this optimizer object
         """
         data_matrix = np.genfromtxt(src, delimiter=delimiter, dtype=np.int32)
@@ -272,8 +274,9 @@ class DUAOptimizer(_Optimizer):
 
     def load_data(self, data_matrix: np.ndarray, state_ages: np.ndarray):
         """
-        Load training data consisting of a binary data matrix containing the observed states and an array containing
-        the ages of each state in the data matrix
+        Load training data consisting of a data matrix containing the observed states (rows represent samples
+        and columns genes) and an array containing the ages of each state in the data matrix. Thus, the number of ages
+        must align with the number of rows in the given data matrix.
 
         :param data_matrix: two-dimensional numpy array which should have dtype=np.int32
         :param state_ages: one-dimensional numpy array which should have dtype=np.double
@@ -326,7 +329,7 @@ class DUAOptimizer(_Optimizer):
         :return: trained model
         """
         self._gradient_and_score_func = lambda theta, data: self.__gradient_and_score_func_with_eps(theta, data, eps)
-        super().train(lam, maxit, trace, reltol, round_result)
+        return super().train(lam, maxit, trace, reltol, round_result)
 
     @property
     def training_data(self) -> (np.ndarray, np.ndarray):
