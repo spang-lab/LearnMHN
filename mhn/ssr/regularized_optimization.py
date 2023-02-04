@@ -1,7 +1,8 @@
-# by Stefan Vocht
-#
-# this script is used to learn a MHN using state space restriction
-#
+"""
+This submodule contains functions to learn an MHN using state-space restriction, including an optimization function
+using the BFGS algorithm and L1 regularization functions
+"""
+# author(s): Stefan Vocht
 
 import numpy as np
 from scipy.optimize import minimize

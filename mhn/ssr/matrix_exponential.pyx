@@ -1,11 +1,10 @@
-# by Kevin Rupp, Stefan Vocht
-
 """
 This part of the package contains functions related to (differentiated) uniformization as well as functions
 to compute the log-likelihood score and its gradient for datasets that contain samples with known ages
 
 (see Rupp et al.(2021): 'Differentiated uniformization: A new method for inferring Markov chains on combinatorial state spaces including stochastic epidemic models')
 """
+# author(s): Kevin Rupp, Stefan Vocht
 
 cimport cython
 

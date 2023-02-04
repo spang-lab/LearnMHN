@@ -165,7 +165,7 @@ class _Optimizer(abc.ABC):
         Set the device that should be used for training.
 
         You have three options:
-            Device.AUTO: (default) automatically select the device that best fits the data
+            Device.AUTO: (default) automatically select the device that is likely to match the data
             Device.CPU:  use the CPU implementations to compute the scores and gradients
             Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
 
@@ -227,7 +227,7 @@ class StateSpaceOptimizer(_Optimizer):
         Set the device that should be used for training.
 
         You have three options:
-            Device.AUTO: (default) automatically select the device that best fits the data
+            Device.AUTO: (default) automatically select the device that is likely to match the data
             Device.CPU:  use the CPU implementations to compute the scores and gradients
             Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
 
@@ -295,7 +295,7 @@ class DUAOptimizer(_Optimizer):
         Set the device that should be used for training.
 
         You have three options:
-            Device.AUTO: (default) automatically select the device that best fits the data
+            Device.AUTO: (default) automatically select the device that is likely to match the data
             Device.CPU:  use the CPU implementations to compute the scores and gradients
             Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
 

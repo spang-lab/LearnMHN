@@ -1,4 +1,4 @@
-# by Stefan Vocht
+# author(s): Stefan Vocht
 #
 # this .pxd file is the cython header file for state_containers.pyx
 #

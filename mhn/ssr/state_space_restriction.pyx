@@ -1,7 +1,8 @@
-# by Stefan Vocht
-#
-# implement StateSpaceRestriction using Cython
-#
+"""
+This submodule contains functions to work with the transition rate matrix Q in a restricted state-space as well as
+functions to compute the marginal log-likelihood score and its gradient making use of state-space restriction.
+"""
+# author(s): Stefan Vocht
 
 cimport cython
 
@@ -47,6 +48,7 @@ cdef extern from *:
 
 def count_ones64(long long x):
     """
+    Counts the number of bits set to 1 in a 64-bit integer.
     Wrapper so that count_ones can be called from a Python script
     """
     return count_ones(x)

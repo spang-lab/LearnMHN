@@ -1,7 +1,9 @@
-# by Stefan Vocht
-#
-# this cython file contains functions and classes to store and convert mutation states
-#
+"""
+This submodule contains functions and classes to store and convert mutation states used for state-space restriction.
+It also contains a function to compute an independence model that can be used as a starting point for training
+a new MHN.
+"""
+# author(s): Stefan Vocht
 
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
@@ -142,7 +144,12 @@ cdef class StateAgeContainer(StateContainer):
 
 def create_indep_model(StateContainer state_container):
     """
-    Compute an independence model from the data stored in the StateContainer object
+    Compute an independence model from the data stored in the StateContainer object, where tha baseline hazard Theta_ii
+    of each event is set to its empirical odds and the hazard ratios (off-diagonal entries) are set to exactly 1.
+    The independence model is returned in logarithmic representation.
+
+    :param state_container: StateContainer object containing the data on which the independence model is based
+    :returns: an independence model in logarithmic representation
     """
 
     cdef int n = state_container.gene_num
