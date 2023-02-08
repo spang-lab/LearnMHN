@@ -24,7 +24,7 @@ import json
 
 class bits_fixed_n:
     """
-    Iterator over integers whose binary representation has a fixed number, in lexicographical order
+    Iterator over integers whose binary representation has a fixed number of 1s, in lexicographical order
 
     :param n: How many 1s there should be
     :param k: How many bits the integer should have
@@ -387,7 +387,7 @@ class OmegaMHN(MHN):
             subdiag[0] = 1
             # compute the ith subdiagonal of Q
             for j in range(n):
-                if events[j]:
+                if state[j]:
                     exp_theta = np.exp(self.log_theta[i, j])
                     if i == j:
                         exp_theta *= -1
@@ -411,40 +411,74 @@ class OmegaMHN(MHN):
         return diag
 
     def order_prob(self, sigma):
+
         events = np.zeros(self.log_theta.shape[0], dtype=np.int32)
         events[sigma] = 1
         sigma = np.array(sigma)
         pos = np.argsort(np.argsort(sigma))
-        restr_diag = self.get_restr_diag(events=events)
+        restr_diag = self.get_restr_diag(state=events)
         return np.exp(sum((self.log_theta[x_i, sigma[:n_i]].sum() + self.log_theta[x_i, x_i]) for n_i, x_i in enumerate(sigma))) \
             / np.prod([1 - restr_diag[(1 << pos)[:i].sum()] for i in range(len(sigma) + 1)])
 
-    def likeliest_order(self, events: np.array):
+    def likeliest_order(self, state: np.array):
 
-        restr_diag = self.get_restr_diag(events=events)
+        restr_diag = self.get_restr_diag(state=state)
+        log_theta = self.log_theta[state.astype(bool)][:, state.astype(bool)]
 
-        k = events.sum()
+        k = state.sum()
+        # {state: highest path probability to this state}
         A = {0: 1/(1-restr_diag[0])}
+        # {state: path with highest probability to this state}
         B = {0: []}
-        for i in range(1, k+1):
+        for i in range(1, k+1):         # i is the number of events
             A_new = dict()
             B_new = dict()
-            for state in bits_fixed_n(n=i, k=k):
-                A_new[state] = -1
-                state_bin_pos = np.nonzero(
-                    np.flip(np.array(list(np.binary_repr(state)), dtype=int)))[0]
-                for pos in state_bin_pos:
-                    num = np.exp(self.log_theta[pos, state_bin_pos].sum())
-                    pre_state = state - (1 << pos)
-                    if A[pre_state] * num > A_new[state]:
-                        A_new[state] = A[pre_state] * num
-                        B_new[state] = B[pre_state].copy()
-                        B_new[state].append(pos)
-                A_new[state] /= (1-restr_diag[state])
+            for st in bits_fixed_n(n=i, k=k):
+                A_new[st] = -1
+                state_events = np.array(
+                    [i for i in range(k) if (1 << i) | st == st])  # events in state
+                for e in state_events:
+                    # numerator in Gotovos formula
+                    num = np.exp(log_theta[e, state_events].sum())
+                    pre_st = st - (1 << e)
+                    if A[pre_st] * num > A_new[st]:
+                        A_new[st] = A[pre_st] * num
+                        B_new[st] = B[pre_st].copy()
+                        B_new[st].append(e)
+                A_new[st] /= (1-restr_diag[st])
             A = A_new
             B = B_new
+        i = (1 << k) - 1
+        return (A[i], np.arange(self.log_theta.shape[0])[state.astype(bool)][B[i]])
 
-        return (A, B)
+    # def m_likeliest_orders(self, events: np.array, m: int):
+
+    #     restr_diag = self.get_restr_diag(state=events)
+
+    #     k = events.sum()
+    #     A = {0: np.array(1/(1-restr_diag[0]))}      # {state: highest path probability to this state}
+    #     B = {0: np.empty(0)}                        # {state: path with highest probability to this state}
+    #     for i in range(1, k+1):                     # i is the number of events
+    #         A_new = dict()
+    #         B_new = dict()
+    #         for state in bits_fixed_n(n=i, k=k):
+    #             A_new[state] = np.empty(i * m)
+    #             B_new[state] = np.empty(i * m, i)
+    #             state_events = np.array([i for i in range(k) if 1 << i | state == state]) # events in state
+    #             for j, e in enumerate(state_events):
+    #                 num = np.exp(self.log_theta[e, state_events].sum()) # numerator in Gotovos formula
+    #                 pre_state = state - (1 << e)
+    #                 A_new[state][j: j + m] = num * A[pre_state]
+    #                 B_new[state][j: j + m, :-1] = B[pre_state]
+    #                 B_new[state][j: j + m, -1] = e
+    #             sorting = A_new[state].argsort()[::-1][:m]
+    #             A_new[state] = A_new[state][sorting]
+    #             B_new[state] = B_new[state][sorting]
+    #             A_new[state] /= (1-restr_diag[state])
+    #         A = A_new
+    #         B = B_new
+
+    #     return (A, B)
 
     # def mcmc_sampling(self, events: np.array, n_samples: int = 50, burn_in: float = 0.2):
 
