@@ -20,10 +20,10 @@ opt.set_callback_func(lambda theta: print("Training step complete."))
 
 options = {
     # "lam": 0.0001,
-    # "lam": 1/len(events.columns)
+    "lam": 1/len(events.columns)
     # "reltol": 1e-4,d
     
 }
 opt.train(
     **options
-).save(f"{dataset}/final_lam-{options.get('lam', 0)}_reltol-{options.get('reltol', 1e-7)}")
+).save(f"{file_dir}/{dataset}/{dataset}_final_lam-{options.get('lam', 0)}_reltol-{options.get('reltol', 1e-7)}")
