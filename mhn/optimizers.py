@@ -37,7 +37,8 @@ class _Optimizer(abc.ABC):
 
     def set_init_theta(self, init: np.ndarray):
         """
-        Use this method to set a theta as starting point for learning a new MHN.
+        Use this method to set a theta as starting point for learning a new MHN. The theta must be in logarithmic form.
+
         If none is given, the optimization starts with an independence model, where the baseline hazard Theta_ii
         of each event is set to its empirical odds and the hazard ratios (off-diagonal entries) are set to exactly 1.
         """
@@ -47,6 +48,7 @@ class _Optimizer(abc.ABC):
     def set_callback_func(self, callback=None):
         """
         Use this method to set a callback function called after each iteration in the BFGS algorithm.
+        The given function must take exactly one argument, namely the theta matrix computed in the last iteration.
         """
         if callback is not None and not hasattr(callback, '__call__'):
             raise ValueError("callback has to be a function!")
@@ -93,7 +95,7 @@ class _Optimizer(abc.ABC):
         """
         Use this function to learn a new MHN from the data given to this optimizer.
 
-        :param lam: tuning parameter for the L1 regularization
+        :param lam: tuning parameter lambda for the L1 regularization
         :param maxit: maximum number of training iterations
         :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
         :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
@@ -321,7 +323,7 @@ class DUAOptimizer(_Optimizer):
         """
         Use this function to learn a new MHN from the data given to this optimizer.
 
-        :param lam: tuning parameter for the L1 regularization
+        :param lam: tuning parameter lambda for the L1 regularization
         :param eps: accuracy of the matrix exponential
         :param maxit: maximum number of training iterations
         :param trace: set to True to print convergence messages (see scipy.optimize.minimize)

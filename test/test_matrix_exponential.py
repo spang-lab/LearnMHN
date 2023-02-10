@@ -35,10 +35,10 @@ class TestMatrixExponential(unittest.TestCase):
         h = 1e-10
         for i in range(n):
             for j in range(n):
-                gamma1, dgamma = matrix_exponential.py_calc_gamma(theta, container, i, j)
+                gamma1, dgamma = matrix_exponential.calc_gamma_wrapper(theta, container, i, j)
                 theta_copy = theta.copy()
                 theta_copy[i, j] += h
-                gamma2, _ = matrix_exponential.py_calc_gamma(theta_copy, container, i, j)
+                gamma2, _ = matrix_exponential.calc_gamma_wrapper(theta_copy, container, i, j)
                 numerical_deriv = (gamma2 - gamma1) / h
                 self.assertAlmostEqual(numerical_deriv, dgamma, 3)
 

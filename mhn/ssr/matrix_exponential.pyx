@@ -1,6 +1,6 @@
 """
 This part of the package contains functions related to (differentiated) uniformization as well as functions
-to compute the log-likelihood score and its gradient for datasets that contain samples with known ages
+to compute the log-likelihood score and its gradient for datasets that contain samples with known ages.
 
 (see Rupp et al.(2021): 'Differentiated uniformization: A new method for inferring Markov chains on combinatorial state spaces including stochastic epidemic models')
 """
@@ -12,7 +12,7 @@ from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot, dnrm2, dasum
 from libc.stdlib cimport malloc, free
 from libc.math cimport exp, log
 
-from mhn.ssr.state_containers cimport State, StateAgeContainer
+from mhn.ssr.state_containers cimport State, StateContainer, StateAgeContainer
 from mhn.ssr.state_space_restriction cimport get_mutation_num, restricted_q_vec, restricted_q_diag
 
 import numpy as np
@@ -305,8 +305,18 @@ cdef calc_gamma(double[:, :] theta, State *state, int i, int k):
     return denom, num / denom
 
 
-def py_calc_gamma(double[:, :] theta, StateAgeContainer states_and_ages, int i, int k):
-    return calc_gamma(theta, states_and_ages.states, i, k)
+def calc_gamma_wrapper(double[:, :] theta, StateContainer state, int i, int k):
+    """
+    this function calculates the derivative of the scaling factor gamma wrt. theta_ik. It is a Python wrapper for the
+    internal Cython function to compute gamma and its derivative.
+
+    :param theta: matrix containing the theta entries
+    :param state: a StateContainer that contains one state for which gamma will be computed
+    :param i: row index of theta entry to take derivative wrt.
+    :param k: column index of theta entry to take derivative wrt.
+    :return: gamma and its derivative wrt. theta_ik
+    """
+    return calc_gamma(theta, state.states, i, k)
 
 
 @cython.wraparound(False)
