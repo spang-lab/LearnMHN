@@ -473,32 +473,3 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateAgeContainer mutation_d
         score += log(pt[current_nx-1])
 
     return gradient, score
-
-
-IF NVCC_AVAILABLE:
-
-    cdef extern from *:
-        """
-        #ifdef _WIN32
-        #define DLL_PREFIX __declspec(dllexport)
-        #else
-        #define DLL_PREFIX
-        #endif
-
-        int DLL_PREFIX cuda_functional();
-        int DLL_PREFIX cuda_gradient_and_score_dua(double *ptheta, int n, State *mutation_data, double *ages, int data_size, double eps, double *grad_out, double *score_out);
-        """
-        int cuda_gradient_and_score_dua(const double *ptheta, int n, const State *mutation_data, const double *ages, int data_size, double eps, double *grad_out, double *score_out)
-        int cuda_functional()
-
-
-    cpdef cuda_gradient_and_score(double[:, :] theta, StateAgeContainer mutation_data, double eps):
-
-        cdef int n = theta.shape[0]
-        cdef np.ndarray[np.double_t] grad_out = np.empty(n*n, dtype=np.double)
-        cdef double score
-
-        cuda_gradient_and_score_dua(&theta[0, 0], n, mutation_data.states, mutation_data.state_ages, mutation_data.data_size,
-                                   eps, &grad_out[0], &score)
-
-        return grad_out.reshape((n, n)), score
