@@ -1,6 +1,9 @@
-# by Stefan Vocht
-#
-# this script implements the RegularizedOptimization.R in python
+"""
+This submodule implements the RegularizedOptimization.R in python.
+
+It contains functions to learn an MHN for a given data distribution and implements the L1 regularization.
+"""
+# author(s): Stefan Vocht
 
 import numpy as np
 from scipy.optimize import minimize
@@ -98,14 +101,3 @@ def learn_MHN(pD: np.ndarray, init: np.ndarray = None, lam: float = 0, maxit: in
         theta = np.around(theta, decimals=2)
 
     return theta
-
-
-if __name__ == '__main__':
-    m = np.arange(1, 10).reshape(3, 3).astype(np.float64)
-    xx = np.arange(1, 9).astype(np.float64)
-
-    print(L1(m))
-
-    import timeit
-
-    print(timeit.timeit(lambda: L1(m), number=10000))

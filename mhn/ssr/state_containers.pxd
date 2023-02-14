@@ -1,6 +1,6 @@
-# by Stefan Vocht
+# author(s): Stefan Vocht
 #
-# this .pxd file is the cython header file for state_storage.pyx
+# this .pxd file is the cython header file for state_containers.pyx
 #
 
 
@@ -16,11 +16,15 @@ cdef extern from *:
         unsigned int parts[STATE_SIZE]
 
 
-cdef class StateStorage:
+cdef class StateContainer:
     cdef State *states
     cdef int data_size
     cdef int gene_num
     cdef int max_mutation_num
+
+
+cdef class StateAgeContainer(StateContainer):
+    cdef double *state_ages
 
 
 

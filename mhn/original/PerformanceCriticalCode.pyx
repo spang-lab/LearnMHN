@@ -1,9 +1,8 @@
-
-# by Stefan Vocht
-#
-# this file contains the Cython code equivalent to the original R code in InlineFunctions.R from the original MHN repo
-# as well as some functions to solve linear equations involving [I-Q]
-#
+"""
+This submodule contains the Cython code equivalent to the original R code in InlineFunctions.R from the original MHN repo
+as well as some functions to solve linear equations involving [I-Q]
+"""
+# author(s): Stefan Vocht
 
 cimport cython
 import numpy as np

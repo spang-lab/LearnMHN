@@ -35,7 +35,7 @@ from mhn.original import FisherFunctions
 Lastly, you can train a MHN using state-space restriction. The corresponding functions
 can be imported with
 ```python
-from mhn.ssr import state_space_restriction, state_storage
+from mhn.ssr import state_space_restriction, state_containers
 ```
 
 ## Using the CUDA implementation of State-Space Restriction
@@ -103,8 +103,9 @@ rows and columns, which contain the actual binary matrix without anything else.
 If you do not do that, you will likely get wrong results.  
 If you want to make sure that the matrix was loaded correctly, you can get 
 the loaded matrix with
+
 ```python
-loaded_matrix = opt.bin_datamatrix
+loaded_matrix = opt.training_data
 ```
 By default, the optimizer will use the regularized score and gradient using 
 state-space restriction as defined in ```mhn/ssr/learnMHN```. If you want to

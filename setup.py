@@ -18,9 +18,9 @@ with open("README.md", 'r') as f:
     long_description = f.read()
 
 
-def compile_cuda_code(folder, cuda_filename, lib_name):
+def compile_cuda_code(folder, cuda_filename, lib_name, *extra_compile_args):
     """
-    This function compiles the CUDA code of cuda_state_space_restriction.cu containing the CUDA function for State Space Restriction
+    This function compiles the CUDA code of this package to run functions on the GPU
     """
     if IS_WINDOWS:
         output_filename = os.path.join(folder, f"{lib_name}.dll")
@@ -42,12 +42,13 @@ def compile_cuda_code(folder, cuda_filename, lib_name):
         return
 
     # command to compile the CUDA code using nvcc
-    compile_command = ['nvcc', '-o', output_filename, '--shared', cuda_filename, f'-DSTATE_SIZE={STATE_SIZE}']
+    compile_command = ['nvcc', '-o', output_filename, '--shared', cuda_filename, f'-DSTATE_SIZE={STATE_SIZE}',
+                       *extra_compile_args]
     if not IS_WINDOWS:
         compile_command += ['-Xcompiler', '-fPIC']
 
     # execute command and print the output
-    print(subprocess.run(compile_command, stdout=subprocess.PIPE).stdout.decode('utf-8'))
+    print(subprocess.run(compile_command, stdout=subprocess.PIPE).stdout.decode('utf-8', "ignore"))
 
 
 # check if nvcc (the cuda compiler) is available on the device
@@ -64,8 +65,8 @@ if nvcc_available:
 # define compile options for the Cython files
 ext_modules = [
     Extension(
-        "mhn.ssr.state_storage",
-        ["./mhn/ssr/state_storage.pyx"],
+        "mhn.ssr.state_containers",
+        ["./mhn/ssr/state_containers.pyx"],
         extra_compile_args=[
             f'-DSTATE_SIZE={STATE_SIZE}'
         ]
@@ -73,6 +74,19 @@ ext_modules = [
     Extension(
         "mhn.ssr.state_space_restriction",
         ["./mhn/ssr/state_space_restriction.pyx"],
+        libraries=libraries,
+        library_dirs=["./mhn/ssr/", ".mhn/original/"],
+        runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/", ".mhn/original/"],
+        include_dirs=['./mhn/ssr/', ".mhn/original/"],
+        extra_compile_args=[
+            '/Ox' if IS_WINDOWS else '-O2',
+            f'-DSTATE_SIZE={STATE_SIZE}'
+        ],
+        extra_link_args=[]
+    ),
+    Extension(
+        "mhn.ssr.matrix_exponential",
+        ["./mhn/ssr/matrix_exponential.pyx"],
         libraries=libraries,
         library_dirs=["./mhn/ssr/", ".mhn/original/"],
         runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/", ".mhn/original/"],
@@ -112,9 +126,9 @@ ext_modules = [
 
 setup(
     name="mhn",
-    version="0.0.5",
+    version="0.0.6",
     packages=find_packages(),
-    author="Stefan Vocht",
+    author="Stefan Vocht, Kevin Rupp",
     description="Contains functions to train and work with Mutual Hazard Networks",
     long_description=long_description,
     long_description_content_type='text/markdown',

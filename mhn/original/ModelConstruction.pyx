@@ -1,7 +1,10 @@
-# by Stefan Vocht
-#
-# this script implements the functions of ModelConstruction.R in Cython
-#
+"""
+This submodule implements ModelConstruction.R from the original implementation in Cython.
+
+It contains functions to generate random MHNs, build their transition rate matrix Q, the diagonal of Q, and to generate
+and independence model for a given distribution
+"""
+# author(s): Stefan Vocht
 
 cimport cython
 

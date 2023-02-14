@@ -60,13 +60,12 @@ int count_ones(uint64_t x) {
 }
 
 
-// computes the number of mutations present in a given state
 /**
  * Computes the number of mutations present in a given state
  *
  * @param[in] state A pointer to a State of which we want to count the number of mutations it contains
 */
-int get_mutation_num(const State *state){
+int DLL_PREFIX get_mutation_num(const State *state){
 	int mutation_num = 0;
 	for(int i = 0; i < STATE_SIZE; i++){
 		mutation_num += count_ones32(state->parts[i]);
@@ -82,7 +81,7 @@ int get_mutation_num(const State *state){
  * @param[out] thread_num number of threads that should be used for the CUDA kernels
  * @param[in] mutation_num number of mutations present in the current state
 */
-inline void determine_block_thread_num(int &block_num, int &thread_num, const int mutation_num) {
+void DLL_PREFIX determine_block_thread_num(int &block_num, int &thread_num, const int mutation_num) {
 
 	// block_num and thread_num have to be powers of two, else cuda_restricted_kronvec will not work
 	// maximum 256 blocks with 1024 threads
@@ -266,7 +265,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
  * @param[in] diag if false, the diag of Q is set to zero during multiplication
  * @param[in] transp if true, multiplication is done with the transposed Q
 */
-static void cuda_q_vec(const double *ptheta, const double *x, const State *state, double *yout, const int n, const int mutation_num, const bool diag, const bool transp) {
+void DLL_PREFIX cuda_q_vec(const double *ptheta, const double *x, const State *state, double *yout, const int n, const int mutation_num, const bool diag, const bool transp) {
 	
 	const int nx = 1 << mutation_num;
 	cudaMemset(yout, 0, nx * sizeof(double));
@@ -365,7 +364,7 @@ __global__ void cuda_subdiag(const double *ptheta, const State state, const int 
  * @param[in] block_num number of blocks used for the CUDA kernels
  * @param[in] thread_num  number of threads used for the CUDA kernels
 */
-static void cuda_subtract_q_diag(const double *ptheta, const State *state, const int n, const int mutation_num, double *dg, int block_num, int thread_num) {
+void DLL_PREFIX cuda_subtract_q_diag(const double *ptheta, const State *state, const int n, const int mutation_num, double *dg, int block_num, int thread_num) {
 	for (int i = 0; i < n; i++) {
 		cuda_subdiag<<<block_num, thread_num, n * sizeof(double)>>>(ptheta, *state, i, n, mutation_num, dg);
 	}
@@ -417,7 +416,7 @@ __global__ void multiply_arrays_elementwise(const double *arr1, double *arr_inou
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
  * @param[out] dg this array will contain the diagonal of [I-Q] after calling this function, has size must have size 2^mutation_num
 */
-static void compute_jacobi_diagonal(const double* ptheta, const State* state, const int mutation_num, const int n, double* dg) {
+void DLL_PREFIX compute_jacobi_diagonal(const double* ptheta, const State* state, const int mutation_num, const int n, double* dg) {
 	const int nx = 1 << mutation_num;
 
 	int block_num, thread_num;
@@ -442,7 +441,7 @@ static void compute_jacobi_diagonal(const double* ptheta, const State* state, co
  * @param[in, out] tmp this array is used to store temporary data, has to have size 2^mutation_num
  * @param[in] dg this array contains the diagonal of [I-Q]
 */
-static void cuda_jacobi(const double *ptheta, const double *b, const State *state, const int mutation_num, const bool transp, const int n, double *xout, double *tmp, double *dg) {
+void DLL_PREFIX cuda_jacobi(const double *ptheta, const double *b, const State *state, const int mutation_num, const bool transp, const int n, double *xout, double *tmp, double *dg) {
 
 	const int nx = 1 << mutation_num;
 
@@ -534,7 +533,7 @@ __global__ void print_vec(double *vec, int size) {
  * @param[in] tmp1 memory buffer needed for this function, size 2^mutation_num
  * @param[in] tmp2 memory buffer needed for this function, size 2^mutation_num
 */
-static void cuda_restricted_gradient(const double *ptheta, const State *state, const int n, double *grad, double *p0_pD, double *pth, double *q, double *tmp1, double *tmp2) {
+void DLL_PREFIX cuda_restricted_gradient(const double *ptheta, const State *state, const int n, double *grad, double *p0_pD, double *pth, double *q, double *tmp1, double *tmp2) {
 
 	// get the number of mutated genes in the current sample and compute the size of the memory buffers
 	const int mutation_num = get_mutation_num(state);
@@ -648,133 +647,137 @@ __global__ void add_to_score(double *score, double *pth_end){
 }
 
 
-/**
- * this function computes the gradient and score for the current MHN for a given data set using CUDA
- *
- * @param[in] ptheta array containing the theta entries
- * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
- * @param[in] mutation_data array of States, where each state represents a tumor sample
- * @param[in] data_size number of tumor samples in mutation_data
- * @param[out] grad_out array of size n*n in which the gradient will be stored
- * @param[out] score_out the marginal log-likelihood score is stored at this position
- *
- * @return CUDA error code converted to integer for better interoperability with Cython
-*/
-int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out) {
+extern "C"
+{
+    /**
+     * this function computes the gradient and score for the current MHN for a given data set using CUDA
+     *
+     * @param[in] ptheta array containing the theta entries
+     * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
+     * @param[in] mutation_data array of States, where each state represents a tumor sample
+     * @param[in] data_size number of tumor samples in mutation_data
+     * @param[out] grad_out array of size n*n in which the gradient will be stored
+     * @param[out] score_out the marginal log-likelihood score is stored at this position
+     *
+     * @return CUDA error code converted to integer for better interoperability with Cython
+    */
+    int DLL_PREFIX cuda_gradient_and_score_implementation(double *ptheta, int n, State *mutation_data, int data_size, double *grad_out, double *score_out) {
 
-	// determine the maximum number of mutations present in a single tumor sample
-	int max_mutation_num = 0;
-	for (int i = 0; i < data_size; i++) {
-		if (get_mutation_num(&mutation_data[i]) > max_mutation_num) max_mutation_num = get_mutation_num(&mutation_data[i]);
-	}
+        // determine the maximum number of mutations present in a single tumor sample
+        int max_mutation_num = 0;
+        for (int i = 0; i < data_size; i++) {
+            if (get_mutation_num(&mutation_data[i]) > max_mutation_num) max_mutation_num = get_mutation_num(&mutation_data[i]);
+        }
 
-	const int nx = 1 << max_mutation_num;
+        const int nx = 1 << max_mutation_num;
 
-	double *cuda_grad_out, *partial_grad;
-	double *p0_pD, *pth, *q, *tmp1, *tmp2;
-	double *cuda_ptheta;
-	double *cuda_score;
+        double *cuda_grad_out, *partial_grad;
+        double *p0_pD, *pth, *q, *tmp1, *tmp2;
+        double *cuda_ptheta;
+        double *cuda_score;
 
-	// allocate memory on the GPU
-	// we allocate all at once so that we can easily check for allocation errors
-	// if we did each allocation as a separate cudaMalloc, we would have to check for errors after each single call
-	double *d_memory;
-	cudaMalloc(&d_memory,
-				n*n * sizeof(double) +  // cuda_grad_out
-				n*n * sizeof(double) +  // partial_grad
-				nx  * sizeof(double) +  // p0_pD
-				nx  * sizeof(double) +  // pth
-				nx  * sizeof(double) +  // q
-				nx  * sizeof(double) +  // tmp1
-				nx  * sizeof(double) +  // tmp2
-				n*n * sizeof(double) +  // cuda_ptheta
-				 1  * sizeof(double)    // cuda_score
-				 );
+        // allocate memory on the GPU
+        // we allocate all at once so that we can easily check for allocation errors
+        // if we did each allocation as a separate cudaMalloc, we would have to check for errors after each single call
+        double *d_memory;
+        cudaMalloc(&d_memory,
+                    n*n * sizeof(double) +  // cuda_grad_out
+                    n*n * sizeof(double) +  // partial_grad
+                    nx  * sizeof(double) +  // p0_pD
+                    nx  * sizeof(double) +  // pth
+                    nx  * sizeof(double) +  // q
+                    nx  * sizeof(double) +  // tmp1
+                    nx  * sizeof(double) +  // tmp2
+                    n*n * sizeof(double) +  // cuda_ptheta
+                     1  * sizeof(double)    // cuda_score
+                     );
 
-	// check for errors
-	// errors could occur if CUDA is not installed correctly or if the user tries to allocate too much memory
-	if (cudaPeekAtLastError() != cudaSuccess){
-		// cast cudaError_t to int, not the best style, but simplest method to get it work in Cython
-		return (int) cudaPeekAtLastError();
-	}
+        // check for errors
+        // errors could occur if CUDA is not installed correctly or if the user tries to allocate too much memory
+        if (cudaPeekAtLastError() != cudaSuccess){
+            // cast cudaError_t to int, not the best style, but simplest method to get it work in Cython
+            return (int) cudaPeekAtLastError();
+        }
 
-	cuda_grad_out = d_memory;
-	partial_grad  = d_memory +   n*n;
-	p0_pD         = d_memory + 2*n*n;
-	pth 		  = d_memory + 2*n*n +   nx;
-	q			  = d_memory + 2*n*n + 2*nx;
-	tmp1		  = d_memory + 2*n*n + 3*nx;
-	tmp2		  = d_memory + 2*n*n + 4*nx;
-	cuda_ptheta   = d_memory + 2*n*n + 5*nx;
-	cuda_score	  = d_memory + 3*n*n + 5*nx;
+        cuda_grad_out = d_memory;
+        partial_grad  = d_memory +   n*n;
+        p0_pD         = d_memory + 2*n*n;
+        pth 		  = d_memory + 2*n*n +   nx;
+        q			  = d_memory + 2*n*n + 2*nx;
+        tmp1		  = d_memory + 2*n*n + 3*nx;
+        tmp2		  = d_memory + 2*n*n + 4*nx;
+        cuda_ptheta   = d_memory + 2*n*n + 5*nx;
+        cuda_score	  = d_memory + 3*n*n + 5*nx;
 
-	// copy theta to the GPU
-	cudaMemcpy(cuda_ptheta, ptheta, n*n * sizeof(double), cudaMemcpyHostToDevice);
-	
-	// initialize the gradient on the GPU with zero
-	cudaMemset(cuda_grad_out, 0, n*n * sizeof(double));
+        // copy theta to the GPU
+        cudaMemcpy(cuda_ptheta, ptheta, n*n * sizeof(double), cudaMemcpyHostToDevice);
 
-	// for the functions we need theta in its exponential form
-	array_exp<<<32, 64>>>(cuda_ptheta, n*n);
+        // initialize the gradient on the GPU with zero
+        cudaMemset(cuda_grad_out, 0, n*n * sizeof(double));
+		cudaMemset(cuda_score, 0, sizeof(double));
 
-	// again check for errors
-	// errors could occur if CUDA is not installed correctly or the kernel call did not work correctly
-	if (cudaPeekAtLastError() != cudaSuccess){
-		// cast cudaError_t to int, not the best style, but simplest method to get it work in Cython
-		return (int) cudaPeekAtLastError();
-	}
+        // for the functions we need theta in its exponential form
+        array_exp<<<32, 64>>>(cuda_ptheta, n*n);
 
-	// compute the gradient for each tumor sample and add them together
-	for (int i = 0; i < data_size; i++) {
-		cuda_restricted_gradient(cuda_ptheta, &mutation_data[i], n, partial_grad, p0_pD, pth, q, tmp1, tmp2);
-		add_arrays<<<32, 64>>>(partial_grad, cuda_grad_out, n*n);
+        // again check for errors
+        // errors could occur if CUDA is not installed correctly or the kernel call did not work correctly
+        if (cudaPeekAtLastError() != cudaSuccess){
+            // cast cudaError_t to int, not the best style, but simplest method to get it work in Cython
+            return (int) cudaPeekAtLastError();
+        }
 
-		int mutation_num = get_mutation_num(&mutation_data[i]);
-		add_to_score<<<1, 1>>>(cuda_score, &pth[(1 << mutation_num) - 1]);
-	}
+        // compute the gradient for each tumor sample and add them together
+        for (int i = 0; i < data_size; i++) {
+            cuda_restricted_gradient(cuda_ptheta, &mutation_data[i], n, partial_grad, p0_pD, pth, q, tmp1, tmp2);
+            add_arrays<<<32, 64>>>(partial_grad, cuda_grad_out, n*n);
 
-	// copy the results to the CPU
-	cudaMemcpy(grad_out, cuda_grad_out, n*n * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy(score_out, cuda_score, sizeof(double), cudaMemcpyDeviceToHost);
+            int mutation_num = get_mutation_num(&mutation_data[i]);
+            add_to_score<<<1, 1>>>(cuda_score, &pth[(1 << mutation_num) - 1]);
+        }
 
-	// free all memory on the GPU
-	cudaFree(d_memory);
+        // copy the results to the CPU
+        cudaMemcpy(grad_out, cuda_grad_out, n*n * sizeof(double), cudaMemcpyDeviceToHost);
+        cudaMemcpy(score_out, cuda_score, sizeof(double), cudaMemcpyDeviceToHost);
 
-	return (int) cudaGetLastError();
-}
+        // free all memory on the GPU
+        cudaFree(d_memory);
 
-
-/**
- * This function is used by state_space_restriction.pyx to get the error name and description if an error occurred
- *
- * @param[in] error is the cudaError_t returned by the CUDA function casted to int to be usable in Cython
- * @param[out] error_name the name of the error will be stored in this variable
- * @param[out] error_description the description of the error will be stored in this variable
-*/
-void DLL_PREFIX get_error_name_and_description(int error, const char **error_name, const char **error_description){
-	*error_name = cudaGetErrorName((cudaError_t) error);
-	*error_description = cudaGetErrorString((cudaError_t) error);
-}
+        return (int) cudaGetLastError();
+    }
 
 
-/**
- * This function can be used to check if CUDA works as intended. For that it allocates and frees memory on the GPU.
- * If the allocation fails, something is probably wrong with the CUDA drivers and you should check your CUDA installation.
- *
- * @return 1, if everything works as it should, else 0
-*/
-int DLL_PREFIX cuda_functional(){
-    bool error_occurred = false;
-    double *ptr;
+    /**
+     * This function is used by state_space_restriction.pyx to get the error name and description if an error occurred
+     *
+     * @param[in] error is the cudaError_t returned by the CUDA function casted to int to be usable in Cython
+     * @param[out] error_name the name of the error will be stored in this variable
+     * @param[out] error_description the description of the error will be stored in this variable
+    */
+    void DLL_PREFIX get_error_name_and_description(int error, const char **error_name, const char **error_description){
+        *error_name = cudaGetErrorName((cudaError_t) error);
+        *error_description = cudaGetErrorString((cudaError_t) error);
+    }
 
-    // check if memory allocation works
-    error_occurred |= (cudaMalloc(&ptr, sizeof(double)) != cudaSuccess);
 
-    // check if calling a kernel works
-    fill_array<<<1, 1 >>>(ptr, 3.1415, 1);  // fill array with a random value
-    error_occurred |= (cudaPeekAtLastError() != cudaSuccess);
+    /**
+     * This function can be used to check if CUDA works as intended. For that it allocates and frees memory on the GPU.
+     * If the allocation fails, something is probably wrong with the CUDA drivers and you should check your CUDA installation.
+     *
+     * @return 1, if everything works as it should, else 0
+    */
+    int DLL_PREFIX cuda_functional(){
+        bool error_occurred = false;
+        double *ptr;
 
-    error_occurred |= (cudaFree(ptr) != cudaSuccess);
+        // check if memory allocation works
+        error_occurred |= (cudaMalloc(&ptr, sizeof(double)) != cudaSuccess);
 
-    return (!error_occurred);
+        // check if calling a kernel works
+        fill_array<<<1, 1 >>>(ptr, 3.1415, 1);  // fill array with a random value
+        error_occurred |= (cudaPeekAtLastError() != cudaSuccess);
+
+        error_occurred |= (cudaFree(ptr) != cudaSuccess);
+
+        return (!error_occurred);
+    }
 }

@@ -1,9 +1,10 @@
-# distutils: language = c++
+"""
+This submodule implements Likelihood.R from the original implementation in Cython.
 
-# by Stefan Vocht
-#
-# this script implements Likelihood.R in Cython
-#
+It contains functions to compute the log-likelihood score and its gradient without state-space restriction as
+well as functions for matrix-vector multiplications with the transition rate matrix and [I-Q]^(-1)
+"""
+# author(s): Stefan Vocht
 
 cimport cython
 

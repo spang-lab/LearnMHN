@@ -1,17 +1,16 @@
-# distutils: language = c++
-
-# by Stefan Vocht
-#
-# implement StateSpaceRestriction using Cython
-#
+"""
+This submodule contains functions to work with the transition rate matrix Q in a restricted state-space as well as
+functions to compute the marginal log-likelihood score and its gradient making use of state-space restriction.
+"""
+# author(s): Stefan Vocht
 
 cimport cython
 
-from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot
+from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot, dnrm2
 from libc.stdlib cimport malloc, free
 from libc.math cimport exp, log
 
-from mhn.ssr.state_storage cimport State, StateStorage
+from mhn.ssr.state_containers cimport State, StateContainer
 from mhn.original.PerformanceCriticalCode cimport _compute_inverse, _compute_inverse_t
 
 import numpy as np
@@ -49,6 +48,7 @@ cdef extern from *:
 
 def count_ones64(long long x):
     """
+    Counts the number of bits set to 1 in a 64-bit integer.
     Wrapper so that count_ones can be called from a Python script
     """
     return count_ones(x)
@@ -173,9 +173,9 @@ cdef void restricted_kronvec(double[:, :] theta_mat, int i, double[:] x_vec, Sta
             else:
                 dscal(&nxhalf, &theta, px2, &incx)
  
-            old_vec = shuffled_vec;
-            shuffled_vec = swap_vec;
-            swap_vec = old_vec;
+            old_vec = shuffled_vec
+            shuffled_vec = swap_vec
+            swap_vec = old_vec
 
         elif i == j:
             theta = -exp(theta_i[j])
@@ -337,7 +337,7 @@ cdef np.ndarray[np.double_t] restricted_jacobi(double[:, :] theta, double[:] b, 
     return x
 
 
-cdef compute_restricted_inverse(double[:, :] theta, double *dg, State *state, double[:] b, double[:] xout, bint transp = False):
+cdef void compute_restricted_inverse(double[:, :] theta, double *dg, State *state, double[:] b, double[:] xout, bint transp = False):
     """
     this functions multiplies [I-Q]^(-1) with b and is much faster than restricted jacobi
     
@@ -484,12 +484,12 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
     return log(pth[nx - 1])
 
 
-cpdef cython_gradient_and_score(double[:, :] theta, StateStorage mutation_data):
+cpdef cython_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
     Computes the total gradient and score for a given MHN and given mutation data
 
     :param theta: matrix containing the theta entries of the current MHN
-    :param mutation_data: StateStorage containing the mutation data the MHN should be trained on
+    :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
     :return: tuple containing the gradient and the score
     """
     cdef int n = theta.shape[0]
@@ -522,12 +522,12 @@ IF NVCC_AVAILABLE:
         Error raised if something went wrong during execution of the CUDA code
         """
 
-    cpdef cuda_gradient_and_score(double[:, :] theta, StateStorage mutation_data):
+    cpdef cuda_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
         """
         This function is a wrapper for the cuda implementation of the state space restriction
 
         :param theta: matrix containing the theta entries of the current MHN
-        :param mutation_data: StateStorage containing the mutation data the MHN should be trained on
+        :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
         :return: tuple containing the normalized gradient and score
         """
 
@@ -549,14 +549,14 @@ IF NVCC_AVAILABLE:
         return (grad_out.reshape((n, n)) / data_size), (score / data_size)
 
 
-cpdef gradient_and_score(double[:, :] theta, StateStorage mutation_data):
+cpdef gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
     If CUDA is available, this function will use the CUDA implementation, if the maximum number of mutations
     in a single sample in the data exceeds 12, else it will use the Cython implementation.
     If CUDA is not available on your device, this function will always use the Cython implementation.
     """
     IF NVCC_AVAILABLE:
-        if mutation_data.get_max_mutation_num() > 12:
+        if mutation_data.get_max_mutation_num() > 18:
             return cuda_gradient_and_score(theta, mutation_data)
         else:
             return cython_gradient_and_score(theta, mutation_data)
