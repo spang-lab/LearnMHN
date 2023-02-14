@@ -309,11 +309,8 @@ class DUAOptimizer(_Optimizer):
         """
         super().set_device(device)
         if device == _Optimizer.Device.GPU:
-            if cuda_available() != CUDA_AVAILABLE:
-                raise CUDAError(cuda_available())
-            warnings.warn("You should probably use the CPU implementation, as the GPU implementation of the "
-                          "matrix exponential is currently much slower than the CPU one.")
-            self.__gradient_and_score_func_with_eps = mat_exp.cuda_gradient_and_score
+            raise NotImplementedError("There is currently no GPU version available for the DUA algorithm,"
+                                      " might be added later")
         else:
             self.__gradient_and_score_func_with_eps = mat_exp.cython_gradient_and_score
         return self

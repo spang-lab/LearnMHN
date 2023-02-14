@@ -96,6 +96,8 @@ class TestCudaMatrixExponential(unittest.TestCase):
 
     def setUp(self) -> None:
         np.random.seed(0)
+        self.skipTest("There is currently no CUDA implementation for the matrix exponential available. "
+                      "Might be added in the future.")
 
     def test_compare_with_cython(self):
         n = 6
@@ -115,6 +117,7 @@ class TestCudaMatrixExponential(unittest.TestCase):
 
         self.assertAlmostEqual(np.max(np.abs(grad2 - grad1)), 0, 5)
         self.assertAlmostEqual(score1, score2, 5)
+
 
 if __name__ == '__main__':
     unittest.main()
