@@ -589,7 +589,7 @@ extern "C" int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, i
 
 
 
-
+// small function to compute n over k
 int compute_binom_coef(int n, int k){
     if(k>n || k < 0)
         return 0;
@@ -605,30 +605,45 @@ int compute_binom_coef(int n, int k){
 }
 
 
+/**
+ * this function represents a bijective mapping between the numbers 0 to (n over k) and the numbers which are smaller than 2^n and
+ * contain exactly k 1s in their binary representation 
+ * 
+ * @param[in] i number which should be mapped to a bit permutation with n bits and k 1s
+ * @param[in] n considers permutations with n bits
+ * @param[in] k number of bits set to 1 in the permutations
+ * @param[in] binom_coef number of possible permutations for n bits with k bits set to 1
+ * 
+ * @return permutation corresponding to the number i
+*/
 __device__ int compute_index(int i, int n, int k, int binom_coef){
     int index = 0;
     int bit_setter = 1;
-    int separator = 0;
-    // int binom_coef;
     int current_n = n;
 
-    // binom_coef = compute_binom_coef(current_n, k);
+	// the algorithm can be imagined as a kind of binary tree search:
+	// in each iteration j there are two possiblities: either the jth bit is set to 0 or to 1
+	// if k bits are set to 1, we are finished
+	// let current_n be the number of bits not determined yet (current_n = n - j)
+	// let k be the number of bits that still have to be flipped to 1
+	// then we can compute the size of each subtree with 
+	// (current_n-1 over k) for the subtree where we do not set the current bit to 1 and 
+	// (current_n-1 over k-1) for the subtree where we do set the current bit to 1
+	// if the given number i is greater than the size of the subtree where the bit is not set to 1, we set the bit to 1 and
+	// subtract the size of that subtree from i for the next iteration
 
     for(int j = 0; j < n; j++){
+		// compute (current_n-1 over k)
         binom_coef = ((current_n-k) * binom_coef) / current_n;
-        //binom_coef = compute_binom_coef(current_n-1, k);
-        separator += binom_coef;
-
-        if(i < separator){
-            separator -= binom_coef;
-        } else {
+        if (i >= binom_coef) {
             index |= bit_setter;
+			i -= binom_coef;
+			// compute (current_n-1 over k-1)
             if (current_n == k){
                 binom_coef = 1;
             } else {
                 binom_coef = (k * binom_coef) / (current_n - k);
-            }
-            
+            }           
             k -= 1;
             if(k == 0)
                 break;
@@ -641,17 +656,16 @@ __device__ int compute_index(int i, int n, int k, int binom_coef){
 }
 
 
-__global__ void scale_array(double *arr, double alpha, int size){
-	const int stride = blockDim.x * gridDim.x;
-	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
-
-	for(int i = cuda_index; i < size; i++){
-		arr[i] *= alpha;
-	}
-}
-
-#define PRINTLN(STUFF) printf(STUFF "\n")
-
+/**
+ * this kernel is used to solve [I - Q] x = b for all indices whose binary representation contains j bits set to 1
+ * 
+ * @param[in] theta theta matrix representing the MHN
+ * @param[in] n size of theta
+ * @param[in] dg diagonal of [I - Q]
+ * @param[in, out] array containing the b at the beginning and x at the end
+ * @param[in] j number of bits set to 1 in all indices for which the equation is solved
+ * @param[in] binom_coef value of n over j
+*/
 __global__ void compute_inverse_level(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, int j, int binom_coef){
 	const int stride = blockDim.x * gridDim.x;
 	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -662,13 +676,14 @@ __global__ void compute_inverse_level(const double * __restrict__ theta, const i
 		local_theta[i] = theta[i];
 	}
 
+	// in each iteration we first map the current i to a permutation of bits with j 1s and n-j 0s
+	// for the indices represented by those permutations all partial solutions needed to compute their values were computed with forward substitution in a previous call of this kernel
+	// we can therefore now go on and compute the solution for those indices
 	for(int i = cuda_index; i < binom_coef; i += stride){
-		// PRINTLN("Enter");
 		int index = compute_index(i, n, j, binom_coef);
 		int bit_setter = 1;
 		double xout_element = xout[index];
 		for(int k = 0; k < n; k++){
-			// PRINTLN("k");
 			int modified_index = (index & (~bit_setter));
 			if (modified_index != index){
 				double theta_product = 1.;
@@ -677,6 +692,7 @@ __global__ void compute_inverse_level(const double * __restrict__ theta, const i
 					theta_product *= 1 + (ind_copy & 1) * (local_theta[k*n + r] - 1);
 					ind_copy >>= 1;
 				}
+				// index was chosen in such a way that we can be sure that xout[modified_index] already contains the correct value
 				xout_element += theta_product * xout[modified_index];
 			}
 			bit_setter <<= 1;
@@ -686,6 +702,16 @@ __global__ void compute_inverse_level(const double * __restrict__ theta, const i
 }
 
 
+/**
+ * this kernel is used to solve [I - Q]^T x = b for all indices whose binary representation contains j bits set to 1
+ * 
+ * @param[in] theta theta matrix representing the MHN
+ * @param[in] n size of theta
+ * @param[in] dg diagonal of [I - Q]
+ * @param[in, out] array containing the b at the beginning and x at the end
+ * @param[in] j number of bits set to 1 in all indices for which the equation is solved
+ * @param[in] binom_coef value of n over j
+*/
 __global__ void compute_inverse_level_t(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, int j, int binom_coef){
 	const int stride = blockDim.x * gridDim.x;
 	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -696,13 +722,14 @@ __global__ void compute_inverse_level_t(const double * __restrict__ theta, const
 		local_theta[i] = theta[i];
 	}
 
+	// in each iteration we first map the current i to a permutation of bits with j 1s and n-j 0s
+	// for the indices represented by those permutations all partial solutions needed to compute their values were computed with forward substitution in a previous call of this kernel
+	// we can therefore now go on and compute the solution for those indices
 	for(int i = binom_coef - cuda_index - 1; i >= 0; i -= stride){
-		// PRINTLN("Enter");
 		int index = compute_index(i, n, j, binom_coef);
 		int bit_setter = 1;
 		double xout_element = xout[index];
 		for(int k = 0; k < n; k++){
-			// PRINTLN("k");
 			int modified_index = (index | bit_setter);
 			if (modified_index != index){
 				double theta_product = 1.;
@@ -711,6 +738,7 @@ __global__ void compute_inverse_level_t(const double * __restrict__ theta, const
 					theta_product *= 1 + (ind_copy & 1) * (local_theta[k*n + r] - 1);
 					ind_copy >>= 1;
 				}
+				// index was chosen in such a way that we can be sure that xout[modified_index] already contains the correct value
 				xout_element += theta_product * xout[modified_index];
 			}
 			bit_setter <<= 1;
@@ -719,23 +747,43 @@ __global__ void compute_inverse_level_t(const double * __restrict__ theta, const
 	}
 }
 
-
-void _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp){
+/**
+ * Internal function to compute the solution for [I-Q] x = b using forward and backward substitution
+ * All arrays given to this function must be allocated using cudaMalloc()!
+ * 
+ * @param[in] theta theta matrix representing the MHN with size n x n
+ * @param[in] n number of rows and columns of the theta matrix
+ * @param[in] dg diagonal of [I-Q], you could also use a different diagonal to compute the inverse for a matrix that only differs in the diagonal from [I-Q]
+ * @param[in, out] xout this vector of size 2^n must contain b at the beginning at will contain x at the end
+ * @param[in] transp if set to true, computes the solution for [I-Q]^T x = b
+*/
+void _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp = false){
 
 	for(int j = 0; j <= n; j++){
-		// printf("j %d\n", j);
-		// fflush(stdout);
 		int binom_coef = compute_binom_coef(n, j);
-		int block_num = 1 + (binom_coef / 128);
+		int thread_num = ((binom_coef / 32) + 1) * 32;
+		if (thread_num > 512)
+			thread_num = 512;
+		int block_num = 1 + (binom_coef / thread_num);
+		if (block_num > 128)
+			block_num = 128;
 		if(transp){
-			compute_inverse_level_t<<<block_num, 128, n*n * sizeof(double)>>>(theta, n, dg, xout, n-j, binom_coef);
+			compute_inverse_level_t<<<block_num, thread_num, n*n * sizeof(double)>>>(theta, n, dg, xout, n-j, binom_coef);
 		} else {
-			compute_inverse_level<<<block_num, 128, n*n * sizeof(double)>>>(theta, n, dg, xout, j, binom_coef);
+			compute_inverse_level<<<block_num, thread_num, n*n * sizeof(double)>>>(theta, n, dg, xout, j, binom_coef);
 		}
 	}
 }
 
 
+/**
+ * computes the solution for [I-Q] x = b using forward and backward substitution
+ * 
+ * @param[in] theta theta matrix representing the MHN with size n x n
+ * @param[in] n number of rows and column of the theta matrix
+ * @param[in] b vector of size 2^n which should be multiplied with [I-Q]^(-1)
+ * @param[out] xout array of size 2^n which will contain the result of the matrix-vector multiplication at the end
+*/
 extern "C" void DLL_PREFIX gpu_compute_inverse(double *theta, int n, double *b, double *xout){
 
 
@@ -757,10 +805,8 @@ extern "C" void DLL_PREFIX gpu_compute_inverse(double *theta, int n, double *b, 
 
 	array_exp<<<32, 64>>>(d_theta, n*n);
 
-	// cudaMemset(d_dg, 0, nx * sizeof(double));
 	fill_array<<<block_num, thread_num>>>(d_dg, 1, nx);
 	cuda_subtract_q_diag(d_theta, n, d_dg, block_num, thread_num);
-	// scale_array<<<block_num, thread_num>>>(d_dg, -1, nx);
 
 	_compute_inverse(d_theta, n, d_dg, d_xout, true);
 
