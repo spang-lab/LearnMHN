@@ -594,7 +594,7 @@ extern "C" int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, i
  * @param[in] b vector of size 2^n which should be multiplied with [I-Q]^(-1)
  * @param[out] xout array of size 2^n which will contain the result of the matrix-vector multiplication at the end
 */
-extern "C" void DLL_PREFIX gpu_compute_inverse(double *theta, int n, double *b, double *xout){
+extern "C" void DLL_PREFIX gpu_compute_inverse(double *theta, int n, double *b, double *xout, bool transp = false){
 
 
     int nx = 1 << n;
@@ -618,7 +618,7 @@ extern "C" void DLL_PREFIX gpu_compute_inverse(double *theta, int n, double *b, 
     fill_array<<<block_num, thread_num>>>(d_dg, 1, nx);
     cuda_subtract_q_diag(d_theta, n, d_dg, block_num, thread_num);
 
-    _compute_inverse(d_theta, n, d_dg, d_xout, true);
+    _compute_inverse(d_theta, n, d_dg, d_xout, transp);
 
 
     cudaMemcpy(xout, d_xout, nx * sizeof(double), cudaMemcpyDeviceToHost);

@@ -27,15 +27,4 @@ int compute_binom_coef(int n, int k);
 extern "C"  void DLL_PREFIX _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp);
 
 
-/**
- * computes the solution for [I-Q] x = b using forward and backward substitution
- * 
- * @param[in] theta theta matrix representing the MHN with size n x n
- * @param[in] n number of rows and column of the theta matrix
- * @param[in] b vector of size 2^n which should be multiplied with [I-Q]^(-1)
- * @param[out] xout array of size 2^n which will contain the result of the matrix-vector multiplication at the end
-*/
-extern "C" void DLL_PREFIX gpu_compute_inverse(double *theta, int n, double *b, double *xout);
-
-
 #endif

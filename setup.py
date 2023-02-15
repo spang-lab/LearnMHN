@@ -119,7 +119,6 @@ ext_modules = [
         ["./mhn/original/PerformanceCriticalCode.pyx"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2',
-            '/openmp' if IS_WINDOWS else '',
             f'-DNUMBER_OF_THREADS={os.cpu_count()}'
         ]
     ),
