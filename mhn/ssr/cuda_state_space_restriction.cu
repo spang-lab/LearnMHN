@@ -522,6 +522,9 @@ __global__ void print_vec(double *vec, int size) {
 }
 
 
+/**
+ * this kernel extracts the thetas corresponding to mutated genes
+*/
 __global__ void compute_mutated_thetas(const double* __restrict__ theta, int n, int mutation_num, State state, double* __restrict__ mutated_thetas){
     int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -549,7 +552,19 @@ __global__ void compute_mutated_thetas(const double* __restrict__ theta, int n, 
     }
 }
 
-
+/**
+ * this function uses forward and backward substitution to compute the solution for [I-Q] x = b
+ * 
+ * @param[in] theta complete theta matrix representing the MHN with size n x n
+ * @param[in] n size of theta
+ * @param[in] dg diagonal of [I-Q]
+ * @param[in] state state representing the current tumor sample
+ * @param[in] mutation_num number of mutations in the current state
+ * @param[in] b vector that should be multiplied with [I-Q]^(-1)
+ * @param[out] xout solution of [I-Q] x = b
+ * @param[out] tmp array of size n^2 which acts as additional memory needed to compute the solution 
+ * @param[in] transp if set to true, will compute solution for [I-Q]^T x = b
+*/
 static void compute_restricted_inverse(const double* theta, int n, const double* dg, const State *state, int mutation_num, const double* b, double* xout, double* tmp, bool transp = false){
 
     int nx = 1 << mutation_num;
