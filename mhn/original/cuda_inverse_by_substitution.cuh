@@ -1,5 +1,5 @@
-#ifndef CUDA_FULL_STATE_SPACE_H_
-#define CUDA_FULL_STATE_SPACE_H_
+#ifndef CUDA_INVERSE_BY_SUBSTITUTION_H_
+#define CUDA_INVERSE_BY_SUBSTITUTION_H_
 
 // on Windows we need to add a prefix in front of the function we want to use in other code
 // on Linux this is not needed, so we define DLL_PREFIX depending on which os this code is compiled on
@@ -10,22 +10,12 @@
 #endif
 
 
-/**
- * this function computes the gradient and score for the current MHN for a given observed frequency of tumors in data using CUDA
- *
- * @param[in] ptheta array containing the theta entries
- * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
- * @param[in] pD observed frequency of tumors in data
- * @param[out] grad_out array of size n*n in which the gradient will be stored
- * @param[out] score_out the marginal log-likelihood score is stored at this position
- *
- * @return CUDA error code converted to integer for better interoperability with Cython
-*/
-extern "C" int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, int n, double *pD, double *grad_out, double *score_out);
+// small function to compute n over k
+int compute_binom_coef(int n, int k);
 
 
 /**
- * Internal function to compute the solution for [I-Q] x = b using forward and backward substitution.
+ * Internal function to compute the solution for [I-Q] x = b using forward and backward substitution
  * All arrays given to this function must be allocated using cudaMalloc()!
  * 
  * @param[in] theta theta matrix representing the MHN with size n x n

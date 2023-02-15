@@ -18,19 +18,23 @@ with open("README.md", 'r') as f:
     long_description = f.read()
 
 
-def compile_cuda_code(folder, cuda_filename, lib_name, *extra_compile_args):
+def compile_cuda_code(folder, cuda_filename, lib_name, *extra_compile_args, additional_cuda_files=None):
     """
     This function compiles the CUDA code of this package to run functions on the GPU
     """
+    if additional_cuda_files is None:
+        additional_cuda_files = []
     if IS_WINDOWS:
         output_filename = os.path.join(folder, f"{lib_name}.dll")
     else:
         output_filename = os.path.join(folder, f"lib{lib_name}.so")
 
     cuda_filename = os.path.join(folder, cuda_filename)
-    # check if the shared library file was modified after the source file
+    # check if the shared library file was modified after the source files
+    shared_lib_latest_version = True
     try:
-        shared_lib_latest_version = (os.path.getmtime(cuda_filename) - os.path.getmtime(output_filename) < 0)
+        for cuda_file in [cuda_filename] + additional_cuda_files:
+            shared_lib_latest_version &= (os.path.getmtime(cuda_file) - os.path.getmtime(output_filename) < 0)
     except FileNotFoundError:
         shared_lib_latest_version = False
 
@@ -42,8 +46,8 @@ def compile_cuda_code(folder, cuda_filename, lib_name, *extra_compile_args):
         return
 
     # command to compile the CUDA code using nvcc
-    compile_command = ['nvcc', '-o', output_filename, '--shared', cuda_filename, f'-DSTATE_SIZE={STATE_SIZE}',
-                       *extra_compile_args]
+    compile_command = ['nvcc', '-o', output_filename, '--shared', cuda_filename, *additional_cuda_files,
+                       f'-DSTATE_SIZE={STATE_SIZE}', *extra_compile_args]
     if not IS_WINDOWS:
         compile_command += ['-Xcompiler', '-fPIC']
 
@@ -58,11 +62,10 @@ libraries = []
 if nvcc_available:
     libraries.append(os.path.abspath("./mhn/ssr/CudaStateSpaceRestriction"))
     libraries.append(os.path.abspath("./mhn/original/CudaFullStateSpace"))
-    compile_cuda_code("./mhn/original/", "cuda_full_state_space.cu", "CudaFullStateSpace")
-    compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction",
-                      "./mhn/original/cuda_full_state_space.cu",
-                      f'-I"{os.path.abspath("./mhn/original")}"'
-                      )
+    compile_cuda_code("./mhn/original/", "cuda_full_state_space.cu", "CudaFullStateSpace",
+                      additional_cuda_files=["./mhn/original/cuda_inverse_by_substitution.cu"])
+    compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction", f'-I./mhn/original/',
+                      additional_cuda_files=["./mhn/original/cuda_inverse_by_substitution.cu"])
 
 
 # define compile options for the Cython files

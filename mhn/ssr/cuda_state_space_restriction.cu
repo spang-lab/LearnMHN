@@ -15,7 +15,7 @@
 #include <chrono>
 #include <iostream>
 
-#include "cuda_full_state_space.cuh"
+#include "cuda_inverse_by_substitution.cuh"
 
 
 // on Windows we need to add a prefix in front of the function we want to use in other code
