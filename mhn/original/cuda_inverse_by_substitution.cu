@@ -53,24 +53,24 @@ __device__ int compute_index(int i, int n, int k, int binom_coef){
     int bit_setter = 1;
     int current_n = n;
 
-	// the algorithm can be imagined as a kind of binary tree search:
-	// in each iteration j there are two possiblities: either the jth bit is set to 0 or to 1
-	// if k bits are set to 1, we are finished
-	// let current_n be the number of bits not determined yet (current_n = n - j)
-	// let k be the number of bits that still have to be flipped to 1
-	// then we can compute the size of each subtree with 
-	// (current_n-1 over k) for the subtree where we do not set the current bit to 1 and 
-	// (current_n-1 over k-1) for the subtree where we do set the current bit to 1
-	// if the given number i is greater than the size of the subtree where the bit is not set to 1, we set the bit to 1 and
-	// subtract the size of that subtree from i for the next iteration
+    // the algorithm can be imagined as a kind of binary tree search:
+    // in each iteration j there are two possiblities: either the jth bit is set to 0 or to 1
+    // if k bits are set to 1, we are finished
+    // let current_n be the number of bits not determined yet (current_n = n - j)
+    // let k be the number of bits that still have to be flipped to 1
+    // then we can compute the size of each subtree with 
+    // (current_n-1 over k) for the subtree where we do not set the current bit to 1 and 
+    // (current_n-1 over k-1) for the subtree where we do set the current bit to 1
+    // if the given number i is greater than the size of the subtree where the bit is not set to 1, we set the bit to 1 and
+    // subtract the size of that subtree from i for the next iteration
 
     for(int j = 0; j < n; j++){
-		// compute (current_n-1 over k)
+        // compute (current_n-1 over k)
         binom_coef = ((current_n-k) * binom_coef) / current_n;
         if (i >= binom_coef) {
             index |= bit_setter;
-			i -= binom_coef;
-			// compute (current_n-1 over k-1)
+            i -= binom_coef;
+            // compute (current_n-1 over k-1)
             if (current_n == k){
                 binom_coef = 1;
             } else {
@@ -99,38 +99,38 @@ __device__ int compute_index(int i, int n, int k, int binom_coef){
  * @param[in] binom_coef value of n over j
 */
 __global__ void compute_inverse_level(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, int j, int binom_coef){
-	const int stride = blockDim.x * gridDim.x;
-	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
+    const int stride = blockDim.x * gridDim.x;
+    const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	extern __shared__ double local_theta[];
+    extern __shared__ double local_theta[];
 
-	for(int i = threadIdx.x; i < n*n; i += blockDim.x){
-		local_theta[i] = theta[i];
-	}
+    for(int i = threadIdx.x; i < n*n; i += blockDim.x){
+        local_theta[i] = theta[i];
+    }
 
-	// in each iteration we first map the current i to a permutation of bits with j 1s and n-j 0s
-	// for the indices represented by those permutations all partial solutions needed to compute their values were computed with forward substitution in a previous call of this kernel
-	// we can therefore now go on and compute the solution for those indices
-	for(int i = cuda_index; i < binom_coef; i += stride){
-		int index = compute_index(i, n, j, binom_coef);
-		int bit_setter = 1;
-		double xout_element = xout[index];
-		for(int k = 0; k < n; k++){
-			int modified_index = (index & (~bit_setter));
-			if (modified_index != index){
-				double theta_product = 1.;
-				int ind_copy = index;
-				for(int r = 0; r < n; r++){
-					theta_product *= 1 + (ind_copy & 1) * (local_theta[k*n + r] - 1);
-					ind_copy >>= 1;
-				}
-				// index was chosen in such a way that we can be sure that xout[modified_index] already contains the correct value
-				xout_element += theta_product * xout[modified_index];
-			}
-			bit_setter <<= 1;
-		}
-		xout[index] = xout_element / dg[index];
-	}
+    // in each iteration we first map the current i to a permutation of bits with j 1s and n-j 0s
+    // for the indices represented by those permutations all partial solutions needed to compute their values were computed with forward substitution in a previous call of this kernel
+    // we can therefore now go on and compute the solution for those indices
+    for(int i = cuda_index; i < binom_coef; i += stride){
+        int index = compute_index(i, n, j, binom_coef);
+        int bit_setter = 1;
+        double xout_element = xout[index];
+        for(int k = 0; k < n; k++){
+            int modified_index = (index & (~bit_setter));
+            if (modified_index != index){
+                double theta_product = 1.;
+                int ind_copy = index;
+                for(int r = 0; r < n; r++){
+                    theta_product *= 1 + (ind_copy & 1) * (local_theta[k*n + r] - 1);
+                    ind_copy >>= 1;
+                }
+                // index was chosen in such a way that we can be sure that xout[modified_index] already contains the correct value
+                xout_element += theta_product * xout[modified_index];
+            }
+            bit_setter <<= 1;
+        }
+        xout[index] = xout_element / dg[index];
+    }
 }
 
 
@@ -145,38 +145,38 @@ __global__ void compute_inverse_level(const double * __restrict__ theta, const i
  * @param[in] binom_coef value of n over j
 */
 __global__ void compute_inverse_level_t(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, int j, int binom_coef){
-	const int stride = blockDim.x * gridDim.x;
-	const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
+    const int stride = blockDim.x * gridDim.x;
+    const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	extern __shared__ double local_theta[];
+    extern __shared__ double local_theta[];
 
-	for(int i = threadIdx.x; i < n*n; i += blockDim.x){
-		local_theta[i] = theta[i];
-	}
+    for(int i = threadIdx.x; i < n*n; i += blockDim.x){
+        local_theta[i] = theta[i];
+    }
 
-	// in each iteration we first map the current i to a permutation of bits with j 1s and n-j 0s
-	// for the indices represented by those permutations all partial solutions needed to compute their values were computed with forward substitution in a previous call of this kernel
-	// we can therefore now go on and compute the solution for those indices
-	for(int i = binom_coef - cuda_index - 1; i >= 0; i -= stride){
-		int index = compute_index(i, n, j, binom_coef);
-		int bit_setter = 1;
-		double xout_element = xout[index];
-		for(int k = 0; k < n; k++){
-			int modified_index = (index | bit_setter);
-			if (modified_index != index){
-				double theta_product = 1.;
-				int ind_copy = modified_index;
-				for(int r = 0; r < n; r++){
-					theta_product *= 1 + (ind_copy & 1) * (local_theta[k*n + r] - 1);
-					ind_copy >>= 1;
-				}
-				// index was chosen in such a way that we can be sure that xout[modified_index] already contains the correct value
-				xout_element += theta_product * xout[modified_index];
-			}
-			bit_setter <<= 1;
-		}
-		xout[index] = xout_element / dg[index];
-	}
+    // in each iteration we first map the current i to a permutation of bits with j 1s and n-j 0s
+    // for the indices represented by those permutations all partial solutions needed to compute their values were computed with forward substitution in a previous call of this kernel
+    // we can therefore now go on and compute the solution for those indices
+    for(int i = binom_coef - cuda_index - 1; i >= 0; i -= stride){
+        int index = compute_index(i, n, j, binom_coef);
+        int bit_setter = 1;
+        double xout_element = xout[index];
+        for(int k = 0; k < n; k++){
+            int modified_index = (index | bit_setter);
+            if (modified_index != index){
+                double theta_product = 1.;
+                int ind_copy = modified_index;
+                for(int r = 0; r < n; r++){
+                    theta_product *= 1 + (ind_copy & 1) * (local_theta[k*n + r] - 1);
+                    ind_copy >>= 1;
+                }
+                // index was chosen in such a way that we can be sure that xout[modified_index] already contains the correct value
+                xout_element += theta_product * xout[modified_index];
+            }
+            bit_setter <<= 1;
+        }
+        xout[index] = xout_element / dg[index];
+    }
 }
 
 /**
@@ -191,18 +191,18 @@ __global__ void compute_inverse_level_t(const double * __restrict__ theta, const
 */
 extern "C"  void DLL_PREFIX _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp){
 
-	for(int j = 0; j <= n; j++){
-		int binom_coef = compute_binom_coef(n, j);
-		int thread_num = ((binom_coef / 32) + 1) * 32;
-		if (thread_num > 512)
-			thread_num = 512;
-		int block_num = 1 + (binom_coef / thread_num);
-		if (block_num > 128)
-			block_num = 128;
-		if(transp){
-			compute_inverse_level_t<<<block_num, thread_num, n*n * sizeof(double)>>>(theta, n, dg, xout, n-j, binom_coef);
-		} else {
-			compute_inverse_level<<<block_num, thread_num, n*n * sizeof(double)>>>(theta, n, dg, xout, j, binom_coef);
-		}
-	}
+    for(int j = 0; j <= n; j++){
+        int binom_coef = compute_binom_coef(n, j);
+        int thread_num = ((binom_coef / 32) + 1) * 32;
+        if (thread_num > 512)
+            thread_num = 512;
+        int block_num = 1 + (binom_coef / thread_num);
+        if (block_num > 128)
+            block_num = 128;
+        if(transp){
+            compute_inverse_level_t<<<block_num, thread_num, n*n * sizeof(double)>>>(theta, n, dg, xout, n-j, binom_coef);
+        } else {
+            compute_inverse_level<<<block_num, thread_num, n*n * sizeof(double)>>>(theta, n, dg, xout, j, binom_coef);
+        }
+    }
 }
