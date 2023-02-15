@@ -15,6 +15,8 @@
 #include <chrono>
 #include <iostream>
 
+#include "cuda_full_state_space.cuh"
+
 
 // on Windows we need to add a prefix in front of the function we want to use in other code
 // on Linux this is not needed, so we define DLL_PREFIX depending on which os this code is compiled on
@@ -57,7 +59,7 @@ int count_ones(uint64_t x) {
     x = (x & 0x3333333333333333LL) + ((x >> 2) & 0x3333333333333333LL); //put count of each 4 bits into those 4 bits 
     x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0fLL;        					//put count of each 8 bits into those 8 bits 
     return (x * 0x0101010101010101LL) >> 56;  							//returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
-}
+} 
 
 
 /**
@@ -65,7 +67,7 @@ int count_ones(uint64_t x) {
  *
  * @param[in] state A pointer to a State of which we want to count the number of mutations it contains
 */
-int DLL_PREFIX get_mutation_num(const State *state){
+static int get_mutation_num(const State *state){ 
 	int mutation_num = 0;
 	for(int i = 0; i < STATE_SIZE; i++){
 		mutation_num += count_ones32(state->parts[i]);
@@ -81,7 +83,7 @@ int DLL_PREFIX get_mutation_num(const State *state){
  * @param[out] thread_num number of threads that should be used for the CUDA kernels
  * @param[in] mutation_num number of mutations present in the current state
 */
-void DLL_PREFIX determine_block_thread_num(int &block_num, int &thread_num, const int mutation_num) {
+static void determine_block_thread_num(int &block_num, int &thread_num, const int mutation_num) {
 
 	// block_num and thread_num have to be powers of two, else cuda_restricted_kronvec will not work
 	// maximum 256 blocks with 1024 threads
@@ -520,6 +522,43 @@ __global__ void print_vec(double *vec, int size) {
 }
 
 
+__global__ void compute_mutated_thetas(const double* __restrict__ theta, int n, int mutation_num, State state, double* __restrict__ mutated_thetas){
+	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
+
+	extern __shared__ int mutation_pos[];
+
+	if (cuda_index == 0){
+		int j = 0;
+		uint32_t state_copy = state.parts[0];
+		for (int i = 0; i < n; i++){
+			if (state_copy & 1){
+				mutation_pos[j] = i;
+				j++;
+			}
+			if ((i+1) & 31){
+				state_copy >>= 1;
+			} else {
+				state_copy = state.parts[(i+1) >> 5];
+			}
+		}
+		for(int i = 0; i < mutation_num; i++){
+			for(int j = 0; j < mutation_num; j++){
+				mutated_thetas[i*mutation_num + j] = theta[mutation_pos[i] * n + mutation_pos[j]];
+			}
+		}
+	}
+}
+
+
+static void compute_restricted_inverse(const double* theta, int n, const double* dg, const State *state, int mutation_num, const double* b, double* xout, double* tmp, bool transp = false){
+
+	int nx = 1 << mutation_num;
+	compute_mutated_thetas<<<1, 1, mutation_num * sizeof(int)>>>(theta, n, mutation_num, *state, tmp);
+	cudaMemcpy(xout, b, nx * sizeof(double), cudaMemcpyDeviceToDevice);
+	_compute_inverse(tmp, mutation_num, dg, xout, transp);
+}
+
+
 /**
  * compute the gradient for one tumor sample
  *
@@ -530,7 +569,7 @@ __global__ void print_vec(double *vec, int size) {
  * @param[in] p0_pD memory buffer needed for this function, size 2^mutation_num
  * @param[in] pth memory buffer needed for this function, size 2^mutation_num
  * @param[in] q memory buffer needed for this function, size 2^mutation_num
- * @param[in] tmp1 memory buffer needed for this function, size 2^mutation_num
+ * @param[in] tmp1 memory buffer needed for this function, size 2^mutation_num 
  * @param[in] tmp2 memory buffer needed for this function, size 2^mutation_num
 */
 void DLL_PREFIX cuda_restricted_gradient(const double *ptheta, const State *state, const int n, double *grad, double *p0_pD, double *pth, double *q, double *tmp1, double *tmp2) {
@@ -542,14 +581,15 @@ void DLL_PREFIX cuda_restricted_gradient(const double *ptheta, const State *stat
 
 	// set all entries of p0_pD to zero, set the first entry to one
 	cudaMemset(p0_pD, 0, nx * sizeof(double));
-	fill_array <<<1, 1>>> (p0_pD, 1., 1);
+	fill_array <<<1, 1>>> (p0_pD, 1., 1); 
 	// cudaMemcpy(p0_pD, &one, sizeof(double), cudaMemcpyHostToDevice);
 
 	// compute the diagonal for the jacobi calls
 	double* dg = tmp2;  // rename tmp2 to dg for better readability
 	compute_jacobi_diagonal(ptheta, state, mutation_num, n, dg);
 
-	cuda_jacobi(ptheta, p0_pD, state, mutation_num, false, n, pth, tmp1, dg);
+	// cuda_jacobi(ptheta, p0_pD, state, mutation_num, false, n, pth, tmp1, dg); 
+	compute_restricted_inverse(ptheta, n, dg, state, mutation_num, p0_pD, pth, tmp1, false); 
 
 	// set all entries of p0_pD to zero, set the last entry to 1/pth[last_index]
 	cudaMemset(p0_pD, 0, sizeof(double));
@@ -557,9 +597,10 @@ void DLL_PREFIX cuda_restricted_gradient(const double *ptheta, const State *stat
 	// cudaMemcpy(p0_pD + nx - 1, &one, sizeof(double), cudaMemcpyHostToDevice);
 	divide_arrays_elementwise<<<1, 1>>>(p0_pD + nx - 1, pth + nx - 1, p0_pD + nx - 1, 1);
 
-	cuda_jacobi(ptheta, p0_pD, state, mutation_num, true, n, q, tmp1, dg);
+	// cuda_jacobi(ptheta, p0_pD, state, mutation_num, true, n, q, tmp1, dg);
+	compute_restricted_inverse(ptheta, n, dg, state, mutation_num, p0_pD, q, tmp1, true); 
 
-	double *old_vec, *shuffled_vec, *swap_vec;
+	double *old_vec, *shuffled_vec, *swap_vec; 
 	int block_num, thread_num;
 
 	determine_block_thread_num(block_num, thread_num, mutation_num);
@@ -568,7 +609,7 @@ void DLL_PREFIX cuda_restricted_gradient(const double *ptheta, const State *stat
 	cudaMemset(grad, 0, n*n * sizeof(double));
 
 	// this counter is used for cuda_restricted_kronvec and counts how many of the genes
-	// up to this point have been mutated in the tumor sample
+	// up to this point have been mutated in the tumor sample 
 	int kronvec_count_before_i = 0;
 
 	for (int i = 0; i < n; i++) {

@@ -58,8 +58,11 @@ libraries = []
 if nvcc_available:
     libraries.append(os.path.abspath("./mhn/ssr/CudaStateSpaceRestriction"))
     libraries.append(os.path.abspath("./mhn/original/CudaFullStateSpace"))
-    compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction")
     compile_cuda_code("./mhn/original/", "cuda_full_state_space.cu", "CudaFullStateSpace")
+    compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction",
+                      "./mhn/original/cuda_full_state_space.cu",
+                      f'-I"{os.path.abspath("./mhn/original")}"'
+                      )
 
 
 # define compile options for the Cython files
@@ -113,7 +116,7 @@ ext_modules = [
         ["./mhn/original/PerformanceCriticalCode.pyx"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2',
-            '/openmp' if IS_WINDOWS else '-fopenmp',
+            '/openmp' if IS_WINDOWS else '',
             f'-DNUMBER_OF_THREADS={os.cpu_count()}'
         ]
     ),

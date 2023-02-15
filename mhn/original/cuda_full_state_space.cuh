@@ -1,6 +1,14 @@
 #ifndef CUDA_FULL_STATE_SPACE_H_
 #define CUDA_FULL_STATE_SPACE_H_
 
+// on Windows we need to add a prefix in front of the function we want to use in other code
+// on Linux this is not needed, so we define DLL_PREFIX depending on which os this code is compiled on
+#ifdef _WIN32
+#define DLL_PREFIX __declspec(dllexport)
+#else
+#define DLL_PREFIX 
+#endif
+
 
 /**
  * this function computes the gradient and score for the current MHN for a given observed frequency of tumors in data using CUDA
@@ -26,7 +34,7 @@ extern "C" int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, i
  * @param[in, out] xout this vector of size 2^n must contain b at the beginning at will contain x at the end
  * @param[in] transp if set to true, computes the solution for [I-Q]^T x = b
 */
-void _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp = false);
+extern "C"  void DLL_PREFIX _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp);
 
 
 /**

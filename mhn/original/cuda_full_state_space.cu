@@ -30,7 +30,7 @@
  * @param[out] thread_num number of threads that should be used for the CUDA kernels
  * @param[in] n size of the MHN
 */
-inline void determine_block_thread_num(int &block_num, int &thread_num, const int n) {
+static void determine_block_thread_num(int &block_num, int &thread_num, const int n) {
 
 	// block_num and thread_num have to be powers of two, else cuda_kronvec will not work
 	// maximum 256 blocks with 1024 threads
@@ -185,7 +185,7 @@ static void cuda_q_vec(const double* __restrict__ ptheta, const double* __restri
  * @param[in] n number of genes considered by the MHN, also number of columns/rows of theta
  * @param[in, out] dg the subdiagonal is subtracted from the values in this array
 */
-__global__ void cuda_subdiag(const double* __restrict__ ptheta, const int i, const int n, double* __restrict__ dg) {
+static __global__ void cuda_subdiag(const double* __restrict__ ptheta, const int i, const int n, double* __restrict__ dg) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -239,7 +239,7 @@ static void cuda_subtract_q_diag(const double* __restrict__ ptheta, const int n,
 }
 
 
-__global__ void fill_array(double *arr, double x, const int size){
+static __global__ void fill_array(double *arr, double x, const int size){
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -248,25 +248,25 @@ __global__ void fill_array(double *arr, double x, const int size){
 	}
 }
 
-__global__ void add_arrays(const double *arr1, double *arr_inout, const int size) {
+static __global__ void add_arrays(const double *arr1, double *arr_inout, const int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
 	for (int k = cuda_index; k < size; k += stride) {
 		arr_inout[k] += arr1[k];
 	}
-}
+} 
 
-__global__ void divide_arrays_elementwise(const double *arr1, const double *arr2, double *out, const int size) {
+static __global__ void divide_arrays_elementwise(const double *arr1, const double *arr2, double *out, const int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	for (int k = cuda_index; k < size; k += stride) {
+	for (int k = cuda_index; k < size; k += stride) { 
 		out[k] = arr1[k] / arr2[k];
 	}
 }
 
-__global__ void multiply_arrays_elementwise(const double *arr1, double *arr_inout, const int size) {
+static __global__ void multiply_arrays_elementwise(const double *arr1, double *arr_inout, const int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -330,7 +330,7 @@ static void cuda_jacobi(const double* __restrict__ ptheta, const double* __restr
  * @param[out] to_shuffle_vec array in which the shuffled vector is stored
  * @param[in] nx size of both vectors
 */
-__global__ void shuffle(const double* __restrict__ old_vec, double* __restrict__ to_shuffle_vec, const int nx) {
+static __global__ void shuffle(const double* __restrict__ old_vec, double* __restrict__ to_shuffle_vec, const int nx) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -345,7 +345,7 @@ __global__ void shuffle(const double* __restrict__ old_vec, double* __restrict__
  * inspired by https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf
  * computes the sum of all entries in a given array
 */
-__global__ void sum_over_array(const double* __restrict__ arr, double* __restrict__ result, int size) {
+static __global__ void sum_over_array(const double* __restrict__ arr, double* __restrict__ result, int size) {
 
 	extern __shared__ double sdata[];
 
@@ -373,7 +373,7 @@ __global__ void sum_over_array(const double* __restrict__ arr, double* __restric
 }
 
 
-__global__ void print_vec(double *vec, int size) {
+static __global__ void print_vec(double *vec, int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -384,7 +384,7 @@ __global__ void print_vec(double *vec, int size) {
 }
 
 
-__global__ void log_array(const double* __restrict__ input, double* __restrict__ output, int size){
+static __global__ void log_array(const double* __restrict__ input, double* __restrict__ output, int size){
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -415,7 +415,7 @@ static void compute_score(const double* __restrict__ pD, const double* __restric
 }
 
 
-void _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp);
+extern "C"  void DLL_PREFIX _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp);
 
 /**
  * compute the gradient for a given relative frequency of observed tumours in the data
@@ -497,7 +497,7 @@ static void cuda_gradient_and_score_computation(const double* __restrict__ pthet
 	}
 }
 
-__global__ void array_exp(double *arr, int size) {
+static __global__ void array_exp(double *arr, int size) {
 	int stride = blockDim.x * gridDim.x;
 	int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -757,7 +757,7 @@ __global__ void compute_inverse_level_t(const double * __restrict__ theta, const
  * @param[in, out] xout this vector of size 2^n must contain b at the beginning at will contain x at the end
  * @param[in] transp if set to true, computes the solution for [I-Q]^T x = b
 */
-void _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp = false){
+extern "C"  void DLL_PREFIX _compute_inverse(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, bool transp){
 
 	for(int j = 0; j <= n; j++){
 		int binom_coef = compute_binom_coef(n, j);
