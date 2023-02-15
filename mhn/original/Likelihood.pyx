@@ -184,8 +184,10 @@ IF NVCC_AVAILABLE:
         #endif
 
         int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, int n, double *pD, double *grad_out, double *score_out);
+        void DLL_PREFIX gpu_compute_inverse(double *theta, int n, double *b, double *xout, int transp);
         """
         int cuda_full_state_space_gradient_score(double *ptheta, int n, double *pD, double *grad_out, double *score_out)
+        void gpu_compute_inverse(double *theta, int n, double *b, double *xout, int transp)
 
 
     def cuda_gradient_and_score(double[:, :] theta, double[:] pD):
@@ -205,3 +207,17 @@ IF NVCC_AVAILABLE:
         error_code = cuda_full_state_space_gradient_score(&theta[0, 0], n, &pD[0], &gradient[0, 0], &score)
 
         return gradient, score
+
+    def cuda_compute_inverse(double[:, :] theta, double[:] b, bint transp = False):
+        """
+        Computes the solution for [I-Q] x = b on the GPU.
+
+        :param theta: theta matrix representing the MHN
+        :param b: vector that is multiplied with [I-Q]^(-1)
+        :param transp: if set to True, computes solution for [I-Q]^T x = b
+        """
+        cdef int n = theta.shape[0]
+        cdef int nx = 1 << n
+        cdef np.ndarray[np.double_t] xout = np.empty(nx, dtype=np.double)
+        gpu_compute_inverse(&theta[0, 0], n, &b[0], &xout[0], transp)
+        return xout
