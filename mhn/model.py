@@ -16,6 +16,11 @@ class MHN:
     """
 
     def __init__(self, log_theta: np.array, events: List[str] = None, meta: dict = None):
+        """
+        :param log_theta: logarithmic values of the theta matrix representing the MHN
+        :param events: (optional) list of strings containing the names of the events considered by the MHN
+        :param meta: (optional) dictionary containing metadata for the MHN, e.g. parameters used to train the model
+        """
 
         self.log_theta = log_theta
         self.events = events
@@ -35,6 +40,7 @@ class MHN:
     def load(cls, filename: str, events: List[str] = None):
         """
         :param filename: path to the CSV file
+        :param events: list of strings containing the names of the events considered by the MHN
         """
         df = pd.read_csv(f"{filename}.csv", index_col=0)
         if events is None and (df.columns != pd.Index([str(x) for x in range(len(df.columns))])).any():
