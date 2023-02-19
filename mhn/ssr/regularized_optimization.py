@@ -2,10 +2,10 @@
 This submodule contains functions to learn an MHN using state-space restriction, including an optimization function
 using the BFGS algorithm and L1 regularization functions
 """
-# author(s): Stefan Vocht
+# author(s): Stefan Vocht, Y. Linda Hu
 
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, OptimizeResult
 
 from typing import Callable
 
@@ -129,7 +129,7 @@ def build_regularized_gradient_func(gradient_and_score_function: Callable):
 def learn_MHN(states: StateContainer, init: np.ndarray = None, lam: float = 0, maxit: int = 5000,
               trace: bool = False, reltol: float = 1e-07, round_result: bool = True, callback: Callable = None,
               score_func: Callable = reg_state_space_restriction_score,
-              jacobi: Callable = reg_state_space_restriction_gradient) -> np.ndarray:
+              jacobi: Callable = reg_state_space_restriction_gradient) -> OptimizeResult:
     """
     This function is used to train a MHN, it is very similar to the learn_MHN function from the original MHN
 
@@ -143,7 +143,7 @@ def learn_MHN(states: StateContainer, init: np.ndarray = None, lam: float = 0, m
     :param callback: function called after each iteration, must take theta as argument
     :param score_func: score function used for training
     :param jacobi: gradient function used for training
-    :return: trained model
+    :return: OptimizeResult object containing the trained model
     """
 
     n = states.get_data_shape()[1]
@@ -157,9 +157,9 @@ def learn_MHN(states: StateContainer, init: np.ndarray = None, lam: float = 0, m
     opt = minimize(fun=score_func, x0=init, args=(states, lam, n, score_and_gradient_container), method="L-BFGS-B",
                    jac=jacobi, options={'maxiter': maxit, 'disp': trace, 'gtol': reltol}, callback=callback)
 
-    theta = opt.x.reshape((n, n))
+    opt.x = opt.x.reshape((n, n))
 
     if round_result:
-        theta = np.around(theta, decimals=2)
+        opt.x = np.around(opt.x, decimals=2)
 
-    return theta
+    return opt

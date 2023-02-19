@@ -1,13 +1,15 @@
 """
 This submodule contains Optimizer classes to learn an MHN from mutation data.
 """
-# author(s): Stefan Vocht
+# author(s): Stefan Vocht, Y. Linda Hu
 
 import warnings
 from enum import Enum
 import abc
 
 import numpy as np
+
+from . import model
 
 from mhn.ssr import regularized_optimization as reg_optim
 from .ssr.state_containers import StateContainer, StateAgeContainer
@@ -91,7 +93,7 @@ class _Optimizer(abc.ABC):
                 np.save(f, theta)
 
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
-              reltol: float = 1e-7, round_result: bool = True) -> np.ndarray:
+              reltol: float = 1e-7, round_result: bool = True) -> model.MHN:
         """
         Use this function to learn a new MHN from the data given to this optimizer.
 
@@ -119,16 +121,30 @@ class _Optimizer(abc.ABC):
         score_func = reg_optim.build_regularized_score_func(self._gradient_and_score_func)
         gradient_func = reg_optim.build_regularized_gradient_func(self._gradient_and_score_func)
 
-        self.__result = reg_optim.learn_MHN(self._data, self.__init_theta, lam, maxit, trace, reltol,
-                                            round_result, callback_func, score_func, gradient_func)
+        result = reg_optim.learn_MHN(self._data, self.__init_theta, lam, maxit, trace, reltol,
+                                     round_result, callback_func, score_func, gradient_func)
 
         self.__backup_current_step = None
+
+        self.__result = model.MHN(
+            log_theta=result.x,
+            meta={
+                "lambda": lam,
+                "init": self.__init_theta,
+                "maxit": maxit,
+                "reltol": reltol,
+                "score": result.fun,
+                "message": result.message,
+                "status": result.status,
+                "nit": result.nit
+            })
+
         return self.__result
 
     @property
-    def result(self) -> np.ndarray:
+    def result(self) -> model.MHN:
         """
-        The resulting theta matrix after training, same as the return value of the train() method.
+        The resulting MHN after training, same as the return value of the train() method.
         This property mainly exists as a kind of backup to ensure that the result of the training is not lost, if the
         user forgets to save the returned value of the train() method in a variable.
         """
@@ -319,7 +335,7 @@ class DUAOptimizer(_Optimizer):
         return self
 
     def train(self, lam: float = 0, eps: float = 1e-2, maxit: int = 5000, trace: bool = False,
-              reltol: float = 1e-7, round_result: bool = True) -> np.ndarray:
+              reltol: float = 1e-7, round_result: bool = True) -> model.MHN:
         """
         Use this function to learn a new MHN from the data given to this optimizer.
 
