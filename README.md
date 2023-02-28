@@ -27,12 +27,7 @@ The package contains the original MHN functions implemented in Python. You impor
 ```python
 from mhn.original import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
 ```
-It also contains functions to compute the Fisher information for a given MHN and use
-Natural Gradient Descent to train a new model. You can use those functions by importing
-```python
-from mhn.original import FisherFunctions
-```
-Lastly, you can train a MHN using state-space restriction. The corresponding functions
+You can train an MHN using state-space restriction. The corresponding functions
 can be imported with
 ```python
 from mhn.ssr import state_space_restriction, state_containers
@@ -95,12 +90,11 @@ might get an error. Alternatively, if your training data is stored in a CSV file
 ```python
 opt = opt.load_data_from_csv(filename, delimiter)
 ```
-where ```delimiter``` is the delimiter separating the items in the CSV file (default: ``';'``). If
-the CSV file contains more than just the binary matrix, e.g. the gene names or 
-the sample names, you can use the optional 
-arguments ```first_row, last_row, first_col, last_col``` to specify the range of
-rows and columns, which contain the actual binary matrix without anything else.
-If you do not do that, you will likely get wrong results.  
+where ```delimiter``` is the delimiter separating the items in the CSV file (default: ``','``). 
+Internally, this method uses pandas' ```read_csv()``` function to extract the data from the CSV file.
+All additional keyword arguments given to this method will be passed on to that
+pandas function. This means parameters like ```usecols``` or ```skiprows``` of the ```read_csv()```
+function can also be used as parameters for this method.  
 If you want to make sure that the matrix was loaded correctly, you can get 
 the loaded matrix with
 

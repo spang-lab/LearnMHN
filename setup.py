@@ -149,7 +149,8 @@ setup(
     include_package_data=True,
     install_requires=[
         'numpy>=1.23.0',
-        'scipy>=1.8.0'
+        'scipy>=1.8.0',
+        'pandas>=1.5.3'
     ],
     python_requires='>=3.8'
 )

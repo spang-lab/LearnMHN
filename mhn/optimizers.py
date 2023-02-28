@@ -8,6 +8,7 @@ from enum import Enum
 import abc
 
 import numpy as np
+import pandas as pd
 
 from . import model
 
@@ -227,22 +228,18 @@ class StateSpaceOptimizer(_Optimizer):
         self._bin_datamatrix = data_matrix
         return self
 
-    def load_data_from_csv(self, src: str, delimiter: str = ';',
-                           first_row: int = None, last_row: int = None, first_col: int = None, last_col: int = None):
+    def load_data_from_csv(self, src: str, delimiter: str = ',', **kwargs):
         """
         Load mutation data from a CSV file. The rows have to represent samples and the columns represent genes.
         Mutations of genes are represented by 1s, intact genes are represented by 0s.
 
         :param src: path to the CSV file
-        :param delimiter:  delimiter used in the CSV file (default: ';')
-        :param first_row: (Optional) first row of the CSV file that is part of the data matrix without the column names
-        :param last_row: (Optional) last row of the CSV file that is part of the data matrix without the column names
-        :param first_col: (Optional) first column of the CSV file that is part of the data matrix without the row names
-        :param last_col: (Optional) last column of the CSV file that is part of the data matrix without the row names
+        :param delimiter:  delimiter used in the CSV file (default: ',')
+        :param kwargs: all additional keyword arguments are passed on to pandas' read_csv() function
         :return: this optimizer object
         """
-        data_matrix = np.genfromtxt(src, delimiter=delimiter, dtype=np.int32)
-        data_matrix = data_matrix[first_row: last_row, first_col: last_col]
+        df = pd.read_csv(src, delimiter=delimiter, **kwargs)
+        data_matrix = np.array(df)
         self.load_data_matrix(data_matrix)
         return self
 
