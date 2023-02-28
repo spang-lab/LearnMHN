@@ -139,7 +139,7 @@ opt.train()
 ```
 Some important parameters of the ``train`` method include  
 ``lam`` (default: ``0``), which is
-a tuning parameter to control regularization,  
+the lambda tuning parameter to control L1 regularization,  
 ``maxit`` (default: ``5000``), which is the maximum
 number of training iterations,  
 ```reltol``` (default: ``1e-7``), which is the gradient norm at which the training terminates and  

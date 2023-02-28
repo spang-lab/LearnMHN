@@ -28,6 +28,8 @@ class _Optimizer(abc.ABC):
         self._data = None
         self._bin_datamatrix = None
         self.__result = None
+        self._events = None
+
         self.__init_theta = None
         self.__custom_callback = None
 
@@ -129,6 +131,7 @@ class _Optimizer(abc.ABC):
 
         self.__result = model.MHN(
             log_theta=result.x,
+            events=self._events,
             meta={
                 "lambda": lam,
                 "init": self.__init_theta,
@@ -239,7 +242,8 @@ class StateSpaceOptimizer(_Optimizer):
         :return: this optimizer object
         """
         df = pd.read_csv(src, delimiter=delimiter, **kwargs)
-        data_matrix = np.array(df)
+        self._events = df.columns.to_list()
+        data_matrix = np.array(df, dtype=np.int32)
         self.load_data_matrix(data_matrix)
         return self
 
