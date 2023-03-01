@@ -2,7 +2,9 @@
 This submodule implements Likelihood.R from the original implementation in Cython.
 
 It contains functions to compute the log-likelihood score and its gradient without state-space restriction as
-well as functions for matrix-vector multiplications with the transition rate matrix and [I-Q]^(-1)
+well as functions for matrix-vector multiplications with the transition rate matrix and [I-Q]^(-1).
+There are also functions to compute the probability distribution represented by an MHN and to sample artificial data
+from a given MHN.
 """
 # author(s): Stefan Vocht
 
@@ -172,6 +174,67 @@ def grad(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t]
 
     free(<void *> r_vec)
     return g
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+def sample_artificial_data(np.ndarray[np.double_t, ndim=2] theta, int sample_num) -> np.ndarray:
+    """
+    Returns artificial data sampled from an MHN. Random values are generated with numpy, use np.random.seed()
+    to make results reproducible.
+
+    :param theta: theta matrix representing an MHN
+    :param sample_num: number of samples in the generated data
+    :returns: 2d numpy array in which every row corresponds to a sample and each column to a gene
+    """
+    cdef int n = theta.shape[0]
+    cdef np.ndarray[np.double_t, ndim=2] exp_theta = np.exp(theta)
+    cdef np.ndarray[np.int_t, ndim=2] art_data = np.zeros((sample_num, n), dtype=np.int32)
+
+    cdef np.ndarray[np.int_t] in_current_sample = np.zeros(n, dtype=np.int32)
+    cdef np.ndarray[np.int_t] possible_gene_mutations = np.empty(n, dtype=np.int32)
+    cdef np.ndarray[np.double_t] rates_from_current_state = np.empty(n, dtype=np.double)
+
+    cdef int j, gene, mutated_gene
+    cdef int sample_index, current_sample_length
+    cdef double observation_time, current_time, passed_time
+    cdef double sum_rates, rate, random_crit, accumulated_rate
+
+    for sample_index in range(sample_num):
+        in_current_sample[:] = 0
+        current_sample_length = 0
+        observation_time = np.random.exponential(1)
+        current_time = 0.
+        while current_sample_length < n:
+            sum_rates = 0.
+            j = 0
+            for gene in range(n):
+                if not in_current_sample[gene]:
+                    possible_gene_mutations[j] = gene
+                    rate = exp_theta[gene, gene]
+                    for mutated_gene in range(n):
+                        if in_current_sample[mutated_gene]:
+                            rate *= exp_theta[gene, mutated_gene]
+                    rates_from_current_state[j] = rate
+                    sum_rates += rate
+                    j += 1
+
+            passed_time = np.random.exponential(1/sum_rates)
+            current_time += passed_time
+            if current_time > observation_time:
+                break
+            random_crit = np.random.random(1)[0] * sum_rates
+            accumulated_rate = 0.
+            for j in range(n - current_sample_length):
+                rate = rates_from_current_state[j]
+                gene = possible_gene_mutations[j]
+                accumulated_rate += rate
+                if random_crit <= accumulated_rate:
+                    in_current_sample[gene] = 1
+                    current_sample_length += 1
+                    art_data[sample_index, gene] = 1
+                    break
+    return art_data
 
 
 IF NVCC_AVAILABLE:
