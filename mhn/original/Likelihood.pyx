@@ -189,10 +189,10 @@ def sample_artificial_data(np.ndarray[np.double_t, ndim=2] theta, int sample_num
     """
     cdef int n = theta.shape[0]
     cdef np.ndarray[np.double_t, ndim=2] exp_theta = np.exp(theta)
-    cdef np.ndarray[np.int_t, ndim=2] art_data = np.zeros((sample_num, n), dtype=np.int32)
+    cdef np.ndarray[np.int32_t, ndim=2] art_data = np.zeros((sample_num, n), dtype=np.int32)
 
-    cdef np.ndarray[np.int_t] in_current_sample = np.zeros(n, dtype=np.int32)
-    cdef np.ndarray[np.int_t] possible_gene_mutations = np.empty(n, dtype=np.int32)
+    cdef np.ndarray[np.int32_t] in_current_sample = np.zeros(n, dtype=np.int32)
+    cdef np.ndarray[np.int32_t] possible_gene_mutations = np.empty(n, dtype=np.int32)
     cdef np.ndarray[np.double_t] rates_from_current_state = np.empty(n, dtype=np.double)
 
     cdef int j, gene, mutated_gene
