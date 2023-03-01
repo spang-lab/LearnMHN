@@ -3,6 +3,8 @@ This submodule contains Optimizer classes to learn an MHN from mutation data.
 """
 # author(s): Stefan Vocht, Y. Linda Hu
 
+from __future__ import annotations
+
 import warnings
 from enum import Enum
 import abc
@@ -218,14 +220,18 @@ class StateSpaceOptimizer(_Optimizer):
         super().__init__()
         self._gradient_and_score_func = marginalized_funcs.gradient_and_score
 
-    def load_data_matrix(self, data_matrix: np.ndarray):
+    def load_data_matrix(self, data_matrix: np.ndarray | pd.DataFrame):
         """
-        Load mutation data stored in a numpy array, where the rows represent samples and columns represent genes.
+        Load mutation data stored in a numpy array or pandas DataFrame, where the rows represent samples and
+        columns represent genes.
         Mutations of genes are represented by 1s, intact genes are represented by 0s.
 
-        :param data_matrix: two-dimensional numpy array which should have dtype=np.int32
+        :param data_matrix: either a pandas DataFrame or a two-dimensional numpy array which should have dtype=np.int32
         :return: this optimizer object
         """
+        if isinstance(data_matrix, pd.DataFrame):
+            self._events = data_matrix.columns.to_list()
+            data_matrix = np.array(data_matrix, dtype=np.int32)
         data_matrix = self._preprocess_binary_matrix(data_matrix)
         self._data = StateContainer(data_matrix)
         self._bin_datamatrix = data_matrix
@@ -242,9 +248,7 @@ class StateSpaceOptimizer(_Optimizer):
         :return: this optimizer object
         """
         df = pd.read_csv(src, delimiter=delimiter, **kwargs)
-        self._events = df.columns.to_list()
-        data_matrix = np.array(df, dtype=np.int32)
-        self.load_data_matrix(data_matrix)
+        self.load_data_matrix(df)
         return self
 
     def set_device(self, device: "StateSpaceOptimizer.Device"):
