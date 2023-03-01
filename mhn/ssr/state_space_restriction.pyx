@@ -515,13 +515,14 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateContainer mutation_data
     return (final_gradient / data_size), (score / data_size)
 
 
+class CUDAError(Exception):
+    """
+    Error raised if something went wrong during execution of the CUDA code
+    """
+
+
 # this function is only defined if the CUDA-compiler (nvcc) is available on your device
 IF NVCC_AVAILABLE:
-    class CUDAError(Exception):
-        """
-        Error raised if something went wrong during execution of the CUDA code
-        """
-
     cpdef cuda_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
         """
         This function is a wrapper for the cuda implementation of the state space restriction
