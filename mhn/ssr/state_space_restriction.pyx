@@ -552,15 +552,84 @@ IF NVCC_AVAILABLE:
 
 cpdef gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
-    If CUDA is available, this function will use the CUDA implementation, if the maximum number of mutations
-    in a single sample in the data exceeds 12, else it will use the Cython implementation.
-    If CUDA is not available on your device, this function will always use the Cython implementation.
+    This function computes the gradient using Cython AND CUDA (only if CUDA is installed)
+    It will compute the gradients for data points with few mutations using the Cython implementation
+    and compute the gradients for data points with many mutations using CUDA.
+    If CUDA is not installed on your device, this function will only use the Cython implementation.
+    
+    :param theta: matrix containing the theta entries of the current MHN
+    :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
+    :return: tuple containing the normalized gradient and score
     """
     IF NVCC_AVAILABLE:
-        if mutation_data.get_max_mutation_num() > 18:
-            return cuda_gradient_and_score(theta, mutation_data)
-        else:
+        # number of mutations for which it is still faster to do it in cython
+        # than using the cuda implementation
+        # may vary depending on your device
+        DEF critical_size = 13
+
+        if mutation_data.get_max_mutation_num() <= critical_size:
             return cython_gradient_and_score(theta, mutation_data)
+
+        cdef int data_size = mutation_data.data_size
+        cdef int n = theta.shape[0]
+        cdef State *sorted_data = <State*> malloc(data_size * sizeof(State));
+
+        cdef int error_code
+        cdef const char *error_name
+        cdef const char *error_description
+
+        cdef double *grad_out
+
+        cdef int index_left, index_right
+        cdef int i, j
+        cdef State *state
+        cdef int mutation_num
+
+        cdef double score = 0
+
+        index_left = 0
+        index_right = data_size - 1
+
+        # sort the data into samples that have more, and samples that have less
+        # than *critical_size* mutations
+        for i in range(data_size):
+            mutation_num = get_mutation_num(&mutation_data.states[i])
+            if mutation_num > critical_size:
+                sorted_data[index_right] = mutation_data.states[i]
+                index_right -= 1
+            else:
+                sorted_data[index_left] = mutation_data.states[i]
+                index_left += 1
+
+        cdef np.ndarray[np.double_t, ndim=2]  final_gradient = np.zeros((n, n), dtype=np.double)
+
+        # check if there is any data point with more than *critical_size* mutations
+        # and only call the CUDA function if this is the case
+        if index_right != data_size - 1:
+            grad_out = <double *> malloc(n*n * sizeof(double))
+            error_code = cuda_gradient_and_score_implementation(&theta[0, 0], n, sorted_data + index_right + 1,
+                                                                data_size - index_left, &grad_out[0], &score)
+
+            if error_code != 0:
+                get_error_name_and_description(error_code, &error_name, &error_description)
+                raise CUDAError(f'{error_name.decode("UTF-8")}: "{error_description.decode("UTF-8")}"')
+
+            for i in range(n):
+                for j in range(n):
+                    final_gradient[i, j] += grad_out[i*n + j]
+
+            free(grad_out)
+
+        cdef np.ndarray[np.double_t, ndim=2]  tmp_gradient = np.zeros((n, n), dtype=np.double)
+
+        for i in range(index_left):
+            state = &sorted_data[i]
+            score += restricted_gradient_and_score(theta, state, tmp_gradient)
+            final_gradient += tmp_gradient
+
+        free(sorted_data)
+        return final_gradient/data_size, score/data_size
+
     ELSE:
         return cython_gradient_and_score(theta, mutation_data)
 
