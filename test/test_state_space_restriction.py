@@ -124,6 +124,29 @@ class TestCudaGradient(unittest.TestCase):
         np.testing.assert_array_equal(np.around(gradient1, decimals=8), np.around(reversed_gradient, decimals=8))
         self.assertEqual(score1, score2)
 
+    def test_auto_device_picker(self):
+        """
+        Tests the gradient_and_score() function, which uses both the CPU and the GPU.
+        """
+        n = 40
+        sample_num = 30
+        theta = ModelConstruction.random_theta(n)
+        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.7, 0.3])
+        # make sure that there are mutations in two different "parts" of the "State" C struct
+        random_sample[:, 1] = 1
+        random_sample[:, -3] = 1
+        # one sample with more than critical_size mutations -> GPU
+        random_sample[0, :] = 0
+        random_sample[0, :22] = 1
+        # one sample with less than critical_size mutations -> CPU
+        random_sample[1, :] = 0
+        random_sample[1, :5] = 1
+        state_containers = StateContainer(random_sample)
+        gradient1, score1 = state_space_restriction.gradient_and_score(theta, state_containers)
+        gradient2, score2 = state_space_restriction.cuda_gradient_and_score(theta, state_containers)
+        self.assertEqual(round(score1, 8), round(score2, 8))
+        np.testing.assert_array_equal(np.around(gradient1, decimals=8), np.around(gradient2, decimals=8))
+
 
 if __name__ == '__main__':
     unittest.main()
