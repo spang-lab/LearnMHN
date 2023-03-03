@@ -1,6 +1,14 @@
-# LearnMHN
+# mhn: A Python package to efficiently compute Mutual Hazard Networks
 
-Main implementation of the algorithm to learn an MHN from data
+Mutual Hazard Networks (MHN) were first introduced by [Schill et al. (2019)](https://academic.oup.com/bioinformatics/article/36/1/241/5524604)
+and are used to model cancer progression.  
+This Python package can be used to work with MHNs. It includes functions that were part of the
+original R implementation as well as functions that make use of state-space restriction 
+to make learning a new MHN from cancer data faster and more efficient. Furthermore, it
+also contains functions to work with data for which the samples' ages are known and can
+therefore be considered while learning an MHN (see [Rupp et al. (2021)](https://arxiv.org/abs/2112.10971)).  
+There are optimizer classes for data with known sample ages as well as for data without, which make learning a new MHN possible with
+only a few lines of code.
 
 ## Install the mhn package
 
@@ -32,6 +40,10 @@ can be imported with
 ```python
 from mhn.ssr import state_space_restriction, state_containers
 ```
+The functions that make use of the known ages of samples can be imported via
+```python
+from mhn.ssr import matrix_exponential
+```
 
 ## Using the CUDA implementation of State-Space Restriction
 If your device has a Nvidia GPU, you can accelerate the computation of the gradient and score for
@@ -62,7 +74,7 @@ if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_
 ```
 
 Be especially aware of the ```CUDA_NOT_FUNCTIONAL``` case: Even though CUDA
-is not functional, the CUDA functions will run with no error, but will
+is not functional, the CUDA functions might run with no error, but will
 return wrong results. In this case
 something is probably wrong with your CUDA drivers and you should check your CUDA
 installation.  
