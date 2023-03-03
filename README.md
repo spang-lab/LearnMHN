@@ -95,12 +95,12 @@ opt = StateSpaceOptimizer()
 ```
 We can specify the data that we want our MHN to be trained on:
 ```python
-opt = opt.load_data_matrix(data_matrix)
+opt.load_data_matrix(data_matrix)
 ```
 Make sure, that the binary numpy matrix ```data_matrix``` is set to ```dtype=np.int32```, else you 
 might get an error. Alternatively, if your training data is stored in a CSV file, you can call
 ```python
-opt = opt.load_data_from_csv(filename, delimiter)
+opt.load_data_from_csv(filename, delimiter)
 ```
 where ```delimiter``` is the delimiter separating the items in the CSV file (default: ``','``). 
 Internally, this method uses pandas' ```read_csv()``` function to extract the data from the CSV file.
@@ -113,20 +113,26 @@ the loaded matrix with
 ```python
 loaded_matrix = opt.training_data
 ```
-By default, the optimizer will use the regularized score and gradient using 
-state-space restriction as defined in ```mhn/ssr/learnMHN```. If you want to
-use a different score and gradient function, you can change that with the method
+If you work with a CUDA-capable device, you can choose which device you want to use to 
+train a new MHN:
 ```python
-opt = opt.set_score_and_gradient_function(score_func, gradient_func)
+# uses both CPU and GPU depending on the number of mutations in the individual sample
+opt.set_device(StateSpaceOptimizer.Device.AUTO)
+# use the CPU to compute log-likelihood score and gradient
+opt.set_device(StateSpaceOptimizer.Device.CPU)
+# use the GPU to compute log-likelihood score and gradient
+opt.set_device(StateSpaceOptimizer.Device.GPU)
+# you can also access the Device enum directly with an Optimizer object
+opt.set_device(opt.Device.AUTO)
 ```
 You could also change the initial theta that is the starting point for training, which by default
 is an independence model, with
 ```python
-opt = opt.set_init_theta(init_theta)
+opt.set_init_theta(init_theta)
 ```
 If you want to regularly save the progress during training you can use
 ```python
-opt = opt.save_progress(steps=-1, always_new_file=False, filename='theta_backup.npy')
+opt.save_progress(steps=-1, always_new_file=False, filename='theta_backup.npy')
 ```
 The parameters of this method are  
 ``steps`` (default: ``-1``): if positive, the number of iterations between two progress storages  
@@ -139,7 +145,7 @@ Lastly, you could specify a callback function that is called after each training
 def some_callback_function(theta: np.ndarray):
     pass
 
-opt = opt.set_callback_func(some_callback_function)
+opt.set_callback_func(some_callback_function)
 ```
 
 Finally, you can train a new MHN with
