@@ -15,7 +15,7 @@ only a few lines of code.
 You can install the mhn package using pip:
 
 ```bash
-pip3 install -e /path/to/this/directory
+pip3 install mhn
 ```
 
 After completing the installation of this package you should be able to import it by calling
@@ -25,7 +25,7 @@ import mhn
 
 If a new version of the mhn package is available, you can upgrade your installation with
 ```bash
-pip3 install -e /path/to/this/directory --upgrade
+pip3 install --upgrade mhn
 ```
 
 ## A quick overview
@@ -46,8 +46,8 @@ from mhn.ssr import matrix_exponential
 ```
 
 ## Using the CUDA implementation of State-Space Restriction
-If your device has a Nvidia GPU, you can accelerate the computation of the gradient and score for
-State Space Restriction with CUDA. 
+If your device has an Nvidia GPU, you can accelerate the computation of the log-likelihood score and its gradient for
+both the full and the restricted state-space with CUDA. 
 For that you have to have CUDA and the CUDA compiler
 installed on your device. You can check that in the terminal with
 ```bash
@@ -73,17 +73,14 @@ if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_
     print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')
 ```
 
-Be especially aware of the ```CUDA_NOT_FUNCTIONAL``` case: Even though CUDA
-is not functional, the CUDA functions might run with no error, but will
-return wrong results. In this case
+Be especially aware of the ```CUDA_NOT_FUNCTIONAL``` case: This means that the CUDA compiler
+is installed on your device but basic functionalities like allocating memory on the GPU
+are not working as expected. In this case
 something is probably wrong with your CUDA drivers and you should check your CUDA
-installation.  
-If you install ``nvcc`` after installing the ``mhn`` package, you have to
-run 
-```bash
-pip3 install -e /path/to/this/directory --upgrade
-```
-to use the CUDA functions of this package.
+installation.
+
+If you installed ``nvcc`` after installing the ``mhn`` package, you have to
+reinstall this package to gain access to the CUDA functions.
 
 ## How to train a new MHN
 
