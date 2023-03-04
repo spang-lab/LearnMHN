@@ -635,7 +635,7 @@ cpdef gradient_and_score(double[:, :] theta, StateContainer mutation_data):
 
 
 CUDA_AVAILABLE = "CUDA is available"
-CUDA_NOT_AVAILABLE = "The CUDA compiler nvcc could not be found"
+CUDA_NOT_AVAILABLE = "CUDA compiler nvcc was not present during installation"
 CUDA_NOT_FUNCTIONAL = "CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation"
 def cuda_available():
     """

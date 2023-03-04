@@ -67,7 +67,7 @@ if state_space_restriction.cuda_available() == state_space_restriction.CUDA_AVAI
     print('CUDA is available')
 
 if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_AVAILABLE:
-    print('The CUDA compiler nvcc could not be found')
+    print('CUDA compiler nvcc was not present during installation')
 
 if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_FUNCTIONAL:
     print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')

@@ -135,7 +135,7 @@ setup(
     version="0.0.6",
     packages=find_packages(),
     author="Stefan Vocht, Kevin Rupp, Y. Linda Hu",
-    description="Contains functions to train and work with Mutual Hazard Networks",
+    description="A package to train and work with Mutual Hazard Networks",
     long_description=long_description,
     long_description_content_type='text/markdown',
     ext_modules=cythonize(ext_modules,
