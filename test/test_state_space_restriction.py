@@ -28,7 +28,7 @@ class TestCythonGradient(unittest.TestCase):
         sample_num = 30
         h = 1e-10
         theta = ModelConstruction.random_theta(n)
-        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.5, 0.5])
+        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.5, 0.5]).astype(np.int32)
         pD = UtilityFunctions.data_to_pD(random_sample)                             # compute the data distribution
         original_score = Likelihood.score(theta, pD)
         # compute the gradient numerically
@@ -51,7 +51,7 @@ class TestCythonGradient(unittest.TestCase):
         n = 40  # make n > 32 to make sure that the logic of the "State" struct in the C implementation works as expected
         sample_num = 30
         theta = ModelConstruction.random_theta(n)
-        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.8, 0.2])
+        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.8, 0.2]).astype(np.int32)
         # make sure that there are mutations in two different "parts" of the "State" C struct
         random_sample[:, 0] = 1
         random_sample[:, -1] = 1
@@ -87,7 +87,7 @@ class TestCudaGradient(unittest.TestCase):
         n = 40
         sample_num = 30
         theta = ModelConstruction.random_theta(n)
-        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.7, 0.3])
+        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.7, 0.3]).astype(np.int32)
         # make sure that there are mutations in two different "parts" of the "State" C struct
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
@@ -105,7 +105,7 @@ class TestCudaGradient(unittest.TestCase):
         n = 40  # make n > 32 to make sure that the logic of the "State" struct in the C implementation works as expected
         sample_num = 30
         theta = ModelConstruction.random_theta(n)
-        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.8, 0.2])
+        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.8, 0.2]).astype(np.int32)
         # make sure that there are mutations in two different "parts" of the "State" C struct
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
@@ -131,7 +131,7 @@ class TestCudaGradient(unittest.TestCase):
         n = 40
         sample_num = 30
         theta = ModelConstruction.random_theta(n)
-        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.7, 0.3])
+        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.7, 0.3]).astype(np.int32)
         # make sure that there are mutations in two different "parts" of the "State" C struct
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
