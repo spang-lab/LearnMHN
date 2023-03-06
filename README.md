@@ -45,7 +45,7 @@ The functions that make use of the known ages of samples can be imported via
 from mhn.ssr import matrix_exponential
 ```
 
-## Using the CUDA implementation of State-Space Restriction
+## Using the CUDA implementation to accelerate score computations
 If your device has an Nvidia GPU, you can accelerate the computation of the log-likelihood score and its gradient for
 both the full and the restricted state-space with CUDA. 
 For that you have to have CUDA and the CUDA compiler
