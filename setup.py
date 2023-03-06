@@ -59,9 +59,10 @@ def compile_cuda_code(folder, cuda_filename, lib_name, *extra_compile_args, addi
 nvcc_available = int(which('nvcc') is not None)
 
 libraries = []
-if nvcc_available:
-    libraries.append(os.path.abspath("./mhn/ssr/CudaStateSpaceRestriction"))
-    libraries.append(os.path.abspath("./mhn/original/CudaFullStateSpace"))
+# only compile CUDA code if nvcc is available and if we do not create a source distribution
+if nvcc_available and 'sdist' not in sys.argv:
+    libraries.append("./mhn/ssr/CudaStateSpaceRestriction")
+    libraries.append("./mhn/original/CudaFullStateSpace")
     compile_cuda_code("./mhn/original/", "cuda_full_state_space.cu", "CudaFullStateSpace",
                       additional_cuda_files=["./mhn/original/cuda_inverse_by_substitution.cu"])
     compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction", f'-I./mhn/original/',
@@ -129,6 +130,10 @@ ext_modules = [
         ]
     )
 ]
+
+# we only want the source code in a source distribution
+if 'sdist' in sys.argv:
+    ext_modules = []
 
 setup(
     name="mhn",
