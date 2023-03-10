@@ -8,6 +8,8 @@ to compute the log-likelihood score and its gradient for datasets that contain s
 
 cimport cython
 
+import warnings
+
 from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot, dnrm2, dasum
 from libc.stdlib cimport malloc, free
 from libc.math cimport exp, log
@@ -17,6 +19,7 @@ from mhn.ssr.state_space_restriction cimport get_mutation_num, restricted_q_vec,
 
 import numpy as np
 cimport numpy as np
+from numpy.math cimport INFINITY
 
 np.import_array()
 
@@ -390,47 +393,81 @@ cdef void dua(double[:, :] theta, double[:] b, State *state, double t, int i, in
     free(temp2)
 
 
-cdef void empirical_distribution(State *current_state, State *former_state, double[:] delta):
+cdef bint compute_diff_state(State *former_state, State *current_state, State *diff_state):
     """
-    Computes the empirical probability distribution used in eq. 13 in Rupp et al.(2021)
+    Find all mutations present in the current state that are not in the former state
     
-    :param current_state: state of the current iteration in the score and gradient computation
-    :param former_state: state of the previous iteration in the score and gradient computation
-    :param delta: acts as container which will contain the distribution at the end, size: 2^(mutation_num of current_state)
+    :param former_state: state of the previous sample
+    :param current_state: state of the current sample
+    :param diff_state: state that contains only the mutations present in current sample that are not in former sample
+    
+    :returns: False, if former_state contains a mutations current_state does not contain -> error
     """
-    cdef int j
-    cdef int nx = delta.shape[0]
-    cdef double zero = 0.
-    cdef int incx = 1
-    cdef current_mutation_num = get_mutation_num(current_state)
-    dscal(&nx, &zero, &delta[0], &incx)
 
-    # will be the index of x_(k-1) in delta
-    cdef int xk_index = (1 << current_mutation_num) - 1
-    cdef bit_setter = 1
-    cdef int state_copy_current = current_state[0].parts[0]
-    cdef int state_copy_former = former_state[0].parts[0]
+    cdef int i
+    cdef int former_state_copy, current_state_copy
 
-    for j in range(32 * STATE_SIZE):
-        if state_copy_current & 1:
-            if not state_copy_former & 1:
-                xk_index &= ~bit_setter
-            bit_setter <<= 1
-        if (j + 1) & 31:
-            state_copy_current >>= 1
-            state_copy_former >>= 1
+    for i in range(STATE_SIZE):
+        former_state_copy = former_state[0].parts[i]
+        current_state_copy = current_state[0].parts[i]
+        # check if there is a mutation in the former state that is not in the current state
+        if (current_state_copy - former_state_copy) != (current_state_copy ^ former_state_copy):
+            return False
+        diff_state[0].parts[i] = (current_state_copy ^ former_state_copy)
+
+    return True
+
+
+cdef compute_modified_theta(double[:, :] theta, double[:, :] modified_theta, State *former_state):
+    """
+    Modifies theta according to the mutations present in the former sample.
+    It sets the base rates of genes that are mutated in the former sample to 0 (this means -inf in log space) and 
+    adds the multiplicative effects of those mutations to the base rates of genes that are not mutated in the previous
+    sample.
+    
+    :param theta: actual theta matrix
+    :param modified_theta: array that will contain the modified theta at the end
+    :param former_state: State object representing the previous sample which is used to compute the modified theta
+    """
+    cdef int n = theta.shape[0]
+    cdef int n_square = n*n
+    cdef int one = 1
+    cdef int i, j
+    cdef int state_copy_i = former_state[0].parts[0]
+    cdef int state_copy_j
+
+    # initialize the modified theta with the actual theta matrix
+    dcopy(&n_square, &theta[0, 0], &one, &modified_theta[0, 0], &one)
+
+    # look for genes that are mutated in the previous sample and modify all base rates accordingly
+    for i in range(n):
+        if state_copy_i & 1:
+            state_copy_j = former_state[0].parts[0]
+            # we want exp(theta_ii) to be 0 if i was mutated in former state
+            modified_theta[i, i] = -INFINITY
+            # all base rates are amplified by i as i is always mutated
+            for j in range(n):
+                if not state_copy_j & 1:
+                    modified_theta[j, j] += theta[j, i]
+
+                if (j + 1) & 31:
+                    state_copy_j >>= 1
+                else:
+                    state_copy_j = former_state[0].parts[(j + 1) >> 5]
+
+        if (i + 1) & 31:
+            state_copy_i >>= 1
         else:
-            state_copy_current = current_state[0].parts[(j+1) >> 5]
-            state_copy_former = former_state[0].parts[(j+1) >> 5]
-
-    delta[xk_index] = 1
+            state_copy_i = former_state[0].parts[(i + 1) >> 5]
 
 
+@cython.wraparound(False)
+@cython.boundscheck(False)
 cpdef cython_gradient_and_score(double[:, :] theta, StateAgeContainer mutation_data, double eps):
     """
     This function computes the log-likelihood score and its gradient for a given theta and data, where we know the ages
     of the individual samples (see Rupp et al. (2021) eq. (13)-(15))
-    
+
     :param theta: theta matrix representing the MHN
     :param mutation_data: data from which we learn the MHN
     :param eps: accuracy
@@ -442,33 +479,67 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateAgeContainer mutation_d
     cdef int k, i, j
     cdef double t
     cdef double score = 0
+    cdef double diagonal_partial_grad
     cdef np.ndarray[np.double_t, ndim=2] gradient = np.zeros((n, n), dtype=np.double)
+    cdef np.ndarray[np.double_t, ndim=2] modified_theta = np.empty((n, n))
     cdef np.ndarray[np.double_t] pt
     cdef np.ndarray[np.double_t] dp
     cdef np.ndarray[np.double_t] b
-    cdef State *current_state
-    cdef int state_copy
+    cdef State diff_state
+    cdef int state_copy, state_copy_former
 
     for k in range(1, data_size):
-        current_state = &mutation_data.states[k]
-        current_nx = 1 << get_mutation_num(current_state)
-        pt = np.empty(current_nx)
-        dp = np.empty(current_nx)
-        b = np.empty(current_nx)
+        # sample k must always be older than sample k-1
         t = mutation_data.state_ages[k] - mutation_data.state_ages[k-1]
         assert t >= 0
-        empirical_distribution(current_state, &mutation_data.states[k-1], b)
-        for i in range(n):
-            state_copy = current_state[0].parts[0]
-            for j in range(n):
-                if state_copy & 1 or i == j:
-                    dua(theta, b, current_state, t, i, j, eps, pt, dp)
-                    gradient[i, j] += dp[current_nx-1] / pt[current_nx-1]
 
-                if (j + 1) & 31:
-                    state_copy >>= 1
-                else:
-                    state_copy = current_state[0].parts[(j + 1) >> 5]
+        # get the mutations that are new in the current sample and make sure that no mutation has disappeared
+        if not compute_diff_state(&mutation_data.states[k-1], &mutation_data.states[k], &diff_state):
+            warnings.warn(f"The sample at position {k} contains less mutations than the previous sample")
+            continue
+
+        # as we restrict the state-space to contain only states that are "between" the previous and the current state
+        # this means that we get the score by multiplying exp(Qt) with (1, 0, ..., 0) and taking the last value
+        # (index = current_nx-1) of the resulting vector
+        current_nx = 1 << get_mutation_num(&diff_state)
+        compute_modified_theta(theta, modified_theta, &mutation_data.states[k-1])
+        pt = np.empty(current_nx)
+        dp = np.empty(current_nx)
+        b = np.zeros(current_nx)
+        b[0] = 1
+        state_copy_former = mutation_data.states[k-1].parts[0]
+        for i in range(n):
+            # if the gene was mutated in the previous sample, row i of the gradient matrix is zero everywhere
+            if not state_copy_former & 1:
+                state_copy = diff_state.parts[0]
+                # the gradient of theta_ij is non-zero if gene j is mutated in the current sample
+                for j in range(n):
+                    if state_copy & 1 or i == j:
+                        dua(modified_theta, b, &diff_state, t, i, j, eps, pt, dp)
+                        gradient[i, j] += dp[current_nx-1] / pt[current_nx-1]
+                        if i == j:
+                            diagonal_partial_grad = dp[current_nx-1] / pt[current_nx-1]
+
+                    if (j + 1) & 31:
+                        state_copy >>= 1
+                    else:
+                        state_copy = diff_state.parts[(j + 1) >> 5]
+
+                # if gene j was mutated in the previous sample then the gradient of theta_ij is the same as theta_ii
+                state_copy = mutation_data.states[k-1].parts[0]
+                for j in range(n):
+                    if state_copy & 1:
+                        gradient[i, j] += diagonal_partial_grad
+
+                    if (j + 1) & 31:
+                        state_copy >>= 1
+                    else:
+                        state_copy = mutation_data.states[k-1].parts[(j + 1) >> 5]
+
+            if (i + 1) & 31:
+                state_copy_former >>= 1
+            else:
+                state_copy_former = mutation_data.states[k-1].parts[(i + 1) >> 5]
 
         score += log(pt[current_nx-1])
 
