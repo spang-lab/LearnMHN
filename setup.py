@@ -148,7 +148,8 @@ setup(
                           compile_time_env=dict(
                                                 NVCC_AVAILABLE=nvcc_available,
                                                 STATE_SIZE=STATE_SIZE
-                                                )
+                                                ),
+                          compiler_directives={'embedsignature': True}
                           ),
     include_dirs=[numpy.get_include()],
     include_package_data=True,

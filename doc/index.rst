@@ -7,15 +7,25 @@
 mhn: A Python Package to efficiently compute Mutual Hazard Networks
 ###################################################################
 
-*mhn* is a package which provides various functions and classes to work with Mutual Hazard Networks (MHN) (Schill et al. (2019)). 
-It provides both the functionality of the original R implementation, as well as newer methods that have significantly higher performance using state-space restriction.
-The *Optimizer* classes provide additional functionality like automatic backups or setting callback functions during training. 
+Mutual Hazard Networks (MHN) were first introduced by `Schill et al. (2019) <https://academic.oup.com/bioinformatics/article/36/1/241/5524604>`_
+and are used to model cancer progression.
+This Python package can be used to work with MHNs. It includes functions that were part of the
+original R implementation as well as functions that make use of state-space restriction
+to make learning a new MHN from cancer data faster and more efficient. Furthermore, it
+also contains functions to work with data for which the samples' ages are known and can
+therefore be considered while learning an MHN (see `Rupp et al. (2021) <https://arxiv.org/abs/2112.10971>`_).
+There are :ref:`optimizer classes<Available Optimizers in the optimizer module>` for data with known sample ages as well as for data without, which make learning a new MHN possible with
+only a few lines of code.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    mhn
+   original:   a subpackage containing mainly functions working on a full state-space <mhn.original>
+   ssr:        a subpackage containing functions that make use of state-space restriction <mhn.ssr>
+   optimizers: the Goto-module to learn new MHNs from data <optimizers>
+   model:      a module that contains the MHN class <model>
 
 
 Indices and tables

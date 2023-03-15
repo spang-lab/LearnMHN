@@ -1,61 +1,36 @@
-mhn.original package
-====================
+The original subpackage
+=======================
 
-Submodules
+This part of the mhn package contains functions to compute and work with MHNs on the full state-space.
+
+The structure of this part of the package is very similar to the original R implementation by Schill et al. (2019):
+
+Likelihood
 ----------
-
-mhn.original.FisherFunctions module
------------------------------------
-
-.. automodule:: mhn.original.FisherFunctions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-mhn.original.Likelihood module
-------------------------------
-
 .. automodule:: mhn.original.Likelihood
-   :members:
-   :undoc-members:
-   :show-inheritance:
+:ref:`View documentation <The Likelihood submodule>`
 
-mhn.original.ModelConstruction module
--------------------------------------
+
+ModelConstruction
+-----------------
 
 .. automodule:: mhn.original.ModelConstruction
-   :members:
-   :undoc-members:
-   :show-inheritance:
+:ref:`View documentation <The ModelConstruction submodule>`
 
-mhn.original.PerformanceCriticalCode module
--------------------------------------------
+PerformanceCriticalCode
+-----------------------
 
 .. automodule:: mhn.original.PerformanceCriticalCode
-   :members:
-   :undoc-members:
-   :show-inheritance:
+:ref:`View documentation <The PerformanceCriticalCode submodule>`
 
-mhn.original.RegularizedOptimization module
--------------------------------------------
+RegularizedOptimization
+-----------------------
 
 .. automodule:: mhn.original.RegularizedOptimization
-   :members:
-   :undoc-members:
-   :show-inheritance:
+:ref:`View documentation <The RegularizedOptimization submodule>`
 
-mhn.original.UtilityFunctions module
-------------------------------------
+UtilityFunctions
+----------------
 
 .. automodule:: mhn.original.UtilityFunctions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: mhn.original
-   :members:
-   :undoc-members:
-   :show-inheritance:
+:ref:`View documentation <The UtilityFunctions submodule>`
