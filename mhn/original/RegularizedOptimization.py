@@ -1,7 +1,7 @@
 """
-This submodule implements the RegularizedOptimization.R in python.
+This submodule implements RegularizedOptimization.R in Python.
 
-It contains functions to learn an MHN for a given data distribution and implements the L1 regularization.
+It contains functions to learn an MHN on the *full state-space* for a given data distribution and implements the L1 regularization.
 """
 # author(s): Stefan Vocht
 
@@ -17,6 +17,11 @@ from typing import Callable
 def L1(theta: np.ndarray, eps: float = 1e-05) -> float:
     """
     Computes the L1 penalty
+
+    :param theta: the theta matrix representing the MHN
+    :param eps: small epsilon value, mainly there for the derivative
+
+    :returns: the L1 penalty for the given theta matrix
     """
     theta_ = theta.copy()
     np.fill_diagonal(theta_, 0)
@@ -26,6 +31,11 @@ def L1(theta: np.ndarray, eps: float = 1e-05) -> float:
 def L1_(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     """
     Derivative of the L1 penalty
+
+    :param theta: the theta matrix representing the MHN
+    :param eps: small epsilon value that makes sure that we don't divide by zero
+
+    :returns: the derivative of the L1 penalty
     """
     theta_ = theta.copy()
     np.fill_diagonal(theta_, 0)
@@ -36,12 +46,13 @@ def score_reg(theta: np.ndarray, pD: np.ndarray, lam: float, n: int = None, pth_
     """
     Score with L1 - regularization
 
-    :param theta:
+    :param theta: the theta matrix representing the MHN
     :param pD: distribution given by the training data
-    :param lam: tuning parameter for regularization
+    :param lam: tuning parameter lambda for regularization
     :param n: number of columns/rows of theta
-    :param pth_space: opional, with this parameter we can communicate with the gradient function and use pth there again -> performance boost
-    :return:
+    :param pth_space: optional, with this parameter we can communicate with the gradient function and use pth there again -> performance boost
+
+    :returns: the score of the current MHN penalized with the L1 regularization
     """
     n = n or int(np.sqrt(theta.size))
     theta = theta.reshape((n, n))
@@ -53,12 +64,13 @@ def grad_reg(theta: np.ndarray, pD: np.ndarray, lam: float, n: int = 0, pth_spac
     """
     Gradient with L1 - regularization
 
-    :param theta:
+    :param theta: the theta matrix representing the MHN
     :param pD: distribution given by the training data
-    :param lam: tuning parameter for regularization
+    :param lam: tuning parameter lambda for regularization
     :param n: number of columns/rows of theta
-    :param pth_space: opional, as pth is calculated in the score function anyways, we do not need to calculate it again -> performance boost
-    :return:
+    :param pth_space: optional, as pth is calculated in the score function anyway, we do not need to calculate it again -> performance boost
+
+    :return: the gradient of the L1 - regularized score
     """
     n = n or int(np.sqrt(theta.size))
     theta_ = theta.reshape((n, n))
@@ -70,7 +82,7 @@ def learn_MHN(pD: np.ndarray, init: np.ndarray = None, lam: float = 0, maxit: in
               trace: bool = False, reltol: float = 1e-07, round_result: bool = True,
               callback: Callable = None, score_func: Callable = score_reg, jacobi: Callable = grad_reg) -> np.ndarray:
     """
-    This function is used to train a MHN to a given probability distribution pD
+    This function is used to train an MHN to a given probability distribution pD.
 
     :param pD: probability distribution used to train the new model
     :param init: starting point for the training (initial theta)

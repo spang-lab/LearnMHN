@@ -8,6 +8,7 @@ The structure of this part of the package is very similar to the original R impl
 Likelihood
 ----------
 .. automodule:: mhn.original.Likelihood
+    :noindex:
 :ref:`View documentation <The Likelihood submodule>`
 
 
@@ -15,22 +16,26 @@ ModelConstruction
 -----------------
 
 .. automodule:: mhn.original.ModelConstruction
+    :noindex:
 :ref:`View documentation <The ModelConstruction submodule>`
 
 PerformanceCriticalCode
 -----------------------
 
 .. automodule:: mhn.original.PerformanceCriticalCode
+    :noindex:
 :ref:`View documentation <The PerformanceCriticalCode submodule>`
 
 RegularizedOptimization
 -----------------------
 
 .. automodule:: mhn.original.RegularizedOptimization
+    :noindex:
 :ref:`View documentation <The RegularizedOptimization submodule>`
 
 UtilityFunctions
 ----------------
 
 .. automodule:: mhn.original.UtilityFunctions
+    :noindex:
 :ref:`View documentation <The UtilityFunctions submodule>`
