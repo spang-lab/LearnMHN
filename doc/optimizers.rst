@@ -8,14 +8,16 @@ MHN for given training data:
    :members:
    :undoc-members:
    :inherited-members:
-   :show-inheritance:
 
+.. raw:: html
 
+   <br>
+   <hr>
+   <br>
 
 
 .. autoclass:: mhn.optimizers.DUAOptimizer
    :members:
    :undoc-members:
    :inherited-members:
-   :show-inheritance:
 

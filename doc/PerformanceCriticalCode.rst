@@ -1,3 +1,5 @@
+:orphan:
+
 The PerformanceCriticalCode submodule
 =====================================
 
