@@ -22,8 +22,8 @@ only a few lines of code.
    :caption: Contents:
 
    mhn
-   original:   a subpackage containing mainly functions working on a full state-space <mhn.original>
-   ssr:        a subpackage containing functions that make use of state-space restriction <mhn.ssr>
+   original:   functions working on a full state-space <original/mhn.original>
+   ssr:        functions making use of state-space restriction <mhn.ssr>
    optimizers: the Goto-module to learn new MHNs from data <optimizers>
    model:      a module that contains the MHN class <model>
 
