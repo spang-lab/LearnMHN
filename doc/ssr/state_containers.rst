@@ -1,7 +1,7 @@
 :orphan:
 
-The state_containers submodule
--------------------------------
+The *state_containers* submodule
+--------------------------------
 
 .. automodule:: mhn.ssr.state_containers
    :members:

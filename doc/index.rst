@@ -14,7 +14,7 @@ original R implementation as well as functions that make use of state-space rest
 to make learning a new MHN from cancer data faster and more efficient. Furthermore, it
 also contains functions to work with data for which the samples' ages are known and can
 therefore be considered while learning an MHN (see `Rupp et al. (2021) <https://arxiv.org/abs/2112.10971>`_).
-There are :ref:`optimizer classes<Available Optimizers in the optimizer module>` for data with known sample ages as well as for data without, which make learning a new MHN possible with
+There are :ref:`optimizer classes<Available Optimizers in the *optimizers* module>` for data with known sample ages as well as for data without, which make learning a new MHN possible with
 only a few lines of code.
 
 .. toctree::

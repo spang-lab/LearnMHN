@@ -1,7 +1,7 @@
 :orphan:
 
-The UtilityFunctions submodule
-==============================
+The *UtilityFunctions* submodule
+================================
 
 .. automodule:: mhn.original.UtilityFunctions
    :members:

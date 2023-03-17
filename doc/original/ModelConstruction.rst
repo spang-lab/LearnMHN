@@ -1,7 +1,7 @@
 :orphan:
 
-The ModelConstruction submodule
-===============================
+The *ModelConstruction* submodule
+=================================
 
 
 .. automodule:: mhn.original.ModelConstruction

@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'mhn:'
-copyright = '2022, Stefan Vocht'
+copyright = '2023, Stefan Vocht'
 author = 'Stefan Vocht'
 
 # -- General configuration ---------------------------------------------------

@@ -1,24 +1,38 @@
-mhn
-===
+A detailed description of *mhn*'s subpackages, submodules and functions
+=======================================================================
 
-Subpackages
------------
+This part of the documentation contains descriptions of all functions included in
+the *mhn* package.
 
-.. toctree::
-   :maxdepth: 4
+The *original* subpackage
+-------------------------
 
-   mhn.original
-   mhn.ssr
+.. automodule:: mhn.original
+    :noindex:
 
-Submodules
-----------
+:ref:`View documentation <*original*: The package for working on full state-space>`
 
-mhn.optimizers module
----------------------
+The *ssr* subpackage
+--------------------
+
+.. automodule:: mhn.ssr
+    :noindex:
+
+:ref:`View documentation <*ssr*: The package containing everything related to state-space restriction>`
+
+The *optimizers* submodule
+--------------------------
 
 .. automodule:: mhn.optimizers
-   :members:
-   :undoc-members:
-   :inherited-members:
-   :show-inheritance:
+    :noindex:
+
+:ref:`View documentation <Available Optimizers in the *optimizers* module>`
+
+The *model* submodule
+---------------------
+
+.. automodule:: mhn.model
+    :noindex:
+
+:ref:`View documentation <The model submodule>`
 

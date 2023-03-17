@@ -1,5 +1,5 @@
-Available Optimizers in the optimizer module
-============================================
+Available Optimizers in the *optimizers* module
+===============================================
 
 You can use the following *Optimizer* classes of the *mhn* package to learn a new
 MHN for given training data:
@@ -20,4 +20,5 @@ MHN for given training data:
    :members:
    :undoc-members:
    :inherited-members:
+   :noindex: Device
 

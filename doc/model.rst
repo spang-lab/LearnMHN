@@ -1,7 +1,7 @@
 The model submodule
 ===================
 
-.. autoclass:: mhn.model.MHN
+.. automodule:: mhn.model
    :members:
    :undoc-members:
    :inherited-members:

@@ -1,7 +1,7 @@
 :orphan:
 
-The PerformanceCriticalCode submodule
-=====================================
+The *PerformanceCriticalCode* submodule
+=======================================
 
 .. automodule:: mhn.original.PerformanceCriticalCode
    :members:

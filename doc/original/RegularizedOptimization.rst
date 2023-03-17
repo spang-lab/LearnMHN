@@ -1,7 +1,7 @@
 :orphan:
 
-The RegularizedOptimization submodule
-=====================================
+The *RegularizedOptimization* submodule
+=======================================
 
 .. automodule:: mhn.original.RegularizedOptimization
    :members:

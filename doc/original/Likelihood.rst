@@ -1,7 +1,7 @@
 :orphan:
 
-The Likelihood submodule
-========================
+The *Likelihood* submodule
+==========================
 
 
 .. automodule:: mhn.original.Likelihood

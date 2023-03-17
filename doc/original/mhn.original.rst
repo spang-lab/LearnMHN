@@ -1,46 +1,46 @@
-The original subpackage
-=======================
+*original*: The package for working on full state-space
+=======================================================
 
 This part of the mhn package contains functions to compute and work with MHNs on the full state-space.
 
 The structure of this part of the package is very similar to the original R implementation by Schill et al. (2019):
 
-Likelihood
-----------
+*Likelihood*
+------------
 .. automodule:: mhn.original.Likelihood
     :noindex:
 
-:ref:`View documentation <The Likelihood submodule>`
+:ref:`View documentation <The *Likelihood* submodule>`
 
 
-ModelConstruction
------------------
+*ModelConstruction*
+-------------------
 
 .. automodule:: mhn.original.ModelConstruction
     :noindex:
 
-:ref:`View documentation <The ModelConstruction submodule>`
+:ref:`View documentation <The *ModelConstruction* submodule>`
 
-PerformanceCriticalCode
------------------------
+*PerformanceCriticalCode*
+-------------------------
 
 .. automodule:: mhn.original.PerformanceCriticalCode
     :noindex:
 
-:ref:`View documentation <The PerformanceCriticalCode submodule>`
+:ref:`View documentation <The *PerformanceCriticalCode* submodule>`
 
-RegularizedOptimization
------------------------
+*RegularizedOptimization*
+-------------------------
 
 .. automodule:: mhn.original.RegularizedOptimization
     :noindex:
 
-:ref:`View documentation <The RegularizedOptimization submodule>`
+:ref:`View documentation <The *RegularizedOptimization* submodule>`
 
-UtilityFunctions
-----------------
+*UtilityFunctions*
+------------------
 
 .. automodule:: mhn.original.UtilityFunctions
     :noindex:
 
-:ref:`View documentation <The UtilityFunctions submodule>`
+:ref:`View documentation <The *UtilityFunctions* submodule>`
