@@ -3,9 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-###################################################################
-mhn: A Python Package to efficiently compute Mutual Hazard Networks
-###################################################################
+#####################################################################
+*mhn*: A Python Package to efficiently compute Mutual Hazard Networks
+#####################################################################
 
 Mutual Hazard Networks (MHN) were first introduced by `Schill et al. (2019) <https://academic.oup.com/bioinformatics/article/36/1/241/5524604>`_
 and are used to model cancer progression.
@@ -18,7 +18,7 @@ There are :ref:`optimizer classes<Available Optimizers in the *optimizers* modul
 only a few lines of code.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Contents:
 
    installation

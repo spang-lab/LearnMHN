@@ -10,7 +10,10 @@ The *original* subpackage
 .. automodule:: mhn.original
     :noindex:
 
-:ref:`View documentation <*original*: The package for working on full state-space>`
+.. toctree::
+    :maxdepth: 1
+
+    View documentation of original <original/mhn.original>
 
 The *ssr* subpackage
 --------------------
@@ -18,7 +21,10 @@ The *ssr* subpackage
 .. automodule:: mhn.ssr
     :noindex:
 
-:ref:`View documentation <*ssr*: The package containing everything related to state-space restriction>`
+.. toctree::
+    :maxdepth: 1
+
+    View documentation of ssr <ssr/mhn.ssr>
 
 The *optimizers* submodule
 --------------------------
@@ -26,7 +32,10 @@ The *optimizers* submodule
 .. automodule:: mhn.optimizers
     :noindex:
 
-:ref:`View documentation <Available Optimizers in the *optimizers* module>`
+.. toctree::
+    :maxdepth: 1
+
+    View documentation of optimizers <optimizers>
 
 The *model* submodule
 ---------------------
@@ -34,5 +43,8 @@ The *model* submodule
 .. automodule:: mhn.model
     :noindex:
 
-:ref:`View documentation <*model*: A submodule containing the MHN class>`
+.. toctree::
+    :maxdepth: 1
+
+    View documentation of model <model>
 

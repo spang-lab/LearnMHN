@@ -2,6 +2,9 @@
 Installation
 ============
 
+Install the *mhn* package using pip
+-----------------------------------
+
 You can install the *mhn* package using pip:
 
 .. code-block:: console
@@ -14,8 +17,8 @@ After completing the installation of this package you should be able to import i
 
     import mhn
 
-Using the CUDA implementation to accelerate score computations
---------------------------------------------------------------
+Use the CUDA implementation to accelerate score computations
+------------------------------------------------------------
 
 If your device has an Nvidia GPU, you can accelerate the computation of the log-likelihood score and its gradient for both the full and the restricted state-space with CUDA. For that you have to have CUDA and the CUDA compiler installed on your device. You can check that in the terminal with
 
