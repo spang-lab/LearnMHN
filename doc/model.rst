@@ -1,5 +1,5 @@
-The model submodule
-===================
+*model*: A submodule containing the MHN class
+=============================================
 
 .. automodule:: mhn.model
    :members:

@@ -34,5 +34,5 @@ The *model* submodule
 .. automodule:: mhn.model
     :noindex:
 
-:ref:`View documentation <The model submodule>`
+:ref:`View documentation <*model*: A submodule containing the MHN class>`
 
