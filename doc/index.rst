@@ -21,11 +21,9 @@ only a few lines of code.
    :maxdepth: 1
    :caption: Contents:
 
+   installation
+   user_guide
    mhn
-   original:   functions working on a full state-space <original/mhn.original>
-   ssr:        functions making use of state-space restriction <ssr/mhn.ssr>
-   optimizers: the Goto-module to learn new MHNs from data <optimizers>
-   model:      a module that contains the MHN class <model>
 
 
 Indices and tables
