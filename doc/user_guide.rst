@@ -28,8 +28,9 @@ We can specify the data that we want our MHN to be trained on:
 
     opt.load_data_matrix(data_matrix)
 
-Here, :code:`data_matrix` can either be a *numpy* matrix or a *pandas* DataFrame.
-If it is a *numpy* matrix, then you should set :code:`dtype=np.int32`, else you will get
+Here, :code:`data_matrix` can either be a *numpy* matrix or a *pandas* DataFrame, in which rows represent samples and
+columns represent events.
+If it is a *numpy* matrix, then you should set :code:`dtype=np.int32`, else you might get
 a warning. |br|
 Alternatively, if your training data is stored in a CSV file, you can call
 
@@ -59,22 +60,26 @@ If you work with a CUDA-capable device, you can choose which device you want to 
 
 .. code-block:: python
 
-    # uses both CPU and GPU depending on the number of mutations in the individual sample
+    # uses both CPU and GPU depending on the number of mutations in the individual sample (default)
     opt.set_device(StateSpaceOptimizer.Device.AUTO)
+
     # use the CPU to compute log-likelihood score and gradient
     opt.set_device(StateSpaceOptimizer.Device.CPU)
+
     # use the GPU to compute log-likelihood score and gradient
     opt.set_device(StateSpaceOptimizer.Device.GPU)
+
     # you can also access the Device enum directly with an Optimizer object
     opt.set_device(opt.Device.AUTO)
 
-You could also change the initial theta that is the starting point for training, which by default is an independence model, with
+You could also change the initial theta that is the starting point for training, which by default is the independence model
+used by Schill et al. (2019), with
 
 .. code-block:: python
 
     opt.set_init_theta(init_theta)
 
-If you want to regularly save the progress during training you can use
+If you want to regularly save the progress during training you can use the :code:`save_progress()` method:
 
 .. code-block:: python
 
@@ -87,7 +92,7 @@ If you want to regularly save the progress during training you can use
 
     opt.save_progress(steps=steps, always_new_file=always_new_file, filename=filename)
 
-You can also specify a callback function tah is called after each training step:
+You can also specify a callback function that is called after each training step:
 
 .. code-block:: python
 

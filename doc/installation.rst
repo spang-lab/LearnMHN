@@ -1,17 +1,22 @@
+.. |br| raw:: html
+
+    <br />
 
 Installation
 ============
 
-Install the *mhn* package using pip
------------------------------------
+Install the *mhn* package using *pip*
+-------------------------------------
 
-You can install the *mhn* package using pip:
+Since the *mhn* package is largely written in `Cython <https://cython.org/>`_, a `Cython-supported C compiler <https://cython.readthedocs.io/en/latest/src/quickstart/install.html>`_,
+such as GCC or MSVC, must be installed on your device before you can install this package. |br|
+If that is the case, you can simply install the *mhn* package using *pip*:
 
 .. code-block:: console
 
-    pip3 install mhn
+    pip install mhn
 
-After completing the installation of this package you should be able to import it by calling
+If the installation of *mhn* was successful, you should be able to import it with
 
 .. code-block:: python
 
@@ -27,8 +32,8 @@ If your device has an Nvidia GPU, you can accelerate the computation of the log-
     nvcc --version
 
 If this command is recognized, then CUDA should be installed on your device.
-During installation the package will automatically check if your the CUDA compiler
-is installed and will enable the corresponding functions if this is the case.
+During installation the package will automatically check if the CUDA compiler
+is installed on your device and will enable the corresponding functions if this is the case.
 While running a Python script you can test if the *mhn* package has access to GPU-accelerated
 functions using the :code:`state_space_restriction` submodule as shown below:
 
