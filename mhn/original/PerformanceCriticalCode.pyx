@@ -1,6 +1,6 @@
 """
 This submodule contains the Cython code equivalent to the original R code in InlineFunctions.R from the original MHN repo
-as well as some functions to solve linear equations involving [I-Q]
+as well as some functions to solve linear equations involving [I-Q].
 """
 # author(s): Stefan Vocht
 
@@ -285,12 +285,12 @@ cdef void _compute_inverse_t(const double *theta, int n, const double *dg, const
 
 cpdef compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] xout, bint transp):
     """
-    Computes the solution for [I - Q] x = b
+    Computes the solution for [I - Q] x = b using forward (and backward) substitution.
 
     :param theta: thetas used to construct Q
     :param dg: vector containing the diagonal values of [I-Q]
     :param b: a double vector
-    :param xout: solution x as double vector
+    :param xout: double vector that will contain the solution after running this function
     :param transp: if True, returns solution for [I - Q]^T x = b
     """
     cdef int n = theta.shape[0]

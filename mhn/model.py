@@ -14,7 +14,7 @@ import json
 
 class MHN:
     """
-    This class represents the Mutual Hazard Network
+    This class represents the Mutual Hazard Network.
     """
 
     def __init__(self, log_theta: np.array, events: list[str] = None, meta: dict = None):
@@ -34,7 +34,9 @@ class MHN:
         to make results reproducible.
 
         :param sample_num: number of samples in the generated data
-        :param as_dataframe: if True, the data is returned as a pandas DataFrame
+        :param as_dataframe: if True, the data is returned as a pandas DataFrame, else numpy matrix
+
+        :returns: array or DataFrame with samples as rows and events as columns
         """
         art_data = Likelihood.sample_artificial_data(self.log_theta, sample_num)
         if as_dataframe:
@@ -47,7 +49,9 @@ class MHN:
 
     def save(self, filename: str):
         """
-        Save the MHN file
+        Save the MHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
+
+        :param filename: name of the CSV file without(!) the '.csv', JSON will be named accordingly
         """
         pd.DataFrame(self.log_theta, columns=self.events,
                      index=self.events).to_csv(f"{filename}.csv")
@@ -56,10 +60,14 @@ class MHN:
                 json.dump(self.meta, file, indent=4)
 
     @classmethod
-    def load(cls, filename: str, events: list[str] = None):
+    def load(cls, filename: str, events: list[str] = None) -> MHN:
         """
-        :param filename: path to the CSV file
+        Load an MHN object from a CSV file.
+
+        :param filename: name of the CSV file without(!) the '.csv'
         :param events: list of strings containing the names of the events considered by the MHN
+
+        :returns: MHN object
         """
         df = pd.read_csv(f"{filename}.csv", index_col=0)
         if events is None and (df.columns != pd.Index([str(x) for x in range(len(df.columns))])).any():
