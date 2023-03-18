@@ -8,14 +8,18 @@ to make learning a new MHN from cancer data faster and more efficient. Furthermo
 also contains functions to work with data for which the samples' ages are known and can
 therefore be considered while learning an MHN (see [Rupp et al. (2021)](https://arxiv.org/abs/2112.10971)).  
 There are optimizer classes for data with known sample ages as well as for data without, which make learning a new MHN possible with
-only a few lines of code.
+only a few lines of code.  
+
+## Documentation
+
+A detailed documentation of the *mhn* package is available [here](https://learnmhn.readthedocs.io/en/latest/index.html).
 
 ## Install the mhn package
 
 You can install the mhn package using pip:
 
 ```bash
-pip3 install mhn
+pip install mhn
 ```
 
 After completing the installation of this package you should be able to import it by calling
@@ -25,7 +29,7 @@ import mhn
 
 If a new version of the mhn package is available, you can upgrade your installation with
 ```bash
-pip3 install --upgrade mhn
+pip install --upgrade mhn
 ```
 
 ## A quick overview
