@@ -503,7 +503,10 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateAgeContainer mutation_d
         # (index = current_nx-1) of the resulting vector
         current_nx = 1 << get_mutation_num(&diff_state)
         compute_modified_theta(theta, modified_theta, &mutation_data.states[k-1])
-        pt = np.empty(current_nx)
+        # For the unlikely case that we have two samples with all genes mutated, the dua algorithm would never be
+        # executed. In that case we need pt to be 1 for the score computation at the end, so we initialize pt with ones.
+        # If the dua function is called even once, then all pt entries are set to zero there anyway, so this init is fine.
+        pt = np.ones(current_nx)
         dp = np.empty(current_nx)
         b = np.zeros(current_nx)
         b[0] = 1
