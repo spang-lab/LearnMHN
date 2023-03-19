@@ -1,4 +1,4 @@
-# mhn: A Python package to efficiently compute Mutual Hazard Networks
+# *mhn*: A Python package to efficiently compute Mutual Hazard Networks
 
 Mutual Hazard Networks (MHN) were first introduced by [Schill et al. (2019)](https://academic.oup.com/bioinformatics/article/36/1/241/5524604)
 and are used to model cancer progression.  
