@@ -23,6 +23,9 @@
 #define DLL_PREFIX
 #endif
 
+// minimum number of thread blocks used by CUDA
+#define MIN_BLOCK_NUM 32
+
 
 /**
  * we determine the number of blocks and threads used in the CUDA kernels for the current data point with this function
@@ -41,7 +44,7 @@ static void determine_block_thread_num(int &block_num, int &thread_num, const in
     }
     // define a minimum number of blocks and threads per block
     else if (n < 12) {
-        block_num = 32;
+        block_num = MIN_BLOCK_NUM;
         thread_num = 64;
     }
     else {
@@ -518,7 +521,12 @@ static __global__ void array_exp(double *arr, int size) {
  * @return CUDA error code converted to integer for better interoperability with Cython
 */
 extern "C" int DLL_PREFIX cuda_full_state_space_gradient_score(double *ptheta, int n, double *pD, double *grad_out, double *score_out) {
-    const int nx = 1 << n;
+    
+    int nx = 1 << n;
+    // the arrays have to be at least of size MIN_BLOCK_NUM, else there will be errors when summing over arrays
+    if (nx < MIN_BLOCK_NUM){
+        nx = MIN_BLOCK_NUM;
+    }
 
     double *cuda_grad_out;
     double *cuda_pD, *pth, *q, *tmp1, *tmp2;

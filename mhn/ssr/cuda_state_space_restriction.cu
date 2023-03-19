@@ -26,6 +26,8 @@
 #define DLL_PREFIX 
 #endif
 
+// minimum number of thread blocks used by CUDA
+#define MIN_BLOCK_NUM 32
 
 // this struct is used to store states representing up to 32 * STATE_SIZE genes
 // STATE_SIZE must be defined during compilation
@@ -93,7 +95,7 @@ static void determine_block_thread_num(int &block_num, int &thread_num, const in
     }
     // minimum 32 * STATE_SIZE threads, else for n = 32 * STATE_SIZE (which is the maximum possible n) not all thetas get loaded in kron_vec
     else if (mutation_num < 12) {
-        block_num = 32;
+        block_num = MIN_BLOCK_NUM;
         thread_num = 64;
     }
     else {
@@ -725,7 +727,11 @@ extern "C"
             if (get_mutation_num(&mutation_data[i]) > max_mutation_num) max_mutation_num = get_mutation_num(&mutation_data[i]);
         }
 
-        const int nx = 1 << max_mutation_num;
+        int nx = 1 << max_mutation_num;
+        // the arrays have to be at least of size MIN_BLOCK_NUM, else there will be errors when summing over arrays
+        if (nx < MIN_BLOCK_NUM){
+            nx = MIN_BLOCK_NUM;
+        }
 
         double *cuda_grad_out, *partial_grad;
         double *p0_pD, *pth, *q, *tmp1, *tmp2;
