@@ -164,6 +164,10 @@ def create_indep_model(StateContainer state_container):
         for j in range(state_container.data_size):
             sum_of_occurance += (state_container.states[j].parts[i >> 5] >> (i & 31)) & 1
 
-        theta[i, i] = np.log(sum_of_occurance / (state_container.data_size - sum_of_occurance + 1e-10))
+        if sum_of_occurance == 0:
+            warnings.warn(f"During independence model creation: event {i} never occurs in the data, set base rate to 0")
+            theta[i, i] = -1e10
+        else:
+            theta[i, i] = np.log(sum_of_occurance / (state_container.data_size - sum_of_occurance + 1e-10))
 
     return np.around(theta, decimals=2)
