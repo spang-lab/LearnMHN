@@ -253,15 +253,20 @@ IF NVCC_AVAILABLE:
         void gpu_compute_inverse(double *theta, int n, double *b, double *xout, int transp)
 
 
-    def cuda_gradient_and_score(double[:, :] theta, double[:] pD):
-        """
-        Computes the gradient and score for a given theta and a given empirical distribution
+def cuda_gradient_and_score(double[:, :] theta, double[:] pD):
+    """
+    Computes the log-likelihood score and its gradient for a given theta and a given empirical distribution.
 
-        :param theta: theta matrix representing the MHN
-        :param pD: probability distribution according to the training data
-        :returns: tuple containing the gradient and the score
-        """
+    **It can only be used if the mhn package was compiled with CUDA.**
 
+    :param theta: theta matrix representing the MHN
+    :param pD: probability distribution according to the training data
+    :returns: tuple containing the gradient and the score
+
+    :raise RuntimeError: this function raises a RuntimeError if the mhn package was not compiled with CUDA
+    """
+
+    IF NVCC_AVAILABLE:
         cdef int n = theta.shape[0]
         cdef double score
         cdef np.ndarray[np.double_t, ndim=2] gradient = np.empty((n, n), dtype=np.double)
@@ -270,17 +275,29 @@ IF NVCC_AVAILABLE:
         error_code = cuda_full_state_space_gradient_score(&theta[0, 0], n, &pD[0], &gradient[0, 0], &score)
 
         return gradient, score
+    ELSE:
+        raise RuntimeError('The mhn package was not compiled with CUDA, so you cannot use this function.')
 
-    def cuda_compute_inverse(double[:, :] theta, double[:] b, bint transp = False):
-        """
-        Computes the solution for [I-Q] x = b on the GPU.
 
-        :param theta: theta matrix representing the MHN
-        :param b: vector that is multiplied with [I-Q]^(-1)
-        :param transp: if set to True, computes solution for [I-Q]^T x = b
-        """
+def cuda_compute_inverse(double[:, :] theta, double[:] b, bint transp = False):
+    """
+    Computes the solution for [I-Q] x = b on the GPU.
+
+    **It can only be used if the mhn package was compiled with CUDA.**
+
+    :param theta: theta matrix representing the MHN
+    :param b: vector that is multiplied with [I-Q]^(-1)
+    :param transp: if set to True, computes solution for [I-Q]^T x = b
+    :returns: the solution for [I-Q] x = b
+
+    :raise RuntimeError: this function raises a RuntimeError if the mhn package was not compiled with CUDA
+    """
+
+    IF NVCC_AVAILABLE:
         cdef int n = theta.shape[0]
         cdef int nx = 1 << n
         cdef np.ndarray[np.double_t] xout = np.empty(nx, dtype=np.double)
         gpu_compute_inverse(&theta[0, 0], n, &b[0], &xout[0], transp)
         return xout
+    ELSE:
+        raise RuntimeError('The mhn package was not compiled with CUDA, so you cannot use this function.')
