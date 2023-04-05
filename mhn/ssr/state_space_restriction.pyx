@@ -517,21 +517,23 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateContainer mutation_data
 
 class CUDAError(Exception):
     """
-    Error raised if something went wrong during execution of the CUDA code
+    Error raised if something went wrong during execution of the CUDA code.
     """
 
 
-# this function is only defined if the CUDA-compiler (nvcc) is available on your device
-IF NVCC_AVAILABLE:
-    cpdef cuda_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
-        """
-        This function is a wrapper for the cuda implementation of the state space restriction
+cpdef cuda_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
+    """
+    This function is a wrapper for the CUDA implementation of state-space restriction.
+    
+    **It can only be used if the mhn package was compiled with CUDA.**
 
-        :param theta: matrix containing the theta entries of the current MHN
-        :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
-        :return: tuple containing the normalized gradient and score
-        """
-
+    :param theta: matrix containing the theta entries of the current MHN
+    :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
+    :return: tuple containing the normalized gradient and score
+    
+    :raise RuntimeError: this function raises a RuntimeError if the mhn package was not compiled with CUDA
+    """
+    IF NVCC_AVAILABLE:
         cdef int n = theta.shape[0]
         cdef int data_size = mutation_data.data_size
 
@@ -548,6 +550,8 @@ IF NVCC_AVAILABLE:
             raise CUDAError(f'{error_name.decode("UTF-8")}: "{error_description.decode("UTF-8")}"')
 
         return (grad_out.reshape((n, n)) / data_size), (score / data_size)
+    ELSE:
+        raise RuntimeError('The mhn package was not compiled with CUDA, so you cannot use this function')
 
 
 cpdef gradient_and_score(double[:, :] theta, StateContainer mutation_data):
