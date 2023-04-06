@@ -35,24 +35,24 @@ If this command is recognized, then CUDA should be installed on your device.
 During installation the package will automatically check if the CUDA compiler
 is installed on your device and will enable the corresponding functions if this is the case.
 While running a Python script you can test if the *mhn* package has access to GPU-accelerated
-functions using the :code:`state_space_restriction` submodule as shown below:
+functions using the :code:`cuda_available()` function as shown below:
 
 .. code-block:: python
 
-    from mhn.ssr import state_space_restriction
+    import mhn
 
-    print(state_space_restriction.cuda_available())
+    print(mhn.cuda_available())
 
     # the three possible results are also available as constants:
     # CUDA_AVAILABLE, CUDA_NOT_AVAILABLE, CUDA_NOT_FUNCTIONAL
 
-    if state_space_restriction.cuda_available() == state_space_restriction.CUDA_AVAILABLE:
+    if mhn.cuda_available() == mhn.CUDA_AVAILABLE:
         print('CUDA is available')
 
-    if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_AVAILABLE:
+    if mhn.cuda_available() == mhn.CUDA_NOT_AVAILABLE:
         print('CUDA compiler nvcc was not present during installation')
 
-    if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_FUNCTIONAL:
+    if mhn.cuda_available() == mhn.CUDA_NOT_FUNCTIONAL:
         print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')
 
 Be especially aware of the :code:`CUDA_NOT_FUNCTIONAL` case: This means that the CUDA compiler is installed on your device but basic functionalities like allocating memory on the GPU are not working as expected. In this case something is probably wrong with your CUDA drivers and you should check your CUDA installation.
