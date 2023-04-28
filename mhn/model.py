@@ -48,7 +48,7 @@ class MHN:
         else:
             return art_data
 
-    def compute_marginal_likelihood(self, state: np.ndarray):
+    def compute_marginal_likelihood(self, state: np.ndarray) -> float:
         """
         Computes the likelihood of observing a given state, where we consider the observation time to be an
         exponential random variable with mean 1.
