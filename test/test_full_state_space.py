@@ -1,6 +1,6 @@
-
-#
-
+"""
+This file contains unit tests for the full state-space functions of the mhn package.
+"""
 # author: Stefan Vocht
 
 import unittest
@@ -8,6 +8,7 @@ import numpy as np
 
 from mhn.ssr import state_space_restriction
 from mhn.original import Likelihood, ModelConstruction, PerformanceCriticalCode
+
 
 class TestCudaGradient(unittest.TestCase):
     """
@@ -22,6 +23,9 @@ class TestCudaGradient(unittest.TestCase):
             self.skipTest("CUDA not available for testing")
 
     def test_compare_with_cython(self):
+        """
+        Compare the full state-space score and gradient of the CUDA implementation with those of the Cython implementation
+        """
         n = 4
         theta = ModelConstruction.random_theta(n)
         pD = np.random.random(2**n)
@@ -35,6 +39,9 @@ class TestCudaGradient(unittest.TestCase):
         np.testing.assert_array_equal(np.around(gradient1, decimals=8), np.around(gradient2, decimals=8))
 
     def test_forward_substitution(self):
+        """
+        Test the computation of [I-Q]^(-1) b of the CUDA implementation with the Cython implementation
+        """
         n = 3
         theta = ModelConstruction.random_theta(n)
         pD = np.random.random(2**n)
