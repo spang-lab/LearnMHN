@@ -6,6 +6,7 @@ This submodule contains a class to represent Mutual Hazard Networks
 from __future__ import annotations
 
 from .original import Likelihood
+from .ssr import state_space_restriction
 
 import numpy as np
 import pandas as pd
@@ -46,6 +47,25 @@ class MHN:
             return df
         else:
             return art_data
+
+    def compute_marginal_likelihood(self, state: np.ndarray):
+        """
+        Computes the likelihood of observing a given state, where we consider the observation time to be an
+        exponential random variable with mean 1.
+
+        :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being
+        present (1) or not (0)
+
+        :returns: the likelihood of observing the given state according to this MHN
+        """
+        if not set(state.flatten()).issubset({0, 1}):
+            raise ValueError("The state array must only contain 0s and 1s")
+        mutation_num = np.sum(state)
+        nx = 1 << mutation_num
+        p0 = np.zeros(nx)
+        p0[0] = 1
+        p_th = state_space_restriction.compute_restricted_inverse(self.log_theta, state, p0, False)
+        return p_th[-1]
 
     def save(self, filename: str):
         """
