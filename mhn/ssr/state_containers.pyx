@@ -19,7 +19,7 @@ import warnings
 
 cdef int compute_max_mutation_number(int[:, :] mutation_data):
     """
-    This function is used to compute the maximum number of mutations in a single sample of the data
+    This function is used to compute the maximum number of mutations in a single sample of the data.
     """
     cdef int max_mutation_num = 0
     cdef int local_sum
@@ -37,7 +37,7 @@ cdef int compute_max_mutation_number(int[:, :] mutation_data):
 
 cdef void fill_states(State *states, int[:, :] mutation_data):
     """
-    This function fills the given (yet empty) states with the information from mutation_data
+    This function fills the given (yet empty) states with the information from mutation_data.
     """
     cdef int i, j
     cdef State *current_state
@@ -56,7 +56,7 @@ cdef void fill_states(State *states, int[:, :] mutation_data):
 
 cdef void sort_by_age(State *states, double *ages, int state_num):
     """
-    Simplistic sort algorithm to sort both states and ages according to the age values
+    Simplistic sort algorithm to sort both states and ages according to the age values.
     """
     cdef int i, j
     cdef double tmp_age
@@ -80,12 +80,15 @@ cdef void sort_by_age(State *states, double *ages, int state_num):
 
 cdef class StateContainer:
     """
-    This class is used as a wrapper such that the C array containing the States can be referenced in a Python script
+    This class is used as a wrapper such that the C array containing the States can be referenced in a Python script.
+
     It also makes sure that there aren't more than 32 mutations present in a single sample as this would break the algorithms
     """
 
     def __init__(self, int[:, :] mutation_data):
-
+        """
+        :param mutation_data: a 2d numpy array with dtype=np.int32 that contains only 0s and 1s, where rows represent samples, and columns represent events
+        """
         # the number of columns (number of genes) must not exceed 32 * STATE_SIZE
         if mutation_data.shape[1] > (32 * STATE_SIZE):
             raise ValueError(f"The number of genes present in the mutation data must not exceed {32 * STATE_SIZE}")
@@ -125,10 +128,14 @@ cdef class StateContainer:
 
 cdef class StateAgeContainer(StateContainer):
     """
-    This class is used as a wrapper like the StateContainer class, but also contains age information for each sample
+    This class is used as a wrapper like the StateContainer class, but also contains age information for each sample.
     """
 
     def __init__(self, int[:, :] mutation_data, double[:] ages):
+        """
+        :param mutation_data: a 2d numpy array with dtype=np.int32 that contains only 0s and 1s, where rows represent samples, and columns represent events
+        :param ages: a 1d numpy array with dtype=np.double that contains the ages of the samples present in mutation_data
+        """
         super().__init__(mutation_data)
         if ages.shape[0] != self.data_size:
             raise ValueError("The number of given ages must align with the number of samples in the mutation data")
