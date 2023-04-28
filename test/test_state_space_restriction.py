@@ -40,7 +40,8 @@ class TestCythonGradient(unittest.TestCase):
                 new_score = Likelihood.score(theta_copy, pD)
                 numerical_gradient[i, j] = (new_score - original_score) / h
 
-        analytic_gradient, _ = state_space_restriction.cython_gradient_and_score(theta, StateContainer(random_sample))
+        analytic_gradient, score = state_space_restriction.cython_gradient_and_score(theta, StateContainer(random_sample))
+        self.assertEqual(round(score, 8), round(original_score, 8))
         np.testing.assert_array_equal(np.around(numerical_gradient, decimals=3), np.around(analytic_gradient, decimals=3))
 
     def test_gene_position_permutation(self):

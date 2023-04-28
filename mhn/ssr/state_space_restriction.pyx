@@ -337,7 +337,7 @@ cdef np.ndarray[np.double_t] restricted_jacobi(double[:, :] theta, double[:] b, 
     return x
 
 
-cdef void compute_restricted_inverse(double[:, :] theta, double *dg, State *state, double[:] b, double[:] xout, bint transp = False):
+cdef void _compute_restricted_inverse(double[:, :] theta, double *dg, State *state, double[:] b, double[:] xout, bint transp = False):
     """
     this functions multiplies [I-Q]^(-1) with b and is much faster than restricted jacobi
     
@@ -389,6 +389,46 @@ cdef void compute_restricted_inverse(double[:, :] theta, double *dg, State *stat
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
+def compute_restricted_inverse(double[:, :] theta, int[:] state, double[:] b, bint transp = False) -> np.ndarray:
+    """
+    This functions multiplies [I-Q]^(-1) with b, where Q is the restricted transition rate matrix constructed from the given state.
+    This is a Python wrapper for the internal Cython function.
+
+    :param theta: matrix containing the theta entries
+    :param state: state representing current tumor sample, has to be a binary 1d numpy array with dtype=np.int32, where each entry corresponds to an event being present or not
+    :param b: array that is multiplied with [I-Q]^(-1)
+    :param transp: if True, b is multiplied with the transposed [I-Q]^(-1)
+
+    :returns: the result as numpy array
+    """
+    cdef State c_state
+    cdef int nx = b.shape[0]
+    cdef int j
+    cdef int incx = 1, incx0 = 0
+    cdef double mOne = -1, one = 1
+
+    cdef np.ndarray[np.double_t] xout = np.empty(nx, dtype=np.double)
+    cdef double *dg = <double *> malloc(nx * sizeof(double))
+
+    for j in range(STATE_SIZE):
+        c_state.parts[j] = 0
+
+    for j in range(state.shape[0]):
+        if state[j]:
+            c_state.parts[j >> 5] |= 1 << (j & 31)
+
+    restricted_q_diag(theta, &c_state, dg)      # compute the diagonal of Q
+    daxpy(&nx, &one, &mOne, &incx0, dg, &incx)  # subtract 1 from each entry to get the diagonal of [Q-I]
+    dscal(&nx, &mOne, dg, &incx)                # scale with -1 to get the diagonal of [I-Q]
+
+    _compute_restricted_inverse(theta, dg, &c_state, b, xout, transp)
+
+    free(dg)
+    return xout
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
 cdef double restricted_gradient_and_score(double[:, :] theta, State *state, double[:, :] g):
     """
     Computes a part of the gradient and score corresponding to a given state
@@ -418,13 +458,13 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
 
     # compute parts of the probability distribution yielded by the current MHN
     cdef np.ndarray[np.double_t] pth = np.empty(nx, dtype=np.double)
-    compute_restricted_inverse(theta, dg, state, p0, pth)
+    _compute_restricted_inverse(theta, dg, state, p0, pth)
 
     cdef np.ndarray[np.double_t] pD = np.zeros(nx)
     pD[nx-1] = 1 / pth[nx-1]
 
     cdef np.ndarray[np.double_t] q = np.empty(nx, dtype=np.double)
-    compute_restricted_inverse(theta, dg, state, pD, q, True)
+    _compute_restricted_inverse(theta, dg, state, pD, q, True)
 
     cdef int i, j
 
