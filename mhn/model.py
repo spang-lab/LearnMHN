@@ -53,8 +53,7 @@ class MHN:
         Computes the likelihood of observing a given state, where we consider the observation time to be an
         exponential random variable with mean 1.
 
-        :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being
-        present (1) or not (0)
+        :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
 
         :returns: the likelihood of observing the given state according to this MHN
         """
