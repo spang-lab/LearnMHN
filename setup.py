@@ -61,8 +61,8 @@ nvcc_available = int(which('nvcc') is not None)
 libraries = []
 # only compile CUDA code if nvcc is available and if we do not create a source distribution
 if nvcc_available and 'sdist' not in sys.argv:
-    libraries.append(os.path.abspath("./mhn/ssr/CudaStateSpaceRestriction"))
-    libraries.append(os.path.abspath("./mhn/original/CudaFullStateSpace"))
+    libraries.append("CudaStateSpaceRestriction")
+    libraries.append("CudaFullStateSpace")
     compile_cuda_code("./mhn/original/", "cuda_full_state_space.cu", "CudaFullStateSpace",
                       additional_cuda_files=["./mhn/original/cuda_inverse_by_substitution.cu"])
     compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction", f'-I./mhn/original/',
@@ -82,22 +82,24 @@ ext_modules = [
         "mhn.ssr.state_space_restriction",
         ["./mhn/ssr/state_space_restriction.pyx"],
         libraries=libraries,
-        library_dirs=["./mhn/ssr/", ".mhn/original/"],
-        runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/", ".mhn/original/"],
-        include_dirs=['./mhn/ssr/', ".mhn/original/"],
+        library_dirs=["./mhn/ssr/", "./mhn/original/"],
+        include_dirs=['./mhn/ssr/', "./mhn/original/"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2',
             f'-DSTATE_SIZE={STATE_SIZE}'
         ],
-        extra_link_args=[]
+        extra_link_args=[] if IS_WINDOWS else [
+            '-Wl,-rpath,$ORIGIN',
+            '-Wl,-rpath-link,../original/',
+        ]
     ),
     Extension(
         "mhn.ssr.matrix_exponential",
         ["./mhn/ssr/matrix_exponential.pyx"],
         libraries=libraries,
-        library_dirs=["./mhn/ssr/", ".mhn/original/"],
-        runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/", ".mhn/original/"],
-        include_dirs=['./mhn/ssr/', ".mhn/original/"],
+        library_dirs=["./mhn/ssr/", "./mhn/original/"],
+        # runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/", "./mhn/original/"],
+        include_dirs=['./mhn/ssr/', "./mhn/original/"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2',
             f'-DSTATE_SIZE={STATE_SIZE}'
@@ -108,11 +110,14 @@ ext_modules = [
         "mhn.original.Likelihood",
         ["./mhn/original/Likelihood.pyx"],
         libraries=libraries,
-        library_dirs=["./mhn/original/"],
-        runtime_library_dirs=None if IS_WINDOWS else ["./mhn/original/"],
-        include_dirs=['./mhn/original/'],
+        library_dirs=["./mhn/ssr/", "./mhn/original/"],
+        include_dirs=['./mhn/ssr/', "./mhn/original/"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2'
+        ],
+        extra_link_args=[] if IS_WINDOWS else [
+            '-Wl,-rpath,$ORIGIN',
+            '-Wl,-rpath-link,../ssr/',
         ]
     ),
     Extension(
