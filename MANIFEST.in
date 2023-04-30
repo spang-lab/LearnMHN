@@ -3,3 +3,4 @@ recursive-include mhn *.pyx
 recursive-include mhn *.cu
 recursive-include mhn *.cuh
 recursive-include mhn *.dll
+recursive-include mhn *.so
