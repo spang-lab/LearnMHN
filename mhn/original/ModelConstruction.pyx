@@ -1,13 +1,21 @@
-# by Stefan Vocht
-#
-# this script implements the functions of ModelConstruction.R in python
-#
+"""
+This submodule implements ModelConstruction.R from the original implementation in Cython.
 
-import numpy as np
+It contains functions to generate random MHNs, build their transition rate matrix Q, the diagonal of Q, and to generate
+and independence model for a given distribution
+"""
+# author(s): Stefan Vocht
+
+cimport cython
+
+from libc.math cimport exp
+
 from scipy.sparse import diags as scipy_diags
 
-from numba import njit
+import numpy as np
+cimport numpy as np
 
+np.import_array()
 
 def random_theta(n: int, sparsity: float = 0, rounded: bool = True) -> np.ndarray:
     """
@@ -34,22 +42,22 @@ def random_theta(n: int, sparsity: float = 0, rounded: bool = True) -> np.ndarra
     return theta
 
 
-@njit(cache=True)
-def q_subdiag(theta: np.ndarray, i: int) -> np.ndarray:
+cpdef np.ndarray[np.double_t, ndim=1] q_subdiag(double[:, :] theta, int i):
     """
     Creates a single subdiagonal of Q from the ith row in Theta
 
     :return: subdiagonal of Q corresponding to the ith row of Theta
     """
-    row = theta[i]
-    n = row.size
+    cdef double[:] row = theta[i, :]
+    cdef int n = theta.shape[0]
+    cdef int j
 
     # s is the subdiagonal of Q, the entries are calculated as described in eq. 2
-    s = np.empty(2**n)
-    s[0] = np.exp(row[i])
+    cdef np.ndarray[np.double_t, ndim=1] s = np.empty(2**n, dtype=np.double)
+    s[0] = exp(row[i])
 
     for j in range(n):
-        s[2**j: 2**(j+1)] = s[:2**j] * np.exp(row[j]) * (i != j)
+        s[2**j: 2**(j+1)] = s[:2**j] * exp(row[j]) * (i != j)
 
     return s
 
@@ -72,15 +80,15 @@ def build_q(theta: np.ndarray) -> np.ndarray:
     return q.toarray()
 
 
-@njit(cache=True)
-def q_diag(theta: np.ndarray) -> np.ndarray:
+cpdef np.ndarray[np.double_t, ndim=1]  q_diag(double[:, :] theta):
     """
     get the diagonal of Q
 
     :param theta: theta representing the MHN
     """
-    n = theta.shape[1]
-    dg = np.zeros((2**n))
+    cdef int n = theta.shape[0]
+    cdef int i
+    cdef np.ndarray[np.double_t, ndim=1] dg = np.zeros((2**n), dtype=np.double)
 
     for i in range(n):
         # the diagonal elements are the negative sums of their columns
@@ -97,8 +105,9 @@ def learn_indep(pD: np.ndarray) -> np.ndarray:
     :param pD: probability distribution of the events in the data
     :return: independence model
     """
-    n = int(np.log2(pD.size))
-    theta = np.zeros((n, n))
+    cdef int n = int(np.log2(pD.size))
+    cdef int i
+    cdef np.ndarray[np.double_t, ndim=2] theta = np.zeros((n, n), dtype=np.double)
 
     # for each event i, sum up the probabilities of events where gene i was mutated to get the total probability
     # theta_ii is the log-odd of gene i being mutated
@@ -112,13 +121,3 @@ def learn_indep(pD: np.ndarray) -> np.ndarray:
         theta[i, i] = np.log(perc / (1 - perc))
 
     return np.around(theta, decimals=2)
-
-
-if __name__ == '__main__':
-
-    test = np.arange(1, 17).reshape((4, 4))
-
-    print(q_subdiag(test, 1))
-
-    import timeit
-    print(timeit.timeit(lambda: q_subdiag(test, 1), number=10000))

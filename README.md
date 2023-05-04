@@ -1,13 +1,25 @@
-# LearnMHN
+# *mhn*: A Python package to efficiently compute Mutual Hazard Networks
 
-Main implementation of the algorithm to learn an MHN from data
+Mutual Hazard Networks (MHN) were first introduced by [Schill et al. (2019)](https://academic.oup.com/bioinformatics/article/36/1/241/5524604)
+and are used to model cancer progression.  
+This Python package can be used to work with MHNs. It includes functions that were part of the
+original R implementation as well as functions that make use of state-space restriction 
+to make learning a new MHN from cancer data faster and more efficient. Furthermore, it
+also contains functions to work with data for which the samples' ages are known and can
+therefore be considered while learning an MHN (see [Rupp et al. (2021)](https://arxiv.org/abs/2112.10971)).  
+There are optimizer classes for data with known sample ages as well as for data without, which make learning a new MHN possible with
+only a few lines of code.  
+
+## Documentation
+
+A detailed documentation of the *mhn* package is available [here](https://learnmhn.readthedocs.io/en/latest/index.html).
 
 ## Install the mhn package
 
 You can install the mhn package using pip:
 
 ```bash
-pip3 install -e /path/to/this/directory
+pip install mhn
 ```
 
 After completing the installation of this package you should be able to import it by calling
@@ -17,29 +29,29 @@ import mhn
 
 If a new version of the mhn package is available, you can upgrade your installation with
 ```bash
-pip3 install -e /path/to/this/directory --upgrade
+pip install --upgrade mhn
 ```
 
 ## A quick overview
 
 The package contains the original MHN functions implemented in Python. You import them from ``mhn.original``:
+
 ```python
 from mhn.original import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
 ```
-It also contains functions to compute the Fisher information for a given MHN and use
-Natural Gradient Descent to train a new model. You can use those functions by importing
-```python
-from mhn.original import FisherFunctions
-```
-Lastly, you can train a MHN using state-space restriction. The corresponding functions
+You can train an MHN using state-space restriction. The corresponding functions
 can be imported with
 ```python
-from mhn.ssr import state_space_restriction, state_storage
+from mhn.ssr import state_space_restriction, state_containers
+```
+The functions that make use of the known ages of samples can be imported via
+```python
+from mhn.ssr import matrix_exponential
 ```
 
-## Using the CUDA implementation of State-Space Restriction
-If your device has a Nvidia GPU, you can accelerate the computation of the gradient and score for
-State Space Restriction with CUDA. 
+## Using the CUDA implementation to accelerate score computations
+If your device has an Nvidia GPU, you can accelerate the computation of the log-likelihood score and its gradient for
+both the full and the restricted state-space with CUDA. 
 For that you have to have CUDA and the CUDA compiler
 installed on your device. You can check that in the terminal with
 ```bash
@@ -59,23 +71,20 @@ if state_space_restriction.cuda_available() == state_space_restriction.CUDA_AVAI
     print('CUDA is available')
 
 if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_AVAILABLE:
-    print('The CUDA compiler nvcc could not be found')
+    print('CUDA compiler nvcc was not present during installation')
 
 if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_FUNCTIONAL:
     print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')
 ```
 
-Be especially aware of the ```CUDA_NOT_FUNCTIONAL``` case: Even though CUDA
-is not functional, the CUDA functions will run with no error, but will
-return wrong results. In this case
+Be especially aware of the ```CUDA_NOT_FUNCTIONAL``` case: This means that the CUDA compiler
+is installed on your device but basic functionalities like allocating memory on the GPU
+are not working as expected. In this case
 something is probably wrong with your CUDA drivers and you should check your CUDA
-installation.  
-If you install ``nvcc`` after installing the ``mhn`` package, you have to
-run 
-```bash
-pip3 install -e /path/to/this/directory --upgrade
-```
-to use the CUDA functions of this package.
+installation.
+
+If you installed ``nvcc`` after installing the ``mhn`` package, you have to
+reinstall this package to gain access to the CUDA functions.
 
 ## How to train a new MHN
 
@@ -87,38 +96,44 @@ opt = StateSpaceOptimizer()
 ```
 We can specify the data that we want our MHN to be trained on:
 ```python
-opt = opt.load_data_matrix(data_matrix)
+opt.load_data_matrix(data_matrix)
 ```
 Make sure, that the binary numpy matrix ```data_matrix``` is set to ```dtype=np.int32```, else you 
 might get an error. Alternatively, if your training data is stored in a CSV file, you can call
 ```python
-opt = opt.load_data_from_csv(filename, delimiter)
+opt.load_data_from_csv(filename, delimiter)
 ```
-where ```delimiter``` is the delimiter separating the items in the CSV file (default: ``';'``). If
-the CSV file contains more than just the binary matrix, e.g. the gene names or 
-the sample names, you can use the optional 
-arguments ```first_row, last_row, first_col, last_col``` to specify the range of
-rows and columns, which contain the actual binary matrix without anything else.
-If you do not do that, you will likely get wrong results.  
+where ```delimiter``` is the delimiter separating the items in the CSV file (default: ``','``). 
+Internally, this method uses pandas' ```read_csv()``` function to extract the data from the CSV file.
+All additional keyword arguments given to this method will be passed on to that
+pandas function. This means parameters like ```usecols``` or ```skiprows``` of the ```read_csv()```
+function can also be used as parameters for this method.  
 If you want to make sure that the matrix was loaded correctly, you can get 
 the loaded matrix with
+
 ```python
-loaded_matrix = opt.bin_datamatrix
+loaded_matrix = opt.training_data
 ```
-By default, the optimizer will use the regularized score and gradient using 
-state-space restriction as defined in ```mhn/ssr/learnMHN```. If you want to
-use a different score and gradient function, you can change that with the method
+If you work with a CUDA-capable device, you can choose which device you want to use to 
+train a new MHN:
 ```python
-opt = opt.set_score_and_gradient_function(score_func, gradient_func)
+# uses both CPU and GPU depending on the number of mutations in the individual sample
+opt.set_device(StateSpaceOptimizer.Device.AUTO)
+# use the CPU to compute log-likelihood score and gradient
+opt.set_device(StateSpaceOptimizer.Device.CPU)
+# use the GPU to compute log-likelihood score and gradient
+opt.set_device(StateSpaceOptimizer.Device.GPU)
+# you can also access the Device enum directly with an Optimizer object
+opt.set_device(opt.Device.AUTO)
 ```
 You could also change the initial theta that is the starting point for training, which by default
 is an independence model, with
 ```python
-opt = opt.set_init_theta(init_theta)
+opt.set_init_theta(init_theta)
 ```
 If you want to regularly save the progress during training you can use
 ```python
-opt = opt.save_progress(steps=-1, always_new_file=False, filename='theta_backup.npy')
+opt.save_progress(steps=-1, always_new_file=False, filename='theta_backup.npy')
 ```
 The parameters of this method are  
 ``steps`` (default: ``-1``): if positive, the number of iterations between two progress storages  
@@ -131,7 +146,7 @@ Lastly, you could specify a callback function that is called after each training
 def some_callback_function(theta: np.ndarray):
     pass
 
-opt = opt.set_callback_func(some_callback_function)
+opt.set_callback_func(some_callback_function)
 ```
 
 Finally, you can train a new MHN with
@@ -143,7 +158,7 @@ opt.train()
 ```
 Some important parameters of the ``train`` method include  
 ``lam`` (default: ``0``), which is
-a tuning parameter to control regularization,  
+the lambda tuning parameter to control L1 regularization,  
 ``maxit`` (default: ``5000``), which is the maximum
 number of training iterations,  
 ```reltol``` (default: ``1e-7``), which is the gradient norm at which the training terminates and  

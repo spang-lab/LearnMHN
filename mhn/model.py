@@ -1,10 +1,19 @@
-# by Y. Linda Hu
+"""
+This submodule contains a class to represent Mutual Hazard Networks
+"""
+# author(s): Y. Linda Hu, Stefan Vocht
 
-from cmath import log
+from __future__ import annotations
+
+from .original import Likelihood
+from .ssr import state_space_restriction
+
 import numpy as np
 import pandas as pd
-from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
 import json
+
+
+from scipy.linalg.blas import dcopy, dscal, daxpy
 from math import factorial
 
 
@@ -54,23 +63,67 @@ class bits_fixed_n:
         t = (self.v | (self.v - 1)) + 1
         w = t | ((((t & -t)) // (self.v & (-self.v)) >> 1) - 1)
         self.v, w = w, self.v
-        return w
-
 
 class MHN:
     """
-    This class represents the Mutual Hazard Network
+    This class represents the Mutual Hazard Network.
     """
 
     def __init__(self, log_theta: np.array, events: list[str] = None, meta: dict = None):
+        """
+        :param log_theta: logarithmic values of the theta matrix representing the MHN
+        :param events: (optional) list of strings containing the names of the events considered by the MHN
+        :param meta: (optional) dictionary containing metadata for the MHN, e.g. parameters used to train the model
+        """
 
         self.log_theta = log_theta
         self.events = events
         self.meta = meta
 
+    def sample_artificial_data(self, sample_num: int, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
+        """
+        Returns artificial data sampled from this MHN. Random values are generated with numpy, use np.random.seed()
+        to make results reproducible.
+
+        :param sample_num: number of samples in the generated data
+        :param as_dataframe: if True, the data is returned as a pandas DataFrame, else numpy matrix
+
+        :returns: array or DataFrame with samples as rows and events as columns
+        """
+        art_data = Likelihood.sample_artificial_data(
+            self.log_theta, sample_num)
+        if as_dataframe:
+            df = pd.DataFrame(art_data)
+            if self.events is not None:
+                df.columns = self.events
+            return df
+        else:
+            return art_data
+
+    def compute_marginal_likelihood(self, state: np.ndarray) -> float:
+        """
+        Computes the likelihood of observing a given state, where we consider the observation time to be an
+        exponential random variable with mean 1.
+
+        :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
+
+        :returns: the likelihood of observing the given state according to this MHN
+        """
+        if not set(state.flatten()).issubset({0, 1}):
+            raise ValueError("The state array must only contain 0s and 1s")
+        mutation_num = np.sum(state)
+        nx = 1 << mutation_num
+        p0 = np.zeros(nx)
+        p0[0] = 1
+        p_th = state_space_restriction.compute_restricted_inverse(
+            self.log_theta, state, p0, False)
+        return p_th[-1]
+
     def save(self, filename: str):
         """
-        Save the MHN file
+        Save the MHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
+
+        :param filename: name of the CSV file without(!) the '.csv', JSON will be named accordingly
         """
         pd.DataFrame(self.log_theta, columns=self.events,
                      index=self.events).to_csv(f"{filename}.csv")
@@ -79,9 +132,14 @@ class MHN:
                 json.dump(self.meta, file, indent=4)
 
     @classmethod
-    def load(cls, filename: str, events: list[str] = None):
+    def load(cls, filename: str, events: list[str] = None) -> MHN:
         """
-        :param filename: path to the CSV file
+        Load an MHN object from a CSV file.
+
+        :param filename: name of the CSV file without(!) the '.csv'
+        :param events: list of strings containing the names of the events considered by the MHN
+
+        :returns: MHN object
         """
         df = pd.read_csv(f"{filename}.csv", index_col=0)
         if events is None and (df.columns != pd.Index([str(x) for x in range(len(df.columns))])).any():
@@ -205,49 +263,6 @@ class MHN:
         i = (1 << k) - 1
         return (A[i], (np.arange(self.log_theta.shape[0])[state.astype(bool)])[B[i].flatten()].reshape(-1, k))
 
-    # def mcmc_sampling(self, events: np.array, n_samples: int = 50, burn_in: float = 0.2):
-
-    #     restr_diag = self.get_restr_diag(events=events)
-    #     mutation_num = events.sum()
-
-    #     def proposal():
-    #         S = np.nonzero(events)[0].tolist()
-    #         S_pos = list(range(len(S)))
-    #         sigma = []
-    #         Q_val = 1
-    #         bin_state = 0
-    #         for _ in range(mutation_num):
-    #             probs = np.exp(self.log_theta[np.ix_(S, S)].sum(
-    #                 axis=0) - self.log_theta[S, S]) / (1 - restr_diag[bin_state + (1 << np.array(S_pos))])
-    #             i = np.random.choice(
-    #                 np.arange(len(S)),
-    #                 p=probs/probs.sum())
-    #             sigma.append(S.pop(i))
-
-    #             Q_val *= (probs[i] / probs.sum())
-    #             bin_state += (1 << S_pos.pop(i))
-
-    #         return sigma, Q_val / self.order_prob(sigma=sigma)
-
-    #     samples = list()
-
-    #     n = 0
-    #     last_sigma, last_p = proposal()
-    #     samples.append(last_sigma)
-
-    #     while n < int((1 + burn_in) * n_samples):
-    #         sigma, p = proposal()
-
-    #         if np.random.random() <= min(1, p/last_p):
-    #             samples.append(sigma)
-    #             last_sigma = sigma
-    #             last_p = p
-    #         else:
-    #             samples.append(last_sigma)
-    #         n += 1
-
-    #     return samples[-n_samples:]
-
 
 if __name__ == "__main__":
     mhn = MHN.load("../likeliestorder/data/breast/log_theta")
@@ -255,3 +270,4 @@ if __name__ == "__main__":
     state = np.zeros(n, dtype=int)
     state[:3] = 1
     mhn.m_likeliest_orders(state, m=4)
+    

@@ -1,13 +1,16 @@
-# by Stefan Vocht
-#
-# this script implements the UtilityFunctions.R in python
+"""
+This submodule implements UtilityFunctions.R from the original R implementation in Python.
+
+It contains functions useful for preprocessing training data.
+"""
+# author(s): Stefan Vocht
 
 import numpy as np
 
 
 def state_to_int(x: np.ndarray) -> int:
     """
-    This function interprets an binary array x as a binary number and returns the corresponding value as an integer
+    This function interprets a binary array x as a binary number and returns the corresponding value as an integer.
 
     :param x: binary array, in the context of the script this is a row of the mutation matrix
     :return: integer number representing the binary array
@@ -20,9 +23,9 @@ def state_to_int(x: np.ndarray) -> int:
 
 def data_to_pD(data: np.ndarray) -> np.ndarray:
     """
-    This function calculates the probability distribution for the different events for a given binary mutation matrix
+    This function calculates the probability distribution for the different events for a given binary mutation matrix.
 
-    :param data: has to be an numpy array/matrix (mutation matrix)
+    :param data: has to be a numpy array/matrix (mutation matrix)
     :return: probability distribution of the different events
     """
 
@@ -42,7 +45,7 @@ def data_to_pD(data: np.ndarray) -> np.ndarray:
 def finite_sample(pTh: np.ndarray, k: int) -> np.ndarray:
     """
     Generates a random sample given a probability distribution and returns the probability distribution for this new
-    sample
+    sample.
 
     :param pTh: probability distribution of events (the distribution of a true Theta)
     :param k: number of samples that should be generated
@@ -55,14 +58,10 @@ def finite_sample(pTh: np.ndarray, k: int) -> np.ndarray:
 
 def KL_div(p: np.ndarray, q: np.ndarray) -> float:
     """
-    Computes the KL-divergence
+    Computes the Kullback–Leibler divergence of two probability distributions.
 
     :param p: probability distribution p
     :param q: probability distribution q
     :return: KL-divergence of p and q
     """
     return p.dot(np.log(p)) - p.dot(np.log(q))
-
-
-if __name__ == '__main__':
-    print(KL_div(np.array([.1,.3]), np.array([.4,.1])))
