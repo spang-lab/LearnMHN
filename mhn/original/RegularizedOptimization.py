@@ -80,7 +80,7 @@ def grad_reg(theta: np.ndarray, pD: np.ndarray, lam: float, n: int = 0, pth_spac
 
 def learn_MHN(pD: np.ndarray, init: np.ndarray = None, lam: float = 0, maxit: int = 5000,
               trace: bool = False, reltol: float = 1e-07, round_result: bool = True,
-              callback: Callable = None, score_func: Callable = score_reg, jacobi: Callable = grad_reg) -> OptimizeResult:
+              callback: Callable = None, score_func: Callable = score_reg, jacobi: Callable = grad_reg) -> np.ndarray:
     """
     This function is used to train an MHN to a given probability distribution pD.
 
