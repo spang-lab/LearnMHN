@@ -17,8 +17,16 @@ from scipy.linalg.blas import dcopy, dscal, daxpy
 from math import factorial
 
 
-def Q_from_log_theta(log_theta, diag=True):
+def Q_from_log_theta(log_theta: np.typing.ArrayLike, diag: bool = True):
+    """This function returns the rate matrix Q_Theta of an MHN.
 
+    Args:
+        log_theta (np.typing.ArrayLike): Logarithmic Theta Matrix parametrizing the rate matrix.
+        diag (bool, optional): Whether to include the diagonal of the matrix. Defaults to True.
+
+    Returns:
+        np.array: Q_Theta
+    """
     n = log_theta.shape[0]
 
     def bi(x: int):
@@ -153,7 +161,17 @@ class MHN:
             meta = None
         return cls(np.array(df), events=events, meta=meta)
 
-    def get_restr_diag(self, state: np.array):
+    def get_restr_diag(self, state: np.array) -> np.array:
+        """Get the diagonal of the state-space-restricted Q_Theta matrix.
+
+        Args:
+            state (np.array): State (binary, dtype int32) which should be considered for the
+            state space restriction. Shape (n,) with n the number of total events.
+
+        Returns:
+            np.array: Diagonal of the state-space-restricted Q_Theta matrix. Shape (2^k,) with
+            k the number of 1s in state
+        """
         k = state.sum()
         nx = 1 << k
         n = self.log_theta.shape[0]
@@ -189,8 +207,15 @@ class MHN:
             daxpy(n=nx, a=1, x=subdiag, incx=1, y=diag, incy=1)
         return diag
 
-    def order_prob(self, sigma):
+    def order_likelihood(self, sigma: tuple[int]) -> float:
+        """Marginal likelihood of an order of events.
 
+        Args:
+            sigma (tuple[int]): Tuple of integers where the integers represent the events. 
+
+        Returns:
+            float: Marginal likelihood of observing sigma.
+        """
         events = np.zeros(self.log_theta.shape[0], dtype=np.int32)
         events[sigma] = 1
         sigma = np.array(sigma)
@@ -199,8 +224,18 @@ class MHN:
         return np.exp(sum((self.log_theta[x_i, sigma[:n_i]].sum() + self.log_theta[x_i, x_i]) for n_i, x_i in enumerate(sigma))) \
             / np.prod([1 - restr_diag[(1 << pos)[:i].sum()] for i in range(len(sigma) + 1)])
 
-    def likeliest_order(self, state: np.array):
+    def likeliest_order(self, state: np.array, normalize: bool = False) -> tuple[float, np.array]:
+        """Returns the likeliest order in which a given state accumulated according to the MHN.
 
+        Args:
+            state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
+            events.
+            normalize (bool, optional): Whether to normalize among all possible accumulation orders.
+            Defaults to False.
+
+        Returns:
+            tuple[float, np.array]: Likelihood of the likeliest accumulation order and the order itself.  
+        """
         restr_diag = self.get_restr_diag(state=state)
         log_theta = self.log_theta[state.astype(bool)][:, state.astype(bool)]
 
@@ -230,8 +265,20 @@ class MHN:
         i = (1 << k) - 1
         return (A[i], np.arange(self.log_theta.shape[0])[state.astype(bool)][B[i]])
 
-    def m_likeliest_orders(self, state: np.array, m: int):
+    def m_likeliest_orders(self, state: np.array, m: int, normalize: bool = False) -> tuple[np.array, np.array]:
+        """Returns the m likeliest orders in which a given state accumulated according to the MHN.
 
+        Args:
+            state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
+            events.
+            m (int): Number of likeliest orders to compute.
+            normalize (bool, optional): Whether to normalize among all possible accumulation orders.
+            Defaults to False.
+
+        Returns:
+            tuple[np.array, np.array]: Array of likelihoods of the likeliest accumulation order and
+            array of the order itself.
+        """
         restr_diag = self.get_restr_diag(state=state)
         log_theta = self.log_theta[state.astype(bool)][:, state.astype(bool)]
 
