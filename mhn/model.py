@@ -310,6 +310,8 @@ class MHN:
             A = A_new
             B = B_new
         i = (1 << k) - 1
+        if normalize:
+            A[i] /= self.compute_marginal_likelihood(state=state)
         return (A[i], np.arange(self.log_theta.shape[0])[state.astype(bool)][B[i]])
 
     def m_likeliest_orders(self, state: np.array, m: int, normalize: bool = False) -> tuple[np.array, np.array]:
@@ -357,6 +359,8 @@ class MHN:
             A = A_new
             B = B_new
         i = (1 << k) - 1
+        if normalize:
+            A[i] /= self.compute_marginal_likelihood(state=state)
         return (A[i], (np.arange(self.log_theta.shape[0])[state.astype(bool)])[B[i].flatten()].reshape(-1, k))
 
     def save(self, filename: str):
