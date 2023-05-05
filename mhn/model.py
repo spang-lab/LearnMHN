@@ -63,6 +63,8 @@ class bits_fixed_n:
         t = (self.v | (self.v - 1)) + 1
         w = t | ((((t & -t)) // (self.v & (-self.v)) >> 1) - 1)
         self.v, w = w, self.v
+        return w
+
 
 class MHN:
     """
