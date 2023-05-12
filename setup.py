@@ -59,6 +59,7 @@ def compile_cuda_code(folder, cuda_filename, lib_name, *extra_compile_args, addi
 nvcc_available = int(which('nvcc') is not None)
 
 libraries = []
+extra_cuda_link_args = []
 # only compile CUDA code if nvcc is available and if we do not create a source distribution
 if nvcc_available and 'sdist' not in sys.argv:
     libraries.append("CudaStateSpaceRestriction")
@@ -67,6 +68,11 @@ if nvcc_available and 'sdist' not in sys.argv:
                       additional_cuda_files=["./mhn/original/cuda_inverse_by_substitution.cu"])
     compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction", f'-I./mhn/original/',
                       additional_cuda_files=["./mhn/original/cuda_inverse_by_substitution.cu"])
+    if not IS_WINDOWS:
+        extra_cuda_link_args = [
+            '-Wl,-rpath,$ORIGIN/../original/',
+            '-Wl,-rpath,$ORIGIN/../ssr/',
+        ]
 
 
 # define compile options for the Cython files
@@ -88,10 +94,7 @@ ext_modules = [
             '/Ox' if IS_WINDOWS else '-O2',
             f'-DSTATE_SIZE={STATE_SIZE}'
         ],
-        extra_link_args=[] if IS_WINDOWS else [
-            '-Wl,-rpath,$ORIGIN',
-            '-Wl,-rpath-link,../original/',
-        ]
+        extra_link_args=extra_cuda_link_args
     ),
     Extension(
         "mhn.ssr.matrix_exponential",
@@ -115,10 +118,7 @@ ext_modules = [
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2'
         ],
-        extra_link_args=[] if IS_WINDOWS else [
-            '-Wl,-rpath,$ORIGIN',
-            '-Wl,-rpath-link,../ssr/',
-        ]
+        extra_link_args=extra_cuda_link_args
     ),
     Extension(
         "mhn.original.PerformanceCriticalCode",
@@ -142,7 +142,7 @@ if 'sdist' in sys.argv:
 
 setup(
     name="mhn",
-    version="0.0.11",
+    version="0.0.14",
     packages=find_packages(),
     author="Stefan Vocht, Kevin Rupp, Y. Linda Hu",
     description="A package to train and work with Mutual Hazard Networks",
