@@ -10,7 +10,7 @@ import subprocess
 
 IS_WINDOWS = (platform.system() == 'Windows')      # get the operating system
 STATE_SIZE = 8                                     # the compiled code supports MHNs with maximum size of 32 * STATE_SIZE
-GENERATE_DEBUG_HTML = False                        # set this to True so that Cython generates a optimization HTML file
+GENERATE_DEBUG_HTML = False                        # set this to True so that Cython generates an optimization HTML file
 NO_CUDA_INSTALLATION_FLAG = "INSTALL_MHN_NO_CUDA"  # set this environmental variable to install CPU version only
 
 assert STATE_SIZE > 0                              # make sure STATE_SIZE is greater zero
@@ -147,7 +147,7 @@ if 'sdist' in sys.argv:
 
 setup(
     name="mhn",
-    version="0.0.14",
+    version="0.0.15",
     packages=find_packages(),
     author="Stefan Vocht, Kevin Rupp, Y. Linda Hu",
     description="A package to train and work with Mutual Hazard Networks",
