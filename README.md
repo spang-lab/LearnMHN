@@ -83,15 +83,20 @@ are not working as expected.
 In this case something is probably wrong with your CUDA drivers and you should check your CUDA
 installation.
 
-If you installed ``nvcc`` after installing the ``mhn`` package, you have to
-reinstall this package to gain access to the CUDA functions.
-
 If you cannot resolve ```CUDA_NOT_FUNCTIONAL``` by changing CUDA drivers, we recommend to install the package with CPU support only.
-This can be accomplished via:
+This can be accomplished on Linux via
 ```bash
 export INSTALL_MHN_NO_CUDA=1
 pip install mhn
 ```
+and on Windows via
+```bash
+set INSTALL_MHN_NO_CUDA=1
+pip install mhn
+```
+
+If you installed ``nvcc`` after installing the ``mhn`` package, you have to
+reinstall this package to gain access to the CUDA functions.
 
 ## How to train a new MHN
 

@@ -57,4 +57,20 @@ functions using the :code:`cuda_available()` function as shown below:
 
 Be especially aware of the :code:`CUDA_NOT_FUNCTIONAL` case: This means that the CUDA compiler is installed on your device but basic functionalities like allocating memory on the GPU are not working as expected. In this case something is probably wrong with your CUDA drivers and you should check your CUDA installation.
 
+If you cannot resolve :code:`CUDA_NOT_FUNCTIONAL`  by changing CUDA drivers, we recommend to install the package with CPU support only.
+This can be accomplished on Linux via
+
+.. code-block:: console
+
+    export INSTALL_MHN_NO_CUDA=1
+    pip install mhn
+
+and on Windows via
+
+.. code-block:: console
+
+    set INSTALL_MHN_NO_CUDA=1
+    pip install mhn
+
+
 If you installed *nvcc* after installing the *mhn* package, you have to reinstall this package to gain access to the CUDA functions.
