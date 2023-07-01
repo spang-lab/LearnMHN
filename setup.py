@@ -8,11 +8,12 @@ import platform
 from shutil import which
 import subprocess
 
-IS_WINDOWS = (platform.system() == 'Windows')   # get the operating system
-STATE_SIZE = 8                                  # the compiled code supports MHNs with maximum size of 32 * STATE_SIZE
-GENERATE_DEBUG_HTML = False                     # set this to True so that Cython generates a optimization HTML file
+IS_WINDOWS = (platform.system() == 'Windows')      # get the operating system
+STATE_SIZE = 8                                     # the compiled code supports MHNs with maximum size of 32 * STATE_SIZE
+GENERATE_DEBUG_HTML = False                        # set this to True so that Cython generates a optimization HTML file
+NO_CUDA_INSTALLATION_FLAG = "INSTALL_MHN_NO_CUDA"  # set this environmental variable to install CPU version only
 
-assert STATE_SIZE > 0                           # make sure STATE_SIZE is greater zero
+assert STATE_SIZE > 0                              # make sure STATE_SIZE is greater zero
 
 with open("README.md", 'r') as f:
     long_description = f.read()
@@ -57,6 +58,10 @@ def compile_cuda_code(folder, cuda_filename, lib_name, *extra_compile_args, addi
 
 # check if nvcc (the cuda compiler) is available on the device
 nvcc_available = int(which('nvcc') is not None)
+
+# check if manual instruction not to use CUDA was given
+if NO_CUDA_INSTALLATION_FLAG in os.environ:
+    nvcc_available = 0
 
 libraries = []
 extra_cuda_link_args = []

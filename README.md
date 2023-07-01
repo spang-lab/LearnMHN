@@ -79,12 +79,19 @@ if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_
 
 Be especially aware of the ```CUDA_NOT_FUNCTIONAL``` case: This means that the CUDA compiler
 is installed on your device but basic functionalities like allocating memory on the GPU
-are not working as expected. In this case
-something is probably wrong with your CUDA drivers and you should check your CUDA
+are not working as expected.
+In this case something is probably wrong with your CUDA drivers and you should check your CUDA
 installation.
 
 If you installed ``nvcc`` after installing the ``mhn`` package, you have to
 reinstall this package to gain access to the CUDA functions.
+
+If you cannot resolve ```CUDA_NOT_FUNCTIONAL``` by changing CUDA drivers, we recommend to install the package with CPU support only.
+This can be accomplished via:
+```bash
+export INSTALL_MHN_NO_CUDA=1
+pip install mhn
+```
 
 ## How to train a new MHN
 
