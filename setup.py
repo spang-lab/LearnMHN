@@ -147,7 +147,7 @@ if 'sdist' in sys.argv:
 
 setup(
     name="mhn",
-    version="0.0.15",
+    version="0.0.16",
     packages=find_packages(),
     author="Stefan Vocht, Kevin Rupp, Y. Linda Hu",
     description="A package to train and work with Mutual Hazard Networks",
