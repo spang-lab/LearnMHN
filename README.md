@@ -58,22 +58,23 @@ installed on your device. You can check that in the terminal with
 nvcc --version
 ```
 If this command is recognized, then CUDA should be installed on your device.  
-You can also use the following function of the ```state_space_restriction``` submodule:
+You can also use the following function to test if the *mhn* package has access to 
+GPU-accelerated  functions:
 ```python
-from mhn.ssr import state_space_restriction
+import mhn
 
-print(state_space_restriction.cuda_available())
+print(mhn.cuda_available())
 
 # the three possible results are also available as constants:
 # CUDA_AVAILABLE, CUDA_NOT_AVAILABLE, CUDA_NOT_FUNCTIONAL
 
-if state_space_restriction.cuda_available() == state_space_restriction.CUDA_AVAILABLE:
+if mhn.cuda_available() == mhn.CUDA_AVAILABLE:
     print('CUDA is available')
 
-if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_AVAILABLE:
+if mhn.cuda_available() == mhn.CUDA_NOT_AVAILABLE:
     print('CUDA compiler nvcc was not present during installation')
 
-if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_FUNCTIONAL:
+if mhn.cuda_available() == mhn.CUDA_NOT_FUNCTIONAL:
     print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')
 ```
 
