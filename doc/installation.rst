@@ -74,3 +74,16 @@ and on Windows via
 
 
 If you installed *nvcc* after installing the *mhn* package, you have to reinstall this package to gain access to the CUDA functions.
+
+Reinstalling the package for CUDA-related reasons
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to reinstall the package because you want to either
+enable or disable CUDA support, you should add the :code:`--no-cache-dir` flag during
+installation to ensure that *pip* does not use a cached version of the
+package and that the package is actually recompiled:
+
+.. code-block:: console
+
+    pip uninstall mhn
+    pip install mhn --no-cache-dir
