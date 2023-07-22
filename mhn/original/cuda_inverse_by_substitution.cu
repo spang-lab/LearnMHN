@@ -94,7 +94,7 @@ __device__ int compute_index(int i, int n, int k, int binom_coef){
  * @param[in] theta theta matrix representing the MHN
  * @param[in] n size of theta
  * @param[in] dg diagonal of [I - Q]
- * @param[in, out] array containing the b at the beginning and x at the end
+ * @param[in, out] xout array containing the b at the beginning and x at the end
  * @param[in] j number of bits set to 1 in all indices for which the equation is solved
  * @param[in] binom_coef value of n choose j
 */
@@ -140,7 +140,7 @@ __global__ void compute_inverse_level(const double * __restrict__ theta, const i
  * @param[in] theta theta matrix representing the MHN
  * @param[in] n size of theta
  * @param[in] dg diagonal of [I - Q]
- * @param[in, out] array containing the b at the beginning and x at the end
+ * @param[in, out] xout array containing the b at the beginning and x at the end
  * @param[in] j number of bits set to 1 in all indices for which the equation is solved
  * @param[in] binom_coef value of n choose j
 */
