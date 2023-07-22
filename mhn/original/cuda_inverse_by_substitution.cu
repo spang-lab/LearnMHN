@@ -108,6 +108,8 @@ __global__ void compute_inverse_level(const double * __restrict__ theta, const i
         local_theta[i] = theta[i];
     }
 
+    __syncthreads();
+
     // in each iteration we first map the current i to a permutation of bits with j 1s and n-j 0s
     // for the indices represented by those permutations all partial solutions needed to compute their values were computed with forward substitution in a previous call of this kernel
     // we can therefore now go on and compute the solution for those indices
@@ -153,6 +155,8 @@ __global__ void compute_inverse_level_t(const double * __restrict__ theta, const
     for(int i = threadIdx.x; i < n*n; i += blockDim.x){
         local_theta[i] = theta[i];
     }
+
+    __syncthreads();
 
     // in each iteration we first map the current i to a permutation of bits with j 1s and n-j 0s
     // for the indices represented by those permutations all partial solutions needed to compute their values were computed with forward substitution in a previous call of this kernel
