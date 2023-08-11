@@ -8,6 +8,8 @@ import platform
 from shutil import which
 import subprocess
 
+VERSION = "0.0.16"                                 # current package version
+
 IS_WINDOWS = (platform.system() == 'Windows')      # get the operating system
 STATE_SIZE = 8                                     # the compiled code supports MHNs with maximum size of 32 * STATE_SIZE
 GENERATE_DEBUG_HTML = False                        # set this to True so that Cython generates an optimization HTML file
@@ -17,6 +19,15 @@ assert STATE_SIZE > 0                              # make sure STATE_SIZE is gre
 
 with open("README.md", 'r') as f:
     long_description = f.read()
+
+
+def create_metadata_file(**metadata):
+    """
+    This function creates the METADATA file which contains metadata about this package that can be accessed at runtime.
+    """
+    with open("mhn/METADATA", "w") as file:
+        for key in metadata:
+            file.write(f"{key} {metadata[key]}\n")
 
 
 def compile_cuda_code(folder, cuda_filename, lib_name, *extra_compile_args, additional_cuda_files=None):
@@ -144,10 +155,12 @@ ext_modules = [
 # we only want the source code in a source distribution
 if 'sdist' in sys.argv:
     ext_modules = []
+else:
+    create_metadata_file(version=VERSION)
 
 setup(
     name="mhn",
-    version="0.0.16",
+    version=VERSION,
     packages=find_packages(),
     author="Stefan Vocht, Kevin Rupp, Y. Linda Hu",
     description="A package to train and work with Mutual Hazard Networks",
