@@ -1,0 +1,12 @@
+# cache and virtualenv
+__pycache__
+.venv
+
+# pip
+mhn.egg-info
+
+# cython build files
+mhn/original/*.so
+mhn/original/*.c
+mhn/ssr/*.so
+mhn/ssr/*.c
