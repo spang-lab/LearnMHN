@@ -151,13 +151,15 @@ def learn_MHN(states: StateContainer, init: np.ndarray = None, lam: float = 0, m
     if init is None:
         init = create_indep_model(states)
 
+    init_shape = init.shape
+
     # this container is given to the score and gradient function to communicate with each other
     score_and_gradient_container = [None, None]
 
     opt = minimize(fun=score_func, x0=init, args=(states, lam, n, score_and_gradient_container), method="L-BFGS-B",
                    jac=jacobi, options={'maxiter': maxit, 'disp': trace, 'gtol': reltol}, callback=callback)
 
-    opt.x = opt.x.reshape((n, n))
+    opt.x = opt.x.reshape(init_shape)
 
     if round_result:
         opt.x = np.around(opt.x, decimals=2)

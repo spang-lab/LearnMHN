@@ -16,10 +16,13 @@ from . import model
 
 from mhn.ssr import regularized_optimization as reg_optim
 from .ssr.state_containers import StateContainer, StateAgeContainer
+from .ssr.state_containers import create_indep_model
 from .ssr.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
 from mhn.ssr import state_space_restriction as marginalized_funcs
 
 from mhn.ssr import matrix_exponential as mat_exp
+
+import mhn.omega_mhn.with_ssr as omega_funcs
 
 
 class _Optimizer(abc.ABC):
@@ -32,7 +35,7 @@ class _Optimizer(abc.ABC):
         self.__result = None
         self._events = None
 
-        self.__init_theta = None
+        self._init_theta = None
         self.__custom_callback = None
 
         self.__backup_steps = -1
@@ -41,6 +44,8 @@ class _Optimizer(abc.ABC):
         self.__backup_current_step = None
 
         self._gradient_and_score_func = None
+        self._regularized_score_func_builder = reg_optim.build_regularized_score_func
+        self._regularized_gradient_func_builder = reg_optim.build_regularized_gradient_func
 
     def set_init_theta(self, init: np.ndarray):
         """
@@ -49,7 +54,7 @@ class _Optimizer(abc.ABC):
         If none is given, the optimization starts with an independence model, where the baseline hazard Theta_ii
         of each event is set to its empirical odds and the hazard ratios (off-diagonal entries) are set to exactly 1.
         """
-        self.__init_theta = init
+        self._init_theta = init
         return self
 
     def get_data_properties(self):
@@ -145,10 +150,10 @@ class _Optimizer(abc.ABC):
         else:
             callback_func = self.__total_callback_func
 
-        score_func = reg_optim.build_regularized_score_func(self._gradient_and_score_func)
-        gradient_func = reg_optim.build_regularized_gradient_func(self._gradient_and_score_func)
+        score_func = self._regularized_score_func_builder(self._gradient_and_score_func)
+        gradient_func = self._regularized_gradient_func_builder(self._gradient_and_score_func)
 
-        result = reg_optim.learn_MHN(self._data, self.__init_theta, lam, maxit, trace, reltol,
+        result = reg_optim.learn_MHN(self._data, self._init_theta, lam, maxit, trace, reltol,
                                      round_result, callback_func, score_func, gradient_func)
 
         self.__backup_current_step = None
@@ -158,7 +163,7 @@ class _Optimizer(abc.ABC):
             events=self._events,
             meta={
                 "lambda": lam,
-                "init": self.__init_theta,
+                "init": self._init_theta,
                 "maxit": maxit,
                 "reltol": reltol,
                 "score": result.fun,
@@ -383,3 +388,40 @@ class DUAOptimizer(_Optimizer):
         This property returns all the data given to this optimizer to train a new MHN.
         """
         return self._bin_datamatrix, self._state_ages
+
+
+class OmegaOptimizer(StateSpaceOptimizer):
+    """
+    This optimizer models the data with the OmegaMHN.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._gradient_and_score_func = omega_funcs.gradient_and_score
+        self._regularized_score_func_builder = omega_funcs.build_regularized_score_func
+        self._regularized_gradient_func_builder = omega_funcs.build_regularized_gradient_func
+
+    def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
+              reltol: float = 1e-7, round_result: bool = True) -> model.MHN:
+        """
+        Use this function to learn a new MHN from the data given to this optimizer.
+
+        :param lam: tuning parameter lambda for regularization (default: 1/(number of samples in the dataset))
+        :param maxit: maximum number of training iterations
+        :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
+        :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
+        :param round_result: if True, the result is rounded to two decimal places
+        :return: trained model
+        """
+        if self._init_theta is None:
+            vanilla_theta = create_indep_model(self._data)
+            n = vanilla_theta.shape[0]
+            omega_theta = np.zeros((n+1, n))
+            omega_theta[:n] = vanilla_theta
+            self._init_theta = omega_theta
+
+        return super().train(lam, maxit, trace, reltol, round_result)
+
+    def set_device(self, device: "_Optimizer.Device"):
+        # TODO implement set_device for OmegaOptimizer
+        raise NotImplementedError("Currently, you cannot set the device for the OmegaOptimizer, will be added later")
