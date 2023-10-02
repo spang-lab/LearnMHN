@@ -97,3 +97,12 @@ class MHN:
         except FileNotFoundError:
             meta = None
         return cls(np.array(df), events=events, meta=meta)
+
+    def __str__(self):
+        if isinstance(self.meta, dict):
+            meta_data_string = '\n'.join([f'{key}:\n{value}\n' for key, value in self.meta.items()])
+        else:
+            meta_data_string = "None"
+        return f"EVENTS: \n{self.events}\n\n" \
+            f"THETA In LOG FORMAT: \n {self.log_theta}\n\n" \
+            f"ADDITIONAL METADATA: \n\n{meta_data_string}"
