@@ -280,6 +280,53 @@ class StateSpaceOptimizer(_Optimizer):
         self.load_data_matrix(df)
         return self
 
+    def find_lambda(self, lambda_min: float = 0.0001, lambda_max: float = 0.1,
+                    steps: int = 9, nfolds: int = 5) -> float:
+        """
+        Find the best value for lambda through n-fold cross-validation.
+        Use np.random.seed() to make results reproducible.
+
+        :param lambda_min: minimum lambda value that should be tested
+        :param lambda_max: maximum lambda value that should be tested
+        :param steps: number of steps between lambda_min and lambda_max
+        :param nfolds: number of folds used for cross-validation
+
+        :returns: lambda value that performed best during cross-validation
+        """
+        if self._bin_datamatrix is None:
+            raise ValueError("You have to load data before you start cross-validation")
+
+        # create a range of possible lambdas with logarithmic grid-spacing
+        # e.g. (0.0001,0.0010,0.0100,0.1000) for 4 steps
+        lambda_path = np.exp(np.linspace(np.log(lambda_min + 1e-10), np.log(lambda_max + 1e-10), steps))
+
+        # shuffle the dataset and cut it into n folds
+        shuffled_data = self._bin_datamatrix.copy()
+        np.random.shuffle(shuffled_data)
+        folds = np.arange(self._bin_datamatrix.shape[0]) % nfolds
+
+        # store the scores for each fold in rows and each lambda in columns
+        scores = np.zeros((nfolds, steps))
+
+        # use self.__class__ to make this method also usable for subclasses
+        opt = self.__class__()
+
+        for j in range(nfolds):
+            # designate one of folds as test set and the others as training set
+            test_data = shuffled_data[np.where(folds == j)]
+            test_data_container = StateContainer(test_data)
+            train_data = shuffled_data[np.where(folds != j)]
+            opt.load_data_matrix(train_data)
+
+            for i in range(steps):
+                opt.train(lam=lambda_path[i])
+                theta = opt.result.log_theta
+                scores[j, i] = self._gradient_and_score_func(theta, test_data_container)[1]
+
+        # find the best lambda with the highest average score over folds
+        best_lambda = lambda_path[np.argmax(np.sum(scores, axis=0))]
+        return best_lambda
+
     def set_device(self, device: "StateSpaceOptimizer.Device"):
         """
         Set the device that should be used for training.
@@ -415,6 +462,9 @@ class OmegaOptimizer(StateSpaceOptimizer):
         :param round_result: if True, the result is rounded to two decimal places
         :return: trained model
         """
+        if self._data is None:
+            raise ValueError("You have to load data before training!")
+
         if self._init_theta is None:
             vanilla_theta = create_indep_model(self._data)
             n = vanilla_theta.shape[0]
@@ -423,52 +473,6 @@ class OmegaOptimizer(StateSpaceOptimizer):
             self._init_theta = omega_theta
 
         return super().train(lam, maxit, trace, reltol, round_result)
-
-    def find_lambda(self, lambda_min: float = 0.0001, lambda_max: float = 0.1,
-                    steps: int = 9, nfolds: int = 5) -> float:
-        """
-        Find the best value for lambda through n-fold cross-validation.
-        Use np.random.seed() to make results reproducible.
-
-        :param lambda_min: minimum lambda value that should be tested
-        :param lambda_max: maximum lambda value that should be tested
-        :param steps: number of steps between lambda_min and lambda_max
-        :param nfolds: number of folds used for cross-validation
-
-        :returns: lambda value that performed best during cross-validation
-        """
-        if self._bin_datamatrix is None:
-            raise ValueError("You have to load data before you start cross-validation")
-
-        # create a range of possible lambdas with logarithmic grid-spacing
-        # e.g. (0.0001,0.0010,0.0100,0.1000) for 4 steps
-        lambda_path = np.exp(np.linspace(np.log(lambda_min + 1e-10), np.log(lambda_max + 1e-10), steps))
-
-        # shuffle the dataset and cut it into n folds
-        shuffled_data = self._bin_datamatrix.copy()
-        np.random.shuffle(shuffled_data)
-        folds = np.arange(self._bin_datamatrix.shape[0]) % nfolds
-
-        # store the scores for each fold in rows and each lambda in columns
-        scores = np.zeros((nfolds, steps))
-
-        opt = OmegaOptimizer()
-
-        for j in range(nfolds):
-            # designate one of folds as test set and the others as training set
-            test_data = shuffled_data[np.where(folds == j)]
-            test_data_container = StateContainer(test_data)
-            train_data = shuffled_data[np.where(folds != j)]
-            opt.load_data_matrix(train_data)
-
-            for i in range(steps):
-                opt.train(lam=lambda_path[i])
-                theta = opt.result.log_theta
-                scores[j, i] = omega_funcs.gradient_and_score(theta, test_data_container)[1]
-
-        # find the best lambda with the highest average score over folds
-        best_lambda = lambda_path[np.argmax(np.sum(scores, axis=0))]
-        return best_lambda
 
     def set_device(self, device: "_Optimizer.Device"):
         # TODO implement set_device for OmegaOptimizer
