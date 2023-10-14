@@ -103,15 +103,3 @@ def gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
     omega_gradient[-1] = observation_rates_gradient
 
     return omega_gradient, score
-
-
-def test():
-    import mhn
-    _n = 10
-    _theta = mhn.original.ModelConstruction.random_theta(_n)
-    _omega_theta = np.zeros((_n+1, _n))
-    _omega_theta[:_n] = _theta
-    _random_data = np.random.choice([0, 1], (20, _n), p=(0.5, 0.5))
-    _mutation_data = StateContainer(_random_data)
-    print(gradient_and_score(_omega_theta, _mutation_data))
-    return gradient_and_score(_omega_theta, _mutation_data)
