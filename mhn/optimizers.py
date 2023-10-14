@@ -475,5 +475,25 @@ class OmegaOptimizer(StateSpaceOptimizer):
         return super().train(lam, maxit, trace, reltol, round_result)
 
     def set_device(self, device: "_Optimizer.Device"):
-        # TODO implement set_device for OmegaOptimizer
-        raise NotImplementedError("Currently, you cannot set the device for the OmegaOptimizer, will be added later")
+        """
+        Set the device that should be used for training.
+
+        You have three options:
+            Device.AUTO: (default) automatically select the device that is likely to match the data
+            Device.CPU:  use the CPU implementations to compute the scores and gradients
+            Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
+
+        The Device enum is part of this optimizer class.
+        """
+        super().set_device(device)
+        if device == _Optimizer.Device.GPU:
+            if cuda_available() != CUDA_AVAILABLE:
+                raise CUDAError(cuda_available())
+
+            self._gradient_and_score_func = omega_funcs.cuda_gradient_and_score
+        else:
+            self._gradient_and_score_func = {
+                _Optimizer.Device.AUTO: omega_funcs.gradient_and_score,
+                _Optimizer.Device.CPU: omega_funcs.cython_gradient_and_score
+            }[device]
+        return self

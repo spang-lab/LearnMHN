@@ -79,9 +79,9 @@ def build_regularized_gradient_func(gradient_and_score_function: Callable):
     return reg_gradient_func
 
 
-def gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
+def _internal_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer, grad_and_score_func: Callable):
     """
-    Computes the score as well as the gradient in log format.
+    Computes the score as well as the gradient in log format using the given gradient and score function.
 
     :param omega_theta: theta matrix for the OmegaMHN (shape: (n+1) x n), last row contains observation rates
     :param mutation_data: StateContainer object containing the data which is used for training
@@ -95,7 +95,7 @@ def gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
     # undo changes to the diagonal
     equivalent_vanilla_mhn[range(n), range(n)] += omega_theta[-1]
     # compute the score and gradient on this theta matrix
-    grad, score = state_space_restriction.gradient_and_score(equivalent_vanilla_mhn, mutation_data)
+    grad, score = grad_and_score_func(equivalent_vanilla_mhn, mutation_data)
     # compute the gradient for the observation rates
     observation_rates_gradient = -(np.sum(grad, axis=0) - grad.diagonal())
     omega_gradient = np.empty((n+1, n), dtype=np.double)
@@ -103,3 +103,44 @@ def gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
     omega_gradient[-1] = observation_rates_gradient
 
     return omega_gradient, score
+
+
+def gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
+    """
+    Computes the score as well as the gradient in log format.
+
+    This function computes the gradient using Cython AND CUDA (only if CUDA is installed).
+    It will compute the gradients for data points with few mutations using the Cython implementation
+    and compute the gradients for data points with many mutations using CUDA.
+    If CUDA is not installed on your device, this function will only use the Cython implementation.
+
+    :param omega_theta: theta matrix for the OmegaMHN (shape: (n+1) x n), last row contains observation rates
+    :param mutation_data: StateContainer object containing the data which is used for training
+    :returns: tuple containing the gradient and the score of the current OmegaMHN
+    """
+    return _internal_gradient_and_score(omega_theta, mutation_data, state_space_restriction.gradient_and_score)
+
+
+def cython_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
+    """
+    Computes the score as well as the gradient in log format on the CPU.
+
+    :param omega_theta: theta matrix for the OmegaMHN (shape: (n+1) x n), last row contains observation rates
+    :param mutation_data: StateContainer object containing the data which is used for training
+    :returns: tuple containing the gradient and the score of the current OmegaMHN
+    """
+    return _internal_gradient_and_score(omega_theta, mutation_data, state_space_restriction.cython_gradient_and_score)
+
+
+def cuda_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
+    """
+    Computes the score as well as the gradient in log format on the GPU.
+
+    **This function can only be used if the mhn package was compiled with CUDA.**
+
+    :param omega_theta: theta matrix for the OmegaMHN (shape: (n+1) x n), last row contains observation rates
+    :param mutation_data: StateContainer object containing the data which is used for training
+    :returns: tuple containing the gradient and the score of the current OmegaMHN
+    """
+    return _internal_gradient_and_score(omega_theta, mutation_data, state_space_restriction.cuda_gradient_and_score)
+
