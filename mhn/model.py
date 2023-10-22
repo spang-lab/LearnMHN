@@ -1,5 +1,5 @@
 """
-This submodule contains a class to represent Mutual Hazard Networks
+This submodule contains classes to represent Mutual Hazard Networks
 """
 # author(s): Y. Linda Hu, Stefan Vocht
 
