@@ -33,7 +33,7 @@ class _Optimizer(abc.ABC):
     def __init__(self):
         self._data = None
         self._bin_datamatrix = None
-        self.__result = None
+        self._result = None
         self._events = None
 
         self._init_theta = None
@@ -143,7 +143,7 @@ class _Optimizer(abc.ABC):
         if lam is None:
             lam = 1 / self._data.get_data_shape()[0]
 
-        self.__result = None
+        self._result = None
         self.__backup_current_step = 0
 
         if self.__custom_callback is None and self.__backup_steps < 1:
@@ -159,7 +159,7 @@ class _Optimizer(abc.ABC):
 
         self.__backup_current_step = None
 
-        self.__result = model.MHN(
+        self._result = model.MHN(
             log_theta=result.x,
             events=self._events,
             meta={
@@ -173,7 +173,7 @@ class _Optimizer(abc.ABC):
                 "nit": result.nit
             })
 
-        return self.__result
+        return self._result
 
     @property
     def result(self) -> model.MHN:
@@ -182,7 +182,7 @@ class _Optimizer(abc.ABC):
         This property mainly exists as a kind of backup to ensure that the result of the training is not lost, if the
         user forgets to save the returned value of the train() method in a variable.
         """
-        return self.__result
+        return self._result
 
     @property
     @abc.abstractmethod
@@ -451,7 +451,7 @@ class OmegaOptimizer(StateSpaceOptimizer):
         self._regularized_gradient_func_builder = omega_funcs.build_regularized_gradient_func
 
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
-              reltol: float = 1e-7, round_result: bool = True) -> model.MHN:
+              reltol: float = 1e-7, round_result: bool = True) -> model.OmegaMHN:
         """
         Use this function to learn a new MHN from the data given to this optimizer.
 
@@ -472,7 +472,9 @@ class OmegaOptimizer(StateSpaceOptimizer):
             omega_theta[:n] = vanilla_theta
             self._init_theta = omega_theta
 
-        return super().train(lam, maxit, trace, reltol, round_result)
+        super().train(lam, maxit, trace, reltol, round_result)
+        self._result = model.OmegaMHN(self.result.log_theta, self.result.events, self.result.meta)
+        return self._result
 
     def set_device(self, device: "_Optimizer.Device"):
         """
