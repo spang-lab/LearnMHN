@@ -283,7 +283,7 @@ class StateSpaceOptimizer(_Optimizer):
     def find_lambda(self, lambda_min: float = 0.0001, lambda_max: float = 0.1,
                     steps: int = 9, nfolds: int = 5) -> float:
         """
-        Find the best value for lambda through n-fold cross-validation.
+        Find the best value for lambda according to the "one standard error rule" through n-fold cross-validation.
         Use np.random.seed() to make results reproducible.
 
         :param lambda_min: minimum lambda value that should be tested
@@ -311,6 +311,11 @@ class StateSpaceOptimizer(_Optimizer):
         # use self.__class__ to make this method also usable for subclasses
         opt = self.__class__()
 
+        # make sure that the same score, gradient and regularization functions are used
+        opt._gradient_and_score_func = self._gradient_and_score_func
+        opt._regularized_score_func_builder = self._regularized_score_func_builder
+        opt._regularized_gradient_func_builder = self._regularized_gradient_func_builder
+
         for j in range(nfolds):
             # designate one of folds as test set and the others as training set
             test_data = shuffled_data[np.where(folds == j)]
@@ -323,9 +328,16 @@ class StateSpaceOptimizer(_Optimizer):
                 theta = opt.result.log_theta
                 scores[j, i] = self._gradient_and_score_func(theta, test_data_container)[1]
 
-        # find the best lambda with the highest average score over folds
-        best_lambda = lambda_path[np.argmax(np.sum(scores, axis=0))]
-        return best_lambda
+        # find the best performing lambda with the highest average score over folds
+        score_means = np.sum(scores, axis=0) / nfolds
+        best_lambda_idx = np.argmax(score_means)
+
+        # choose the actual lambda according to the "one standard error rule"
+        standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
+        threshold = np.max(score_means) - standard_error
+        chosen_lambda_idx = np.max(np.argwhere(score_means > threshold))
+
+        return lambda_path[chosen_lambda_idx]
 
     def set_device(self, device: "StateSpaceOptimizer.Device"):
         """
