@@ -29,6 +29,39 @@ def L1_(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     return theta_ / np.sqrt(theta_**2 + eps)
 
 
+def sym_sparse(omega_theta: np.ndarray, eps: float = 1e-05) -> float:
+    """
+    A penalty which induces sparsity and soft symmetry.
+    """
+    theta_copy = omega_theta.copy()
+    np.fill_diagonal(theta_copy, 0)
+    theta_without_omega = theta_copy[:-1]
+    n = theta_without_omega.shape[0]
+    theta_sum = np.sum(
+        np.sqrt(theta_without_omega.T**2 + theta_without_omega**2 - theta_without_omega.T * theta_without_omega + eps)
+    )
+    # remove all eps that were added to the diagonal (which should be zero) in the equation above
+    theta_sum -= n * np.sqrt(eps)
+    omega_sum = np.sum(np.sqrt(theta_copy[-1]**2 + eps))
+    return theta_sum + omega_sum
+
+
+def sym_sparse_deriv(omega_theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
+    """
+    Derivative of the sym_sparse penalty.
+    """
+    theta_copy = omega_theta.copy()
+    np.fill_diagonal(theta_copy, 0)
+    theta_without_omega = theta_copy[:-1]
+    theta_sum_denominator = np.sqrt(
+        theta_without_omega.T**2 + theta_without_omega**2 - theta_without_omega.T * theta_without_omega + eps
+    )
+    theta_sum_numerator = 2 * theta_without_omega - theta_without_omega.T
+    theta_derivative = theta_sum_numerator / theta_sum_denominator
+    omega_derivative = theta_copy[-1] / np.sqrt(theta_copy[-1]**2 + eps)
+    return np.vstack((theta_derivative, omega_derivative))
+
+
 def build_regularized_score_func(gradient_and_score_function: Callable):
     """
     This function gets a function which can compute a gradient and a score at the same time and returns a function
