@@ -62,7 +62,7 @@ def sym_sparse_deriv(omega_theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     return np.vstack((theta_derivative, omega_derivative))
 
 
-def build_regularized_score_func(gradient_and_score_function: Callable):
+def build_regularized_score_func(gradient_and_score_function: Callable, penalty_function: Callable = L1):
     """
     This function gets a function which can compute a gradient and a score at the same time and returns a function
     which computes the score and adds a L1 regularization
@@ -83,11 +83,11 @@ def build_regularized_score_func(gradient_and_score_function: Callable):
         grad, score = gradient_and_score_function(theta, states)
         score_grad_container[0] = grad
 
-        return -(score - lam * L1(theta))
+        return -(score - lam * penalty_function(theta))
     return reg_score_func
 
 
-def build_regularized_gradient_func(gradient_and_score_function: Callable):
+def build_regularized_gradient_func(gradient_and_score_function: Callable, penalty_derivative: Callable = L1_):
     """
     This function gets a function which can compute a gradient and a score at the same time and returns a function
     which computes the gradient and adds the gradient of the L1 regularization
@@ -108,7 +108,7 @@ def build_regularized_gradient_func(gradient_and_score_function: Callable):
         grad = score_grad_container[0]
         if grad is None:
             grad, score = gradient_and_score_function(theta_, states)
-        return -(grad - lam * L1_(theta_)).flatten()
+        return -(grad - lam * penalty_derivative(theta_)).flatten()
     return reg_gradient_func
 
 

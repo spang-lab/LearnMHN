@@ -447,8 +447,10 @@ class OmegaOptimizer(StateSpaceOptimizer):
     def __init__(self):
         super().__init__()
         self._gradient_and_score_func = omega_funcs.gradient_and_score
-        self._regularized_score_func_builder = omega_funcs.build_regularized_score_func
-        self._regularized_gradient_func_builder = omega_funcs.build_regularized_gradient_func
+        self._regularized_score_func_builder = lambda grad_score_func: \
+            omega_funcs.build_regularized_score_func(grad_score_func, omega_funcs.L1)
+        self._regularized_gradient_func_builder = lambda grad_score_func: \
+            omega_funcs.build_regularized_gradient_func(grad_score_func, omega_funcs.L1_)
 
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
               reltol: float = 1e-7, round_result: bool = True) -> model.OmegaMHN:
@@ -499,3 +501,31 @@ class OmegaOptimizer(StateSpaceOptimizer):
                 _Optimizer.Device.CPU: omega_funcs.cython_gradient_and_score
             }[device]
         return self
+
+    def set_penalty(self, penalty: "OmegaOptimizer.Penalty"):
+        """
+        Set the penalty that should be used for training.
+
+        You have two options:
+            Penalty.L1:          (default) uses the L1 penalty as regularization
+            Penalty.SYM_SPARSE:  uses a penalty which induces sparsity and soft symmetry
+
+        The Penalty enum is part of this optimizer class.
+        """
+        if not isinstance(penalty, OmegaOptimizer.Penalty):
+            raise ValueError(f"The given penalty is not an instance of {OmegaOptimizer.Penalty}")
+        penalty_score, penalty_gradient = {
+            OmegaOptimizer.Penalty.L1: (omega_funcs.L1, omega_funcs.L1_),
+            OmegaOptimizer.Penalty.SYM_SPARSE: (omega_funcs.sym_sparse, omega_funcs.sym_sparse_deriv)
+        }[penalty]
+        self._regularized_score_func_builder = lambda grad_score_func: \
+            omega_funcs.build_regularized_score_func(grad_score_func, penalty_score)
+        self._regularized_gradient_func_builder = lambda grad_score_func: \
+            omega_funcs.build_regularized_gradient_func(grad_score_func, penalty_gradient)
+        return self
+
+    class Penalty(Enum):
+        """
+        Small Enum which represents penalty functions
+        """
+        L1, SYM_SPARSE = range(2)
