@@ -45,8 +45,10 @@ class _Optimizer(abc.ABC):
         self.__backup_current_step = None
 
         self._gradient_and_score_func = None
-        self._regularized_score_func_builder = reg_optim.build_regularized_score_func
-        self._regularized_gradient_func_builder = reg_optim.build_regularized_gradient_func
+        self._regularized_score_func_builder = lambda grad_score_func: \
+            reg_optim.build_regularized_score_func(grad_score_func, reg_optim.L1)
+        self._regularized_gradient_func_builder = lambda grad_score_func: \
+            reg_optim.build_regularized_gradient_func(grad_score_func, reg_optim.L1_)
 
     def set_init_theta(self, init: np.ndarray):
         """
@@ -232,11 +234,39 @@ class _Optimizer(abc.ABC):
 
         return self
 
+    def set_penalty(self, penalty: "_Optimizer.Penalty"):
+        """
+        Set the penalty that should be used for training.
+
+        You have two options:
+            Penalty.L1:          (default) uses the L1 penalty as regularization
+            Penalty.SYM_SPARSE:  uses a penalty which induces sparsity and soft symmetry
+
+        The Penalty enum is part of this optimizer class.
+        """
+        if not isinstance(penalty, _Optimizer.Penalty):
+            raise ValueError(f"The given penalty is not an instance of {_Optimizer.Penalty}")
+        penalty_score, penalty_gradient = {
+            _Optimizer.Penalty.L1: (reg_optim.L1, reg_optim.L1_),
+            _Optimizer.Penalty.SYM_SPARSE: (reg_optim.sym_sparse, reg_optim.sym_sparse_deriv)
+        }[penalty]
+        self._regularized_score_func_builder = lambda grad_score_func: \
+            reg_optim.build_regularized_score_func(grad_score_func, penalty_score)
+        self._regularized_gradient_func_builder = lambda grad_score_func: \
+            reg_optim.build_regularized_gradient_func(grad_score_func, penalty_gradient)
+        return self
+
     class Device(Enum):
         """
         A small Enum which can represent device types.
         """
         AUTO, CPU, GPU = range(3)
+
+    class Penalty(Enum):
+        """
+        Small Enum which represents penalty functions
+        """
+        L1, SYM_SPARSE = range(2)
 
 
 class StateSpaceOptimizer(_Optimizer):
@@ -514,7 +544,7 @@ class OmegaOptimizer(StateSpaceOptimizer):
             }[device]
         return self
 
-    def set_penalty(self, penalty: "OmegaOptimizer.Penalty"):
+    def set_penalty(self, penalty: "_Optimizer.Penalty"):
         """
         Set the penalty that should be used for training.
 
@@ -535,9 +565,3 @@ class OmegaOptimizer(StateSpaceOptimizer):
         self._regularized_gradient_func_builder = lambda grad_score_func: \
             omega_funcs.build_regularized_gradient_func(grad_score_func, penalty_gradient)
         return self
-
-    class Penalty(Enum):
-        """
-        Small Enum which represents penalty functions
-        """
-        L1, SYM_SPARSE = range(2)
