@@ -31,6 +31,37 @@ def L1_(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     return theta_ / np.sqrt(theta_**2 + eps)
 
 
+def sym_sparse(theta: np.ndarray, eps: float = 1e-05) -> float:
+    """
+    A penalty which induces sparsity and soft symmetry.
+    """
+    theta_copy = theta.copy()
+    np.fill_diagonal(theta_copy, 0)
+    n = theta_copy.shape[0]
+    theta_sum = np.sum(
+        np.sqrt(theta_copy.T**2 + theta_copy**2 - theta_copy.T * theta_copy + eps)
+    )
+    # remove all eps that were added to the diagonal (which should be zero) in the equation above
+    theta_sum -= n * np.sqrt(eps)
+    # due to the symmetry of the formula, we get twice the value of what we want, so halve it
+    theta_sum *= 0.5
+    return theta_sum
+
+
+def sym_sparse_deriv(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
+    """
+    Derivative of the sym_sparse penalty.
+    """
+    theta_copy = theta.copy()
+    np.fill_diagonal(theta_copy, 0)
+    theta_sum_denominator = 2 * np.sqrt(
+        theta_copy.T**2 + theta_copy**2 - theta_copy.T * theta_copy + eps
+    )
+    theta_sum_numerator = 2 * theta_copy - theta_copy.T
+    theta_derivative = theta_sum_numerator / theta_sum_denominator
+    return theta_derivative
+
+
 def reg_state_space_restriction_score(theta: np.ndarray, states: StateContainer, lam: float,
                                       n: int, score_grad_container: list) -> float:
     """
