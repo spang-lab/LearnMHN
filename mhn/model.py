@@ -78,8 +78,16 @@ class MHN:
         pd.DataFrame(self.log_theta, columns=self.events,
                      index=self.events).to_csv(f"{filename}.csv")
         if self.meta is not None:
+            json_serializable_meta = {}
+            # check if objects in self.meta are JSON serializable, if not, convert them to a string
+            for meta_key, meta_value in self.meta.items():
+                try:
+                    json.dumps(meta_value)
+                    json_serializable_meta[meta_key] = meta_value
+                except TypeError:
+                    json_serializable_meta[meta_key] = str(meta_value)
             with open(f"{filename}_meta.json", "x") as file:
-                json.dump(self.meta, file, indent=4)
+                json.dump(json_serializable_meta, file, indent=4)
 
     @classmethod
     def load(cls, filename: str, events: list[str] = None) -> MHN:
@@ -165,5 +173,13 @@ class OmegaMHN(MHN):
         pd.DataFrame(self.log_theta, columns=self.events,
                      index=events_and_observation_labels).to_csv(f"{filename}.csv")
         if self.meta is not None:
+            json_serializable_meta = {}
+            # check if objects in self.meta are JSON serializable, if not, convert them to a string
+            for meta_key, meta_value in self.meta.items():
+                try:
+                    json.dumps(meta_value)
+                    json_serializable_meta[meta_key] = meta_value
+                except TypeError:
+                    json_serializable_meta[meta_key] = str(meta_value)
             with open(f"{filename}_meta.json", "x") as file:
-                json.dump(self.meta, file, indent=4)
+                json.dump(json_serializable_meta, file, indent=4)
