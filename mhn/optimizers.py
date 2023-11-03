@@ -512,14 +512,30 @@ class OmegaOptimizer(StateSpaceOptimizer):
         if self._data is None:
             raise ValueError("You have to load data before training!")
 
+        undo_init_theta = False
         if self._init_theta is None:
+            undo_init_theta = True
             vanilla_theta = create_indep_model(self._data)
             n = vanilla_theta.shape[0]
             omega_theta = np.zeros((n + 1, n))
             omega_theta[:n] = vanilla_theta
             self._init_theta = omega_theta
 
-        return super().train(lam, maxit, trace, reltol, round_result)
+        super().train(lam, maxit, trace, reltol, round_result)
+
+        if undo_init_theta:
+            self._init_theta = None
+
+        return self.result
+
+    @property
+    def result(self) -> model.OmegaMHN:
+        """
+        The resulting OmegaMHN after training, same as the return value of the train() method.
+        This property mainly exists as a kind of backup to ensure that the result of the training is not lost, if the
+        user forgets to save the returned value of the train() method in a variable.
+        """
+        return self._result
 
     def set_device(self, device: "_Optimizer.Device"):
         """
