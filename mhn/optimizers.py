@@ -50,6 +50,8 @@ class _Optimizer(abc.ABC):
         self._regularized_gradient_func_builder = lambda grad_score_func: \
             reg_optim.build_regularized_gradient_func(grad_score_func, reg_optim.L1_)
 
+        self._OutputMHNClass = model.MHN
+
     def set_init_theta(self, init: np.ndarray):
         """
         Use this method to set a theta as starting point for learning a new MHN. The theta must be in logarithmic form.
@@ -161,7 +163,7 @@ class _Optimizer(abc.ABC):
 
         self.__backup_current_step = None
 
-        self._result = model.MHN(
+        self._result = self._OutputMHNClass(
             log_theta=result.x,
             events=self._events,
             meta={
@@ -493,6 +495,7 @@ class OmegaOptimizer(StateSpaceOptimizer):
             omega_funcs.build_regularized_score_func(grad_score_func, omega_funcs.L1)
         self._regularized_gradient_func_builder = lambda grad_score_func: \
             omega_funcs.build_regularized_gradient_func(grad_score_func, omega_funcs.L1_)
+        self._OutputMHNClass = model.OmegaMHN
 
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
               reltol: float = 1e-7, round_result: bool = True) -> model.OmegaMHN:
@@ -516,9 +519,7 @@ class OmegaOptimizer(StateSpaceOptimizer):
             omega_theta[:n] = vanilla_theta
             self._init_theta = omega_theta
 
-        super().train(lam, maxit, trace, reltol, round_result)
-        self._result = model.OmegaMHN(self.result.log_theta, self.result.events, self.result.meta)
-        return self._result
+        return super().train(lam, maxit, trace, reltol, round_result)
 
     def set_device(self, device: "_Optimizer.Device"):
         """
