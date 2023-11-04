@@ -49,6 +49,17 @@ The *ssr* subpackage
 
     View documentation of ssr <ssr/mhn.ssr>
 
+The *omega_mhn* subpackage
+--------------------------
+
+.. automodule:: mhn.omega_mhn
+    :noindex:
+
+.. toctree::
+    :maxdepth: 1
+
+    View documentation of omega_mhn <omega_mhn/mhn.omega_mhn>
+
 The *optimizers* submodule
 --------------------------
 
