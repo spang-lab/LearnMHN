@@ -21,7 +21,7 @@
 #endif
 
 
-// small function to compute n over k
+// small function to compute n choose k
 int compute_binom_coef(int n, int k){
     if(k>n || k < 0)
         return 0;
@@ -38,7 +38,7 @@ int compute_binom_coef(int n, int k){
 
 
 /**
- * this function represents a bijective mapping between the numbers 0 to (n over k) and the numbers which are smaller than 2^n and
+ * this function represents a bijective mapping between the numbers 0 to (n choose k) and the numbers which are smaller than 2^n and
  * contain exactly k 1s in their binary representation 
  * 
  * @param[in] i number which should be mapped to a bit permutation with n bits and k 1s
@@ -59,18 +59,18 @@ __device__ int compute_index(int i, int n, int k, int binom_coef){
     // let current_n be the number of bits not determined yet (current_n = n - j)
     // let k be the number of bits that still have to be flipped to 1
     // then we can compute the size of each subtree with 
-    // (current_n-1 over k) for the subtree where we do not set the current bit to 1 and 
-    // (current_n-1 over k-1) for the subtree where we do set the current bit to 1
+    // (current_n-1 choose k) for the subtree where we do not set the current bit to 1 and
+    // (current_n-1 choose k-1) for the subtree where we do set the current bit to 1
     // if the given number i is greater than the size of the subtree where the bit is not set to 1, we set the bit to 1 and
     // subtract the size of that subtree from i for the next iteration
 
     for(int j = 0; j < n; j++){
-        // compute (current_n-1 over k)
+        // compute (current_n-1 choose k)
         binom_coef = ((current_n-k) * binom_coef) / current_n;
         if (i >= binom_coef) {
             index |= bit_setter;
             i -= binom_coef;
-            // compute (current_n-1 over k-1)
+            // compute (current_n-1 choose k-1)
             if (current_n == k){
                 binom_coef = 1;
             } else {
@@ -94,9 +94,9 @@ __device__ int compute_index(int i, int n, int k, int binom_coef){
  * @param[in] theta theta matrix representing the MHN
  * @param[in] n size of theta
  * @param[in] dg diagonal of [I - Q]
- * @param[in, out] array containing the b at the beginning and x at the end
+ * @param[in, out] xout array containing the b at the beginning and x at the end
  * @param[in] j number of bits set to 1 in all indices for which the equation is solved
- * @param[in] binom_coef value of n over j
+ * @param[in] binom_coef value of n choose j
 */
 __global__ void compute_inverse_level(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, int j, int binom_coef){
     const int stride = blockDim.x * gridDim.x;
@@ -107,6 +107,8 @@ __global__ void compute_inverse_level(const double * __restrict__ theta, const i
     for(int i = threadIdx.x; i < n*n; i += blockDim.x){
         local_theta[i] = theta[i];
     }
+
+    __syncthreads();
 
     // in each iteration we first map the current i to a permutation of bits with j 1s and n-j 0s
     // for the indices represented by those permutations all partial solutions needed to compute their values were computed with forward substitution in a previous call of this kernel
@@ -140,9 +142,9 @@ __global__ void compute_inverse_level(const double * __restrict__ theta, const i
  * @param[in] theta theta matrix representing the MHN
  * @param[in] n size of theta
  * @param[in] dg diagonal of [I - Q]
- * @param[in, out] array containing the b at the beginning and x at the end
+ * @param[in, out] xout array containing the b at the beginning and x at the end
  * @param[in] j number of bits set to 1 in all indices for which the equation is solved
- * @param[in] binom_coef value of n over j
+ * @param[in] binom_coef value of n choose j
 */
 __global__ void compute_inverse_level_t(const double * __restrict__ theta, const int n, const double * __restrict__ dg, double * __restrict__ xout, int j, int binom_coef){
     const int stride = blockDim.x * gridDim.x;
@@ -153,6 +155,8 @@ __global__ void compute_inverse_level_t(const double * __restrict__ theta, const
     for(int i = threadIdx.x; i < n*n; i += blockDim.x){
         local_theta[i] = theta[i];
     }
+
+    __syncthreads();
 
     // in each iteration we first map the current i to a permutation of bits with j 1s and n-j 0s
     // for the indices represented by those permutations all partial solutions needed to compute their values were computed with forward substitution in a previous call of this kernel
