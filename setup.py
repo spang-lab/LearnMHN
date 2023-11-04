@@ -181,5 +181,5 @@ setup(
         'scipy>=1.8.0',
         'pandas>=1.5.3'
     ],
-    python_requires='>=3.8'
+    python_requires='>=3.8, <3.12'
 )
