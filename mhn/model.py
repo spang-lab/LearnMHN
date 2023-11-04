@@ -15,7 +15,7 @@ import json
 
 class MHN:
     """
-    This class represents a Mutual Hazard Network.
+    This class represents a classical Mutual Hazard Network.
     """
 
     def __init__(self, log_theta: np.array, events: list[str] = None, meta: dict = None):
@@ -134,7 +134,7 @@ class OmegaMHN(MHN):
 
         :returns: array or DataFrame with samples as rows and events as columns
         """
-        return self.get_equivalent_vanilla_mhn().sample_artificial_data(sample_num, as_dataframe)
+        return self.get_equivalent_classical_mhn().sample_artificial_data(sample_num, as_dataframe)
 
     def compute_marginal_likelihood(self, state: np.ndarray) -> float:
         """
@@ -145,20 +145,20 @@ class OmegaMHN(MHN):
 
         :returns: the likelihood of observing the given state according to this MHN
         """
-        return self.get_equivalent_vanilla_mhn().compute_marginal_likelihood(state)
+        return self.get_equivalent_classical_mhn().compute_marginal_likelihood(state)
 
-    def get_equivalent_vanilla_mhn(self) -> MHN:
+    def get_equivalent_classical_mhn(self) -> MHN:
         """
-        This method returns a vanilla MHN object that represents the same distribution as this OmegaMHN object.
+        This method returns a classical MHN object that represents the same distribution as this OmegaMHN object.
 
-        :returns: vanilla MHN object representing the same distribution as this OmegaMHN object
+        :returns: classical MHN object representing the same distribution as this OmegaMHN object
         """
         n = self.log_theta.shape[1]
         # subtract observation rates from each element in each column
-        equivalent_vanilla_mhn = self.log_theta[:-1] - self.log_theta[-1]
+        equivalent_classical_mhn = self.log_theta[:-1] - self.log_theta[-1]
         # undo changes to the diagonal
-        equivalent_vanilla_mhn[range(n), range(n)] += self.log_theta[-1]
-        return MHN(equivalent_vanilla_mhn, self.events, self.meta)
+        equivalent_classical_mhn[range(n), range(n)] += self.log_theta[-1]
+        return MHN(equivalent_classical_mhn, self.events, self.meta)
 
     def save(self, filename: str):
         """
