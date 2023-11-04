@@ -16,6 +16,19 @@ MHN for given training data:
    <br>
 
 
+.. autoclass:: mhn.optimizers.OmegaOptimizer
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex: Device
+
+.. raw:: html
+
+   <br>
+   <hr>
+   <br>
+
+
 .. autoclass:: mhn.optimizers.DUAOptimizer
    :members:
    :undoc-members:
