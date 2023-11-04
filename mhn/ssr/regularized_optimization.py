@@ -183,6 +183,7 @@ def learn_MHN(states: StateContainer, init: np.ndarray = None, lam: float = 0, m
         init = create_indep_model(states)
 
     init_shape = init.shape
+    init = init.flatten()
 
     # this container is given to the score and gradient function to communicate with each other
     score_and_gradient_container = [None, None]
