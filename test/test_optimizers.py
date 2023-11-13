@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 import numpy as np
 from mhn.optimizers import _Optimizer, StateSpaceOptimizer, DUAOptimizer, OmegaOptimizer
+from mhn.original import ModelConstruction, Likelihood, UtilityFunctions
 
 
 class BaseOptimizerTestClass:
@@ -66,6 +67,58 @@ class TestStateSpaceOptimizer(BaseOptimizerTestClass.TestOptimizer):
         dummy_data = np.random.choice([0, 1], (20, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
         self.opt = StateSpaceOptimizer()
         self.opt.load_data_matrix(dummy_data)
+
+    def test_relearn_model(self):
+        """
+        Test if a model can be relearned with enough data
+        """
+        for _ in range(2):
+            random_model = self._get_random_model(event_num=5)
+            random_model = np.around(random_model, decimals=2)
+            mhn_object = self.opt._OutputMHNClass(random_model)
+            random_data = mhn_object.sample_artificial_data(3200)
+            self.opt.load_data_matrix(random_data)
+            self.opt.train(lam=0)
+            print(Likelihood.generate_pTh(random_model))
+            print(Likelihood.generate_pTh(self.opt.result.log_theta))
+            np.testing.assert_array_equal(
+                np.around(UtilityFunctions.data_to_pD(random_data), decimals=2),
+                np.around(Likelihood.generate_pTh(self.opt.result.log_theta), decimals=2)
+            )
+
+    @staticmethod
+    def _get_random_model(event_num: int) -> np.ndarray:
+        """
+        Helper method to create a random MHN
+        """
+        return ModelConstruction.random_theta(event_num, sparsity=0.3)
+
+
+class TestOmegaOptimizer(TestStateSpaceOptimizer):
+
+    def setUp(self) -> None:
+        super().setUp()
+        dummy_data = np.random.choice([0, 1], (20, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
+        self.opt = OmegaOptimizer()
+        self.opt.load_data_matrix(dummy_data)
+
+    def test_init_stays_same(self):
+        """
+        Make sure that the train method does not modify the init value for training
+        """
+        n = BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS
+        random_init = np.random.random((n + 1, n))
+        self.opt.set_init_theta(random_init)
+        self.opt.train(maxit=2)
+        np.testing.assert_array_equal(random_init, self.opt._init_theta)
+
+    @staticmethod
+    def _get_random_model(event_num: int) -> np.ndarray:
+        """
+        Helper method to create a random MHN
+        """
+        classical_theta = TestStateSpaceOptimizer._get_random_model(event_num)
+        return np.vstack(classical_theta, np.random.random((1, event_num)))
 
 
 if __name__ == '__main__':
