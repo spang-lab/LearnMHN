@@ -298,7 +298,9 @@ cdef void restricted_q_diag(double[:, :] theta, State *state, double *dg):
 @cython.boundscheck(False)
 cdef np.ndarray[np.double_t] restricted_jacobi(double[:, :] theta, double[:] b, State *state, bint transp = False):
     """
-    this functions multiplies [I-Q]^(-1) with b
+    ** this function is deprecated, you should use _compute_restricted_inverse() instead **
+    
+    this function multiplies [I-Q]^(-1) with b
 
     :param theta: matrix containing the theta entries
     :param b: array that is multiplied with [I-Q]^(-1)
@@ -339,7 +341,7 @@ cdef np.ndarray[np.double_t] restricted_jacobi(double[:, :] theta, double[:] b, 
 
 cdef void _compute_restricted_inverse(double[:, :] theta, double *dg, State *state, double[:] b, double[:] xout, bint transp = False):
     """
-    this functions multiplies [I-Q]^(-1) with b and is much faster than restricted jacobi
+    this function multiplies [I-Q]^(-1) with b and is much faster than restricted_jacobi()
     
     :param theta: matrix containing the theta entries
     :param dg: vector containing the diagonal of [I-Q]
