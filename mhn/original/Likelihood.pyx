@@ -11,6 +11,7 @@ from a given MHN.
 cimport cython
 
 from libc.stdlib cimport malloc, free
+from libc.math cimport exp
 
 from .ModelConstruction cimport q_diag
 from .PerformanceCriticalCode cimport internal_kron_vec, loop_j, compute_inverse
@@ -235,6 +236,38 @@ def sample_artificial_data(np.ndarray[np.double_t, ndim=2] theta, int sample_num
                     art_data[sample_index, gene] = 1
                     break
     return art_data
+
+
+def compute_next_event_probs(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int_t, ndim=1] current_state) -> np.ndarray:
+    """
+    Compute the probability for each event that it will be the next one to occur given the current state.
+
+    :param theta: theta matrix representing an MHN
+    :param current_state: array representing the current state, each entry corresponds to an event being present (1) or not (0)
+    :returns: array that contains the probability for each event that it will be the next one to occur
+
+    :raise ValueError: if the size of theta does not match the size of current_state, a ValueError is raised
+    """
+    cdef int n = theta.shape[1]  # use shape[1] to be compatible with OmegaMHN
+    if n != current_state.shape[0]:
+        raise ValueError(f"Number of events represented by theta ({n}) does not match the size of current_state ({current_state.shape[0]})")
+
+    cdef np.ndarray[np.double_t, ndim=2] theta_copy = theta.copy()
+    cdef np.ndarray[np.double_t, ndim=1] result = np.zeros(n, dtype=np.double)
+    cdef int i, j
+    cdef double rate
+
+    for i in range(n):
+        if current_state[i]:
+            continue
+        rate = theta[i, i]
+        for j in range(n):
+            if current_state[j]:
+                rate += theta[i, j]
+        result[i] = exp(rate)
+
+    result /= result.sum()
+    return result
 
 
 IF NVCC_AVAILABLE:

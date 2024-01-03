@@ -42,7 +42,7 @@ class MHN:
         to make results reproducible.
 
         :param sample_num: number of samples in the generated data
-        :param as_dataframe: if True, the data is returned as a pandas DataFrame, else numpy matrix
+        :param as_dataframe: if True, the data is returned as a pandas DataFrame, else as a numpy matrix
 
         :returns: array or DataFrame with samples as rows and events as columns
         """
@@ -74,6 +74,29 @@ class MHN:
         p_th = state_space_restriction.compute_restricted_inverse(
             self.log_theta, state, p0, False)
         return p_th[-1]
+
+    def compute_next_event_probs(self, state: np.ndarray, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
+        """
+        Compute the probability for each event that it will be the next one to occur given the current state.
+
+        :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
+        :param as_dataframe: if True, the result is returned as a pandas DataFrame, else as a numpy array
+
+        :returns: array or DataFrame that contains the probability for each event that it will be the next one to occur
+
+        :raise ValueError: if the number of events in state does not align with the number of events modeled by this MHN object
+        """
+        n = self.log_theta.shape[1]
+        if n != state.shape[0]:
+            raise ValueError(f"This MHN object models {n} events, but state contains {state.shape[0]}")
+        result = Likelihood.compute_next_event_probs(self.log_theta, state)
+        if not as_dataframe:
+            return result
+        df = pd.DataFrame(result)
+        df.columns = ["PROBS"]
+        if self.events is not None:
+            df.index = self.events
+        return df
 
     def save(self, filename: str):
         """
