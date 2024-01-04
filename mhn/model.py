@@ -75,12 +75,14 @@ class MHN:
             self.log_theta, state, p0, False)
         return p_th[-1]
 
-    def compute_next_event_probs(self, state: np.ndarray, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
+    def compute_next_event_probs(self, state: np.ndarray, as_dataframe: bool = False, allow_observation: bool = False) -> np.ndarray | pd.DataFrame:
         """
         Compute the probability for each event that it will be the next one to occur given the current state.
 
         :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
         :param as_dataframe: if True, the result is returned as a pandas DataFrame, else as a numpy array
+        :param allow_observation: if True, the observation event can happen before any other event -> the probabilities
+        of the remaining events will not add up to 100%
 
         :returns: array or DataFrame that contains the probability for each event that it will be the next one to occur
 
@@ -89,7 +91,11 @@ class MHN:
         n = self.log_theta.shape[1]
         if n != state.shape[0]:
             raise ValueError(f"This MHN object models {n} events, but state contains {state.shape[0]}")
-        result = Likelihood.compute_next_event_probs(self.log_theta, state)
+        if allow_observation:
+            observation_rate = self._get_observation_rate(state)
+        else:
+            observation_rate = 0
+        result = Likelihood.compute_next_event_probs(self.log_theta, state, observation_rate)
         if not as_dataframe:
             return result
         df = pd.DataFrame(result)
@@ -97,6 +103,9 @@ class MHN:
         if self.events is not None:
             df.index = self.events
         return df
+
+    def _get_observation_rate(self, state: np.ndarray):
+        return 1
 
     def save(self, filename: str):
         """
@@ -235,6 +244,9 @@ class OmegaMHN(MHN):
         # undo changes to the diagonal
         equivalent_classical_mhn[range(n), range(n)] += self.log_theta[-1]
         return MHN(equivalent_classical_mhn, self.events, self.meta)
+
+    def _get_observation_rate(self, state: np.ndarray):
+        return np.exp(np.sum(self.log_theta[-1, state != 0]))
 
     def save(self, filename: str):
         """

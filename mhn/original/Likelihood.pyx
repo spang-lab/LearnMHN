@@ -238,12 +238,13 @@ def sample_artificial_data(np.ndarray[np.double_t, ndim=2] theta, int sample_num
     return art_data
 
 
-def compute_next_event_probs(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int_t, ndim=1] current_state) -> np.ndarray:
+def compute_next_event_probs(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int_t, ndim=1] current_state, double observation_rate = 0) -> np.ndarray:
     """
     Compute the probability for each event that it will be the next one to occur given the current state.
 
     :param theta: theta matrix representing an MHN
     :param current_state: array representing the current state, each entry corresponds to an event being present (1) or not (0)
+    :param observation_rate: rate of the observation event, by default set to 0 which means no observation before some other event occurs
     :returns: array that contains the probability for each event that it will be the next one to occur
 
     :raise ValueError: if the size of theta does not match the size of current_state, a ValueError is raised
@@ -266,7 +267,7 @@ def compute_next_event_probs(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[n
                 rate += theta[i, j]
         result[i] = exp(rate)
 
-    result /= result.sum()
+    result /= result.sum() + observation_rate
     return result
 
 
