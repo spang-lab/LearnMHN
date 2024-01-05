@@ -528,7 +528,7 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
 
 cpdef cython_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
-    Computes the total gradient and score for a given MHN and given mutation data
+    Computes the total gradient and score for a given MHN and given mutation data.
 
     :param theta: matrix containing the theta entries of the current MHN
     :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
@@ -555,6 +555,60 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateContainer mutation_data
 
     # return the normalized gradient and normalized score
     return (final_gradient / data_size), (score / data_size)
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+cdef double restricted_score(double[:, :] theta, State *state):
+    """
+    Computes a part of the log-likelihood score corresponding to a given state.
+
+    :param theta: matrix containing the theta entries
+    :param state: state representing current tumor sample
+    :return: part of the total score
+    """
+    cdef int mutation_num = get_mutation_num(state)
+    cdef int nx = 1 << mutation_num
+    cdef int incx = 1
+    cdef int incx0 = 0
+    cdef double one = 1.
+    cdef double mOne = -1.
+    cdef np.ndarray[np.double_t] p0 = np.zeros(nx, dtype=np.double)
+    p0[0] = 1
+
+    # compute dg, the diagonal of [I-Q]
+    cdef double *dg = <double *> malloc(nx * sizeof(double))
+    restricted_q_diag(theta, state, dg)         # compute the diagonal of Q
+    daxpy(&nx, &one, &mOne, &incx0, dg, &incx)  # subtract 1 from each entry to get the diagonal of [Q-I]
+    dscal(&nx, &mOne, dg, &incx)                # scale with -1 to get the diagonal of [I-Q]
+
+    # compute parts of the probability distribution yielded by the current MHN
+    cdef np.ndarray[np.double_t] pth = np.empty(nx, dtype=np.double)
+    _compute_restricted_inverse(theta, dg, state, p0, pth)
+
+    free(dg)
+    return log(pth[nx - 1])
+
+
+cpdef cpu_score(double[:, :] theta, StateContainer mutation_data):
+    """
+    Computes the total log-likelihood score for a given MHN and given mutation data.
+
+    :param theta: matrix containing the theta entries of the current MHN
+    :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
+    :return: normalized log-likelihood score
+    """
+    cdef int i
+    cdef int data_size = mutation_data.data_size
+    cdef double score = 0
+
+    for i in range(data_size):
+        # for each sample/patient in mutation_data,
+        # compute the score for the sample and add it to the total score
+        score += restricted_score(theta, &mutation_data.states[i])
+
+    # return the normalized score
+    return score / data_size
 
 
 class CUDAError(Exception):
