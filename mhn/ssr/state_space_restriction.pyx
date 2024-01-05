@@ -526,7 +526,7 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
     return log(pth[nx - 1])
 
 
-cpdef cython_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
+cpdef cpu_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
     Computes the total gradient and score for a given MHN and given mutation data.
 
@@ -555,6 +555,19 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateContainer mutation_data
 
     # return the normalized gradient and normalized score
     return (final_gradient / data_size), (score / data_size)
+
+
+cpdef cython_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
+    """
+    ** This function is deprecated. Use cpu_gradient_and_score() instead. **
+    
+    Computes the total gradient and score for a given MHN and given mutation data.
+
+    :param theta: matrix containing the theta entries of the current MHN
+    :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
+    :return: tuple containing the gradient and the score
+    """
+    return cpu_gradient_and_score(theta, mutation_data)
 
 
 @cython.wraparound(False)
@@ -652,23 +665,23 @@ cpdef cuda_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
 
 cpdef gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
-    This function computes the gradient using Cython AND CUDA (only if CUDA is installed)
-    It will compute the gradients for data points with few mutations using the Cython implementation
+    This function computes the gradient using the CPU AND CUDA (only if CUDA is installed)
+    It will compute the gradients for data points with few mutations using the CPU implementation
     and compute the gradients for data points with many mutations using CUDA.
-    If CUDA is not installed on your device, this function will only use the Cython implementation.
+    If CUDA is not installed on your device, this function will only use the CPU implementation.
     
     :param theta: matrix containing the theta entries of the current MHN
     :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
     :return: tuple containing the normalized gradient and score
     """
     IF NVCC_AVAILABLE:
-        # number of mutations for which it is still faster to do it in cython
+        # number of mutations for which it is still faster to do it on the CPU
         # than using the cuda implementation
         # may vary depending on your device
         DEF critical_size = 13
 
         if mutation_data.get_max_mutation_num() <= critical_size:
-            return cython_gradient_and_score(theta, mutation_data)
+            return cpu_gradient_and_score(theta, mutation_data)
 
         cdef int data_size = mutation_data.data_size
         cdef int n = theta.shape[0]
@@ -731,7 +744,7 @@ cpdef gradient_and_score(double[:, :] theta, StateContainer mutation_data):
         return final_gradient/data_size, score/data_size
 
     ELSE:
-        return cython_gradient_and_score(theta, mutation_data)
+        return cpu_gradient_and_score(theta, mutation_data)
 
 
 CUDA_AVAILABLE = "CUDA is available"
