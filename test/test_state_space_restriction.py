@@ -12,7 +12,7 @@ from mhn.original import Likelihood, UtilityFunctions, ModelConstruction
 
 class TestCythonGradient(unittest.TestCase):
     """
-    Tests for the function cython_gradient_and_score
+    Tests for the function cpu_gradient_and_score
     """
     def setUp(self) -> None:
         """
@@ -40,16 +40,33 @@ class TestCythonGradient(unittest.TestCase):
                 new_score = Likelihood.score(theta_copy, pD)
                 numerical_gradient[i, j] = (new_score - original_score) / h
 
-        analytic_gradient, score = state_space_restriction.cython_gradient_and_score(theta, StateContainer(random_sample))
+        analytic_gradient, score = state_space_restriction.cpu_gradient_and_score(theta, StateContainer(random_sample))
         self.assertEqual(round(score, 8), round(original_score, 8))
         np.testing.assert_array_equal(np.around(numerical_gradient, decimals=3), np.around(analytic_gradient, decimals=3))
+
+    def test_scores_match(self):
+        """
+        Tests if the score computed by cpu_score() is the same as by cpu_gradient_and_score()
+        """
+        n = 40  # make n > 32 to make sure that the logic of the State struct in the C implementation works as expected
+        sample_num = 30
+        theta = ModelConstruction.random_theta(n)
+        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.8, 0.2]).astype(np.int32)
+        # make sure that there are mutations in two different "parts" of the "State" C struct
+        random_sample[:, 0] = 1
+        random_sample[:, -1] = 1
+        # compute gradient and score
+        gradient, score = state_space_restriction.cpu_gradient_and_score(theta, StateContainer(random_sample))
+        # compute only score
+        score2 = state_space_restriction.cpu_score(theta, StateContainer(random_sample))
+        self.assertEqual(score, score2)
 
     def test_gene_position_permutation(self):
         """
         Permutation of the position of genes in the data should lead to a permutation in the gradient,
         but should not change the score
         """
-        n = 40  # make n > 32 to make sure that the logic of the "State" struct in the C implementation works as expected
+        n = 40  # make n > 32 to make sure that the logic of the State struct in the C implementation works as expected
         sample_num = 30
         theta = ModelConstruction.random_theta(n)
         random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.8, 0.2]).astype(np.int32)
@@ -57,14 +74,14 @@ class TestCythonGradient(unittest.TestCase):
         random_sample[:, 0] = 1
         random_sample[:, -1] = 1
         # compute original gradient and score
-        gradient1, score1 = state_space_restriction.cython_gradient_and_score(theta, StateContainer(random_sample))
+        gradient1, score1 = state_space_restriction.cpu_gradient_and_score(theta, StateContainer(random_sample))
         # permute the sample and theta, compute gradient and score and reverse the permutation
         permutation = np.random.permutation(n)
         reverse = np.empty(n, int)
         reverse[permutation] = np.arange(n)
         permutation_sample = random_sample[:, permutation]
         permutation_theta = theta[permutation][:, permutation]
-        gradient2, score2 = state_space_restriction.cython_gradient_and_score(permutation_theta, StateContainer(permutation_sample))
+        gradient2, score2 = state_space_restriction.cpu_gradient_and_score(permutation_theta, StateContainer(permutation_sample))
         reversed_gradient = gradient2[reverse][:, reverse]
         np.testing.assert_array_equal(permutation_sample[:, reverse], random_sample)
         # compare gradients and scores
@@ -93,7 +110,7 @@ class TestCudaGradient(unittest.TestCase):
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
         state_containers = StateContainer(random_sample)
-        gradient1, score1 = state_space_restriction.cython_gradient_and_score(theta, state_containers)
+        gradient1, score1 = state_space_restriction.cpu_gradient_and_score(theta, state_containers)
         gradient2, score2 = state_space_restriction.cuda_gradient_and_score(theta, state_containers)
         self.assertEqual(round(score1, 8), round(score2, 8))
         np.testing.assert_array_equal(np.around(gradient1, decimals=8), np.around(gradient2, decimals=8))
