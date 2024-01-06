@@ -120,7 +120,7 @@ def score(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t
 
     :param theta:
     :param pD: probability distribution in the data
-    :param pth_space: opional, with this parameter we can communicate with the function grad and use pth there again -> performance boost
+    :param pth_space: optional, with this parameter we can communicate with the function grad and use pth there again -> performance boost
     :return: score value
     """
     cdef np.ndarray[np.double_t] pth = generate_pTh(theta)
@@ -137,8 +137,8 @@ def grad(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t]
 
     :param theta:
     :param pD: probability distribution of the training data
-    :param pth: as pth is calculated in the score function anyways, we do not need to calculate it again
-    :param pth_space: opional, with this parameter we can communicate with the function score and use pth here again -> performance boost
+    :param pth: as pth is calculated in the score function anyway, we do not need to calculate it again
+    :param pth_space: optional, with this parameter we can communicate with the function score and use pth here again -> performance boost
     :return: gradient you get from equation 7
     """
     cdef int n = theta.shape[0]
