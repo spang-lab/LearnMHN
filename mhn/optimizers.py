@@ -293,6 +293,8 @@ class StateSpaceOptimizer(_Optimizer):
         if isinstance(data_matrix, pd.DataFrame):
             self._events = data_matrix.columns.to_list()
             data_matrix = np.array(data_matrix, dtype=np.int32)
+        else:
+            self._events = None
         data_matrix = self._preprocess_binary_matrix(data_matrix)
         self._data = StateContainer(data_matrix)
         self._bin_datamatrix = data_matrix
