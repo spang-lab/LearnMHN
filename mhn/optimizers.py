@@ -397,7 +397,7 @@ class StateSpaceOptimizer(_Optimizer):
         else:
             self._gradient_and_score_func = {
                 _Optimizer.Device.AUTO: marginalized_funcs.gradient_and_score,
-                _Optimizer.Device.CPU: marginalized_funcs.cython_gradient_and_score
+                _Optimizer.Device.CPU: marginalized_funcs.cpu_gradient_and_score
             }[device]
         return self
 
@@ -563,7 +563,7 @@ class OmegaOptimizer(StateSpaceOptimizer):
         else:
             self._gradient_and_score_func = {
                 _Optimizer.Device.AUTO: omega_funcs.gradient_and_score,
-                _Optimizer.Device.CPU: omega_funcs.cython_gradient_and_score
+                _Optimizer.Device.CPU: omega_funcs.cpu_gradient_and_score
             }[device]
         return self
 
