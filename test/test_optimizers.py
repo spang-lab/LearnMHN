@@ -118,7 +118,7 @@ class TestOmegaOptimizer(TestStateSpaceOptimizer):
         Helper method to create a random MHN
         """
         classical_theta = TestStateSpaceOptimizer._get_random_model(event_num)
-        return np.vstack(classical_theta, np.random.random((1, event_num)))
+        return np.vstack((classical_theta, np.random.random((1, event_num))))
 
 
 if __name__ == '__main__':
