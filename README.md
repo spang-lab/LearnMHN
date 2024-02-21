@@ -48,6 +48,15 @@ The functions that make use of the known ages of samples can be imported via
 ```python
 from mhn.ssr import matrix_exponential
 ```
+Training a new MHN can be as simple as writing the following few lines of code:
+```python
+from mhn.optimizers import StateSpaceOptimizer
+opt = StateSpaceOptimizer()
+opt = opt.load_data_from_csv("path/to/training_data")
+new_mhn = opt.train()
+new_mhn.save("path/to/saving/location")
+```
+We will look at the methods of the Optimizer class in more detail below.
 
 ## Using the CUDA Implementation to Accelerate Score Computations
 If your device has an Nvidia GPU, you can accelerate the computation of the log-likelihood score and its gradient for
