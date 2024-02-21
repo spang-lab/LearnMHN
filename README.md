@@ -1,4 +1,4 @@
-# *mhn*: A Python package to efficiently compute Mutual Hazard Networks
+# *mhn*: A Python Package to Efficiently Compute Mutual Hazard Networks
 
 Mutual Hazard Networks (MHN) were first introduced by [Schill et al. (2019)](https://academic.oup.com/bioinformatics/article/36/1/241/5524604)
 and are used to model cancer progression.  
@@ -14,7 +14,7 @@ only a few lines of code.
 
 A detailed documentation of the *mhn* package is available [here](https://learnmhn.readthedocs.io/en/latest/index.html).
 
-## Install the mhn package
+## Install the mhn Package
 
 You can install the mhn package using pip:
 
@@ -32,7 +32,7 @@ If a new version of the mhn package is available, you can upgrade your installat
 pip install --upgrade mhn
 ```
 
-## A quick overview
+## A Quick Overview
 
 The package contains the original MHN functions implemented in Python. You import them from ``mhn.original``:
 
@@ -49,7 +49,7 @@ The functions that make use of the known ages of samples can be imported via
 from mhn.ssr import matrix_exponential
 ```
 
-## Using the CUDA implementation to accelerate score computations
+## Using the CUDA Implementation to Accelerate Score Computations
 If your device has an Nvidia GPU, you can accelerate the computation of the log-likelihood score and its gradient for
 both the full and the restricted state-space with CUDA. 
 For that you have to have CUDA and the CUDA compiler
@@ -100,7 +100,7 @@ pip install mhn
 If you installed ``nvcc`` after installing the ``mhn`` package, you have to
 reinstall this package to gain access to the CUDA functions.
 
-### Reinstalling the package for CUDA-related reasons
+### Reinstalling the Package for CUDA-Related Reasons
 
 If you want to reinstall the package because you want to either 
 enable or disable CUDA support, you should add the ```--no-cache-dir``` flag during 
@@ -112,7 +112,7 @@ pip uninstall mhn
 pip install mhn --no-cache-dir
 ```
 
-## How to train a new MHN
+## How to Train a New MHN
 
 The simplest way to train a new MHN is to import the ```optimizers``` module and
 use the ```StateSpaceOptimizer``` class.
