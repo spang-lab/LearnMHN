@@ -9,6 +9,7 @@ import warnings
 from enum import Enum
 import abc
 
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
@@ -315,7 +316,7 @@ class StateSpaceOptimizer(_Optimizer):
         return self
 
     def find_lambda(self, lambda_min: float = 0.0001, lambda_max: float = 0.1,
-                    steps: int = 9, nfolds: int = 5) -> float:
+                    steps: int = 9, nfolds: int = 5, show_progressbar: bool = False) -> float:
         """
         Find the best value for lambda according to the "one standard error rule" through n-fold cross-validation.
         Use np.random.seed() to make results reproducible.
@@ -324,6 +325,7 @@ class StateSpaceOptimizer(_Optimizer):
         :param lambda_max: maximum lambda value that should be tested
         :param steps: number of steps between lambda_min and lambda_max
         :param nfolds: number of folds used for cross-validation
+        :param show_progressbar: if True, shows a progressbar during cross-validation
 
         :returns: lambda value that performed best during cross-validation
         """
@@ -350,14 +352,16 @@ class StateSpaceOptimizer(_Optimizer):
         opt._regularized_score_func_builder = self._regularized_score_func_builder
         opt._regularized_gradient_func_builder = self._regularized_gradient_func_builder
 
-        for j in range(nfolds):
+        disable_progressbar = not show_progressbar
+
+        for j in tqdm(range(nfolds), desc="Cross-Validation Folds", position=0, disable=disable_progressbar):
             # designate one of folds as test set and the others as training set
             test_data = shuffled_data[np.where(folds == j)]
             test_data_container = StateContainer(test_data)
             train_data = shuffled_data[np.where(folds != j)]
             opt.load_data_matrix(train_data)
 
-            for i in range(steps):
+            for i in tqdm(range(steps), desc="Lambda Evaluation", position=1, leave=False, disable=disable_progressbar):
                 opt.train(lam=lambda_path[i])
                 theta = opt.result.log_theta
                 scores[j, i] = self._gradient_and_score_func(theta, test_data_container)[1]
