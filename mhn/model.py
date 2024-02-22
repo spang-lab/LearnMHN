@@ -11,6 +11,10 @@ from .ssr import state_space_restriction
 import numpy as np
 import pandas as pd
 import json
+import matplotlib.pyplot as plt
+from typing import Union, Optional
+import matplotlib
+import matplotlib.axes
 
 
 class MHN:
@@ -42,7 +46,8 @@ class MHN:
 
         :returns: array or DataFrame with samples as rows and events as columns
         """
-        art_data = Likelihood.sample_artificial_data(self.log_theta, sample_num)
+        art_data = Likelihood.sample_artificial_data(
+            self.log_theta, sample_num)
         if as_dataframe:
             df = pd.DataFrame(art_data)
             if self.events is not None:
@@ -66,7 +71,8 @@ class MHN:
         nx = 1 << mutation_num
         p0 = np.zeros(nx)
         p0[0] = 1
-        p_th = state_space_restriction.compute_restricted_inverse(self.log_theta, state, p0, False)
+        p_th = state_space_restriction.compute_restricted_inverse(
+            self.log_theta, state, p0, False)
         return p_th[-1]
 
     def save(self, filename: str):
@@ -111,12 +117,59 @@ class MHN:
 
     def __str__(self):
         if isinstance(self.meta, dict):
-            meta_data_string = '\n'.join([f'{key}:\n{value}\n' for key, value in self.meta.items()])
+            meta_data_string = '\n'.join(
+                [f'{key}:\n{value}\n' for key, value in self.meta.items()])
         else:
             meta_data_string = "None"
         return f"EVENTS: \n{self.events}\n\n" \
                f"THETA IN LOG FORMAT: \n {self.log_theta}\n\n" \
                f"ADDITIONAL METADATA: \n\n{meta_data_string}"
+
+    def plot(
+            self,
+            cmap: Union[str, matplotlib.colors.Colormap] = "RdBu_r",
+            colorbar: bool = True,
+            annot: Union[float, bool] = 0.1,
+            ax: Optional[matplotlib.axes.Axes] = None,
+    ) -> None:
+        """Plots the logarithmic theta matrix
+
+        Args:
+            cmap (Union[str, matplotlib.colors.Colormap], optional):
+            Colormap to use. Defaults to "RdBu_r".
+            colorbar (bool, optional): Whether to display a colorbar.
+            Defaults to True.
+            annot (Union[float, bool], optional): If boolean, either all
+            or no annotations are displayed. If numerical, displays
+            annotations from this threshold. Defaults to 0.1.
+            ax (Optional[matplotlib.axes.Axes], optional): Matplotlib
+            axes to plot on. Defaults to None.
+        """
+        if ax is None:
+            _, ax = plt.subplots()
+
+        _max = np.abs(self.log_theta).max()
+        im = ax.imshow(
+            self.log_theta,
+            cmap=cmap,
+            vmin=-_max, vmax=_max)
+        if colorbar:
+            plt.colorbar(im, ax=ax)
+        ax.tick_params(length=0)
+        ax.set_yticks(
+            np.arange(0, self.log_theta.shape[0], 1),
+            (self.events or list(range(self.log_theta.shape[1]))) +
+            (["Observation"] if self.log_theta.shape[0] == self.log_theta.shape[1] + 1 else []))
+        ax.set_xticks(
+            np.arange(0, self.log_theta.shape[1], 1),
+            self.events)
+        ax.tick_params(axis="x", rotation=90)
+        if annot:
+            for i in range(self.log_theta.shape[0]):
+                for j in range(self.log_theta.shape[1]):
+                    if annot is True or np.abs(self.log_theta[i, j]) >= annot:
+                        text = ax.text(j, i, self.log_theta[i, j],
+                                       ha="center", va="center")
 
 
 class OmegaMHN(MHN):
