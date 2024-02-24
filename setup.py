@@ -180,7 +180,8 @@ setup(
         'numpy>=1.23.0',
         'scipy>=1.10.0',
         'pandas>=1.5.3',
-        'tqdm>=4.65.0'
+        'tqdm>=4.65.0',
+        'matplotlib>=3.5.0'
     ],
     python_requires='>=3.8, <3.12'
 )
