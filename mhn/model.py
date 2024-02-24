@@ -164,18 +164,19 @@ class MHN:
             annot: Union[float, bool] = 0.1,
             ax: Optional[matplotlib.axes.Axes] = None,
     ) -> None:
-        """Plots the logarithmic theta matrix
+        """
+        Plots the logarithmic theta matrix.
 
         Args:
             cmap (Union[str, matplotlib.colors.Colormap], optional):
-            Colormap to use. Defaults to "RdBu_r".
-            colorbar (bool, optional): Whether to display a colorbar.
-            Defaults to True.
-            annot (Union[float, bool], optional): If boolean, either all
-            or no annotations are displayed. If numerical, displays
-            annotations from this threshold. Defaults to 0.1.
-            ax (Optional[matplotlib.axes.Axes], optional): Matplotlib
-            axes to plot on. Defaults to None.
+                Colormap to use. Defaults to "RdBu_r".
+            colorbar (bool, optional):
+                Whether to display a colorbar. Defaults to True.
+            annot (Union[float, bool], optional):
+                If boolean, either all or no annotations are displayed. If numerical, displays
+                annotations from this threshold. Defaults to 0.1.
+            ax (Optional[matplotlib.axes.Axes], optional):
+                Matplotlib axes to plot on. Defaults to None.
         """
         if ax is None:
             _, ax = plt.subplots()
