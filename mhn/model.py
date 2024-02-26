@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from typing import Union, Optional
 import matplotlib
 import matplotlib.axes
+import matplotlib.colors as colors
 
 
 class MHN:
@@ -163,9 +164,10 @@ class MHN:
             colorbar: bool = True,
             annot: Union[float, bool] = 0.1,
             ax: Optional[matplotlib.axes.Axes] = None,
+            logarithmic: bool = True
     ) -> None:
         """
-        Plots the logarithmic theta matrix.
+        Plots the theta matrix.
 
         Args:
             cmap (Union[str, matplotlib.colors.Colormap], optional):
@@ -174,18 +176,32 @@ class MHN:
                 Whether to display a colorbar. Defaults to True.
             annot (Union[float, bool], optional):
                 If boolean, either all or no annotations are displayed. If numerical, displays
-                annotations from this threshold. Defaults to 0.1.
+                annotations for all effects greater than this threshold in the logarithmic theta matrix.
+                Defaults to 0.1.
             ax (Optional[matplotlib.axes.Axes], optional):
                 Matplotlib axes to plot on. Defaults to None.
+            logarithmic (bool, optional):
+                If set to True, plots the logarithmic theta matrix, else plots the exponential theta matrix.
+                Defaults to True.
         """
         if ax is None:
             _, ax = plt.subplots()
 
-        _max = np.abs(self.log_theta).max()
-        im = ax.imshow(
-            self.log_theta,
-            cmap=cmap,
-            vmin=-_max, vmax=_max)
+        if logarithmic:
+            _max = np.abs(self.log_theta).max()
+            theta = self.log_theta
+            im = ax.imshow(
+                self.log_theta,
+                cmap=cmap,
+                vmin=-_max, vmax=_max)
+        else:
+            _max = np.abs(self.log_theta).max()
+            _max = np.exp(_max)
+            theta = np.around(np.exp(self.log_theta), decimals=2)
+            im = ax.imshow(
+                theta,
+                norm=colors.LogNorm(vmin=1/_max, vmax=_max),
+                cmap=cmap)
         if colorbar:
             plt.colorbar(im, ax=ax)
         ax.tick_params(length=0)
@@ -201,7 +217,7 @@ class MHN:
             for i in range(self.log_theta.shape[0]):
                 for j in range(self.log_theta.shape[1]):
                     if annot is True or np.abs(self.log_theta[i, j]) >= annot:
-                        text = ax.text(j, i, self.log_theta[i, j],
+                        text = ax.text(j, i, theta[i, j],
                                        ha="center", va="center")
 
 
