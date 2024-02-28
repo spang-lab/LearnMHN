@@ -91,12 +91,14 @@ class MHN:
         """
         n = self.log_theta.shape[1]
         if n != state.shape[0]:
-            raise ValueError(f"This MHN object models {n} events, but state contains {state.shape[0]}")
+            raise ValueError(
+                f"This MHN object models {n} events, but state contains {state.shape[0]}")
         if allow_observation:
             observation_rate = self._get_observation_rate(state)
         else:
             observation_rate = 0
-        result = Likelihood.compute_next_event_probs(self.log_theta, state, observation_rate)
+        result = Likelihood.compute_next_event_probs(
+            self.log_theta, state, observation_rate)
         if not as_dataframe:
             return result
         df = pd.DataFrame(result)
@@ -203,7 +205,14 @@ class MHN:
                 norm=colors.LogNorm(vmin=1/_max, vmax=_max),
                 cmap=cmap)
         if colorbar:
-            plt.colorbar(im, ax=ax)
+            cbar = plt.colorbar(im, ax=ax)
+            if not logarithmic:
+                cbar.minorticks_off()
+                ticks = np.exp(np.linspace(np.log(1/_max), np.log(_max), 9))
+                labels = [f'{t:.1e}'[:-3] for t in ticks]
+                cbar.set_ticks(
+                    ticks, labels=labels
+                )
         ax.tick_params(length=0)
         ax.set_yticks(
             np.arange(0, self.log_theta.shape[0], 1),
