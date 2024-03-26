@@ -326,25 +326,43 @@ class StateSpaceOptimizer(_Optimizer):
         return self
 
     def find_lambda(self, lambda_min: float = 0.0001, lambda_max: float = 0.1,
-                    steps: int = 9, nfolds: int = 5, show_progressbar: bool = False) -> float:
+                    steps: int = 9, nfolds: int = 5, lambda_vector: np.ndarray | None = None,
+                    show_progressbar: bool = False, return_lambda_scores: bool = False
+                    ) -> float | tuple[float, pd.DataFrame]:
         """
         Find the best value for lambda according to the "one standard error rule" through n-fold cross-validation.
+
+        You can specify the lambda values that should be tested in cross-validation by setting the lambda_vector
+        parameter accordingly.
+
+        Alternatively, you can specify the minimum, maximum and step size for potential lambda values. This method
+        will then create a range of possible lambdas with logarithmic grid-spacing, e.g. (0.0001,0.0010,0.0100,0.1000)
+        for lambda_min=0.0001, lambda_max=0.1 and steps=4.
+
         Use np.random.seed() to make results reproducible.
 
-        :param lambda_min: minimum lambda value that should be tested
-        :param lambda_max: maximum lambda value that should be tested
-        :param steps: number of steps between lambda_min and lambda_max
+        :param lambda_min: minimum lambda value that should be tested; this will be ignored if lambda_vector is set
+        :param lambda_max: maximum lambda value that should be tested; this will be ignored if lambda_vector is set
+        :param steps: number of steps between lambda_min and lambda_max; this will be ignored if lambda_vector is set
         :param nfolds: number of folds used for cross-validation
+        :param lambda_vector: a numpy array containing lambda values that should be used for cross-validation
         :param show_progressbar: if True, shows a progressbar during cross-validation
+        :param return_lambda_scores: if True, this method will return a tuple containing the best lambda value as well
+        as a Dataframe that contains the mean score of each lambda value tested in cross-validation
 
-        :returns: lambda value that performed best during cross-validation
+        :returns: lambda value that performed best during cross-validation. If return_lambda_scores is set to True, this
+        method will return a tuple that contains the best lambda value as well as a Dataframe that contains the mean
+        score of each lambda value tested in cross-validation.
         """
         if self._bin_datamatrix is None:
             raise ValueError("You have to load data before you start cross-validation")
 
-        # create a range of possible lambdas with logarithmic grid-spacing
-        # e.g. (0.0001,0.0010,0.0100,0.1000) for 4 steps
-        lambda_path = np.exp(np.linspace(np.log(lambda_min + 1e-10), np.log(lambda_max + 1e-10), steps))
+        if lambda_vector is None:
+            # create a range of possible lambdas with logarithmic grid-spacing
+            # e.g. (0.0001,0.0010,0.0100,0.1000) for 4 steps
+            lambda_path: np.ndarray = np.exp(np.linspace(np.log(lambda_min + 1e-10), np.log(lambda_max + 1e-10), steps))
+        else:
+            lambda_path = lambda_vector
 
         # shuffle the dataset and cut it into n folds
         shuffled_data = self._bin_datamatrix.copy()
@@ -384,6 +402,14 @@ class StateSpaceOptimizer(_Optimizer):
         standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
         threshold = np.max(score_means) - standard_error
         chosen_lambda_idx = np.max(np.argwhere(score_means > threshold))
+
+        if return_lambda_scores:
+            score_dataframe = pd.DataFrame.from_dict({
+                "Lambda Value": lambda_path,
+                "Mean Score": score_means,
+                "Standard Error": np.std(scores, axis=0) / np.sqrt(nfolds)
+            })
+            return lambda_path[chosen_lambda_idx], score_dataframe
 
         return lambda_path[chosen_lambda_idx]
 
