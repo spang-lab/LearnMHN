@@ -65,24 +65,34 @@ class _Optimizer(abc.ABC):
 
     def get_data_properties(self):
         """
-        You can use this method to get some information about the loaded mutation data, e.g. how many events and samples
-        are present in the data, how many mutations a sample has on average etc.
+        You can use this method to get some information about the loaded training data, e.g. how many events and samples
+        are present in the data, how many events have occurred in a sample on average etc.
 
         :returns: a dictionary containing information about the data
         """
         if self._bin_datamatrix is None:
             return {}
 
-        total_mutations_per_sample = np.sum(self._bin_datamatrix, axis=1)
+        total_event_occurrence = np.sum(self._bin_datamatrix, axis=0)
+        event_frequencies = total_event_occurrence / self._bin_datamatrix.shape[0]
+        event_dataframe = pd.DataFrame.from_dict({
+            "Total": total_event_occurrence,
+            "Frequency": event_frequencies
+        })
+        if self._events is not None:
+            event_dataframe.index = self._events
+
+        total_events_per_sample = np.sum(self._bin_datamatrix, axis=1)
         return {
             'samples': self._bin_datamatrix.shape[0],
             'events': self._bin_datamatrix.shape[1],
-            'mutations per sample': {
-                'mean': np.mean(total_mutations_per_sample),
-                'median': np.median(total_mutations_per_sample),
-                'max': np.max(total_mutations_per_sample),
-                'min': np.min(total_mutations_per_sample)
-            }
+            'occurred events per sample': {
+                'mean': np.mean(total_events_per_sample),
+                'median': np.median(total_events_per_sample),
+                'max': np.max(total_events_per_sample),
+                'min': np.min(total_events_per_sample)
+            },
+            'event statistics': event_dataframe
         }
 
     def set_callback_func(self, callback=None):
