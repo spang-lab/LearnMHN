@@ -336,7 +336,7 @@ class StateSpaceOptimizer(_Optimizer):
         parameter accordingly.
 
         Alternatively, you can specify the minimum, maximum and step size for potential lambda values. This method
-        will then create a range of possible lambdas with logarithmic grid-spacing, e.g. (0.0001,0.0010,0.0100,0.1000)
+        will then create a range of possible lambdas with logarithmic grid-spacing, e.g. (0.0001, 0.0010, 0.0100, 0.1000)
         for lambda_min=0.0001, lambda_max=0.1 and steps=4.
 
         Use np.random.seed() to make results reproducible.
@@ -347,8 +347,7 @@ class StateSpaceOptimizer(_Optimizer):
         :param nfolds: number of folds used for cross-validation
         :param lambda_vector: a numpy array containing lambda values that should be used for cross-validation
         :param show_progressbar: if True, shows a progressbar during cross-validation
-        :param return_lambda_scores: if True, this method will return a tuple containing the best lambda value as well
-        as a Dataframe that contains the mean score of each lambda value tested in cross-validation
+        :param return_lambda_scores: if True, this method will return a tuple containing the best lambda value as well as a Dataframe that contains the mean score of each lambda value tested in cross-validation
 
         :returns: lambda value that performed best during cross-validation. If return_lambda_scores is set to True, this
         method will return a tuple that contains the best lambda value as well as a Dataframe that contains the mean
