@@ -57,6 +57,50 @@ class MHN:
         else:
             return art_data
 
+    def sample_trajectories(self, trajectory_num: int, initial_state: np.ndarray | list[str],
+                            output_event_names: bool = False) -> tuple[list[list[int | str]], np.ndarray]:
+        """
+        Simulates event accumulation using the Gillespie algorithm.
+
+        :param trajectory_num: Number of trajectories sampled by the Gillespie algorithm
+        :param initial_state: Initial state from which the trajectories start. Can be either a numpy array containing 0s and 1s, where each entry represents an event being present (1) or not (0),
+        or a list of strings, where each string is the name of an event. The later can only be used if events were specified during creation of the MHN object.
+        :param output_event_names: If True, the trajectories are returned as lists containing the event names, else they contain the event indices
+
+        :return: A tuple: first element as a list of trajectories, the second element contains the observation times of each trajectory
+        """
+        if type(initial_state) is np.ndarray and issubclass(initial_state.dtype.type, np.integer):
+            if initial_state.size != self.log_theta.shape[1]:
+                raise ValueError(f"The initial state must be of size {self.log_theta.shape[1]}")
+            if not set(initial_state.flatten()).issubset({0, 1}):
+                raise ValueError("The initial state array must only contain 0s and 1s")
+        else:
+            init_state_copy = list(initial_state)
+            initial_state = np.zeros(self.log_theta.shape[1], dtype=np.int32)
+            if len(init_state_copy) != 0 and self.events is None:
+                raise RuntimeError(
+                    "You can only use event names for the initial state, if event was set during initialization of the MHN object"
+                )
+
+            for event in init_state_copy:
+                index = self.events.index(event)
+                initial_state[index] = 1
+
+        trajectory_list, observation_times = Likelihood.gillespie(self.log_theta, initial_state, trajectory_num)
+
+        if output_event_names:
+            if self.events is None:
+                raise ValueError("output_event_names can only be set to True, if events was set for the MHN object")
+            trajectory_list = list(map(
+                lambda trajectory: list(map(
+                    lambda event: self.events[event],
+                    trajectory
+                )),
+                trajectory_list
+            ))
+
+        return trajectory_list, observation_times
+
     def compute_marginal_likelihood(self, state: np.ndarray) -> float:
         """
         Computes the likelihood of observing a given state, where we consider the observation time to be an
@@ -76,7 +120,8 @@ class MHN:
             self.log_theta, state, p0, False)
         return p_th[-1]
 
-    def compute_next_event_probs(self, state: np.ndarray, as_dataframe: bool = False, allow_observation: bool = False) -> np.ndarray | pd.DataFrame:
+    def compute_next_event_probs(self, state: np.ndarray, as_dataframe: bool = False,
+                                 allow_observation: bool = False) -> np.ndarray | pd.DataFrame:
         """
         Compute the probability for each event that it will be the next one to occur given the current state.
 
@@ -202,13 +247,13 @@ class MHN:
             theta = np.around(np.exp(self.log_theta), decimals=2)
             im = ax.imshow(
                 theta,
-                norm=colors.LogNorm(vmin=1/_max, vmax=_max),
+                norm=colors.LogNorm(vmin=1 / _max, vmax=_max),
                 cmap=cmap)
         if colorbar:
             cbar = plt.colorbar(im, ax=ax)
             if not logarithmic:
                 cbar.minorticks_off()
-                ticks = np.exp(np.linspace(np.log(1/_max), np.log(_max), 9))
+                ticks = np.exp(np.linspace(np.log(1 / _max), np.log(_max), 9))
                 labels = [f'{t:.1e}'[:-3] for t in ticks]
                 cbar.set_ticks(
                     ticks, labels=labels
