@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 import numpy as np
+import mhn
 from mhn.optimizers import _Optimizer, StateSpaceOptimizer, DUAOptimizer, OmegaOptimizer
 from mhn.original import ModelConstruction, Likelihood, UtilityFunctions
 
@@ -42,6 +43,9 @@ class BaseOptimizerTestClass:
             """
             Test if set_device acts as expected
             """
+            if mhn.cuda_available() != mhn.CUDA_AVAILABLE:
+                self.skipTest("CUDA is not available on this device, so skip the set_device() test.")
+
             for device in self.opt.Device:
                 # should work and not throw an error
                 self.opt.set_device(device)
