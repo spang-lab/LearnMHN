@@ -240,7 +240,7 @@ def sample_artificial_data(np.ndarray[np.double_t, ndim=2] theta, int sample_num
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
-def gillespie(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int_t, ndim=1] initial_state, int sample_num) -> tuple[list[list[int]], np.ndarray]:
+def gillespie(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int32_t, ndim=1] initial_state, int sample_num) -> tuple[list[list[int]], np.ndarray]:
     """
     Gillespie algorithm to simulate event accumulation.
 
@@ -332,7 +332,7 @@ def gillespie(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int_t, ndim=1
     return trajectory_list, observation_times
 
 
-def compute_next_event_probs(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int_t, ndim=1] current_state, double observation_rate = 0) -> np.ndarray:
+def compute_next_event_probs(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int32_t, ndim=1] current_state, double observation_rate = 0) -> np.ndarray:
     """
     Compute the probability for each event that it will be the next one to occur given the current state.
 
