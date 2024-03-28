@@ -69,7 +69,8 @@ class MHN:
 
         :return: A tuple: first element as a list of trajectories, the second element contains the observation times of each trajectory
         """
-        if type(initial_state) is np.ndarray and issubclass(initial_state.dtype.type, np.integer):
+        if type(initial_state) is np.ndarray:
+            initial_state = initial_state.astype(np.int32)
             if initial_state.size != self.log_theta.shape[1]:
                 raise ValueError(f"The initial state must be of size {self.log_theta.shape[1]}")
             if not set(initial_state.flatten()).issubset({0, 1}):
@@ -127,8 +128,7 @@ class MHN:
 
         :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
         :param as_dataframe: if True, the result is returned as a pandas DataFrame, else as a numpy array
-        :param allow_observation: if True, the observation event can happen before any other event -> the probabilities
-        of the remaining events will not add up to 100%
+        :param allow_observation: if True, the observation event can happen before any other event -> the probabilities of the remaining events will not add up to 100%
 
         :returns: array or DataFrame that contains the probability for each event that it will be the next one to occur
 
@@ -152,8 +152,8 @@ class MHN:
             df.index = self.events
         return df
 
-    def _get_observation_rate(self, state: np.ndarray):
-        return 1
+    def _get_observation_rate(self, state: np.ndarray) -> float:
+        return 1.
 
     def save(self, filename: str):
         """
@@ -316,7 +316,7 @@ class OmegaMHN(MHN):
         equivalent_classical_mhn[range(n), range(n)] += self.log_theta[-1]
         return MHN(equivalent_classical_mhn, self.events, self.meta)
 
-    def _get_observation_rate(self, state: np.ndarray):
+    def _get_observation_rate(self, state: np.ndarray) -> float:
         return np.exp(np.sum(self.log_theta[-1, state != 0]))
 
     def save(self, filename: str):
