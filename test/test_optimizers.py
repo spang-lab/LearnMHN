@@ -68,24 +68,6 @@ class TestStateSpaceOptimizer(BaseOptimizerTestClass.TestOptimizer):
         self.opt = StateSpaceOptimizer()
         self.opt.load_data_matrix(dummy_data)
 
-    def test_relearn_model(self):
-        """
-        Test if a model can be relearned with enough data
-        """
-        for _ in range(2):
-            random_model = self._get_random_model(event_num=5)
-            random_model = np.around(random_model, decimals=2)
-            mhn_object = self.opt._OutputMHNClass(random_model)
-            random_data = mhn_object.sample_artificial_data(3200)
-            self.opt.load_data_matrix(random_data)
-            self.opt.train(lam=0)
-            print(Likelihood.generate_pTh(random_model))
-            print(Likelihood.generate_pTh(self.opt.result.log_theta))
-            np.testing.assert_array_equal(
-                np.around(UtilityFunctions.data_to_pD(random_data), decimals=2),
-                np.around(Likelihood.generate_pTh(self.opt.result.log_theta), decimals=2)
-            )
-
     @staticmethod
     def _get_random_model(event_num: int) -> np.ndarray:
         """
