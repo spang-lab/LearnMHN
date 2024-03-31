@@ -18,7 +18,7 @@ class BaseOptimizerTestClass:
 
         def test_init_stays_same(self):
             """
-            Make sure that the train method does not modify the init value for training
+            Make sure that the train method does not modify the init value for training.
             """
             n = BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS
             random_init = np.random.random((n, n))
@@ -28,7 +28,7 @@ class BaseOptimizerTestClass:
 
         def test_set_callback(self):
             """
-            Test if callback functions are called
+            Test if callback functions are called.
             """
             def some_callback_function(theta: np.ndarray):
                 some_callback_function.callback_function_called = True
@@ -41,7 +41,7 @@ class BaseOptimizerTestClass:
 
         def test_set_device(self):
             """
-            Test if set_device acts as expected
+            Test if set_device acts as expected.
             """
             if mhn.cuda_available() != mhn.CUDA_AVAILABLE:
                 self.skipTest("CUDA is not available on this device, so skip the set_device() test.")
@@ -55,7 +55,7 @@ class BaseOptimizerTestClass:
 
         def test_set_penalty(self):
             """
-            Test if set_penalty acts as expected
+            Test if set_penalty acts as expected.
             """
             for penalty in self.opt.Penalty:
                 self.opt.set_penalty(penalty)
@@ -72,10 +72,21 @@ class TestStateSpaceOptimizer(BaseOptimizerTestClass.TestOptimizer):
         self.opt = StateSpaceOptimizer()
         self.opt.load_data_matrix(dummy_data)
 
+    def test_learn_model(self):
+        """
+        Simply tests if learning a new model works with no errors.
+        """
+        random_model = self._get_random_model(event_num=5)
+        random_model = np.around(random_model, decimals=2)
+        mhn_object = self.opt._OutputMHNClass(random_model)
+        random_data = mhn_object.sample_artificial_data(200)
+        self.opt.load_data_matrix(random_data)
+        self.opt.train()
+
     @staticmethod
     def _get_random_model(event_num: int) -> np.ndarray:
         """
-        Helper method to create a random MHN
+        Helper method to create a random MHN.
         """
         return ModelConstruction.random_theta(event_num, sparsity=0.3)
 
@@ -90,7 +101,7 @@ class TestOmegaOptimizer(TestStateSpaceOptimizer):
 
     def test_init_stays_same(self):
         """
-        Make sure that the train method does not modify the init value for training
+        Make sure that the train method does not modify the init value for training.
         """
         n = BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS
         random_init = np.random.random((n + 1, n))
@@ -101,7 +112,7 @@ class TestOmegaOptimizer(TestStateSpaceOptimizer):
     @staticmethod
     def _get_random_model(event_num: int) -> np.ndarray:
         """
-        Helper method to create a random MHN
+        Helper method to create a random MHN.
         """
         classical_theta = TestStateSpaceOptimizer._get_random_model(event_num)
         return np.vstack((classical_theta, np.random.random((1, event_num))))
