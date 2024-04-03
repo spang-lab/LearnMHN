@@ -8,7 +8,7 @@ import platform
 from shutil import which
 import subprocess
 
-VERSION = "0.0.17"                                 # current package version
+VERSION = "0.0.18"                                 # current package version
 
 IS_WINDOWS = (platform.system() == 'Windows')      # get the operating system
 STATE_SIZE = 8                                     # the compiled code supports MHNs with maximum size of 32 * STATE_SIZE
@@ -179,7 +179,9 @@ setup(
     install_requires=[
         'numpy>=1.23.0',
         'scipy>=1.10.0',
-        'pandas>=1.5.3'
+        'pandas>=1.5.3',
+        'tqdm>=4.65.0',
+        'matplotlib>=3.5.0'
     ],
     python_requires='>=3.8, <3.12'
 )

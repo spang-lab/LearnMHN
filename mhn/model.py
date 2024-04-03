@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from typing import Union, Optional
 import matplotlib
 import matplotlib.axes
+import matplotlib.colors as colors
 
 
 class MHN:
@@ -42,7 +43,7 @@ class MHN:
         to make results reproducible.
 
         :param sample_num: number of samples in the generated data
-        :param as_dataframe: if True, the data is returned as a pandas DataFrame, else numpy matrix
+        :param as_dataframe: if True, the data is returned as a pandas DataFrame, else as a numpy matrix
 
         :returns: array or DataFrame with samples as rows and events as columns
         """
@@ -55,6 +56,51 @@ class MHN:
             return df
         else:
             return art_data
+
+    def sample_trajectories(self, trajectory_num: int, initial_state: np.ndarray | list[str],
+                            output_event_names: bool = False) -> tuple[list[list[int | str]], np.ndarray]:
+        """
+        Simulates event accumulation using the Gillespie algorithm.
+
+        :param trajectory_num: Number of trajectories sampled by the Gillespie algorithm
+        :param initial_state: Initial state from which the trajectories start. Can be either a numpy array containing 0s and 1s, where each entry represents an event being present (1) or not (0),
+        or a list of strings, where each string is the name of an event. The later can only be used if events were specified during creation of the MHN object.
+        :param output_event_names: If True, the trajectories are returned as lists containing the event names, else they contain the event indices
+
+        :return: A tuple: first element as a list of trajectories, the second element contains the observation times of each trajectory
+        """
+        if type(initial_state) is np.ndarray:
+            initial_state = initial_state.astype(np.int32)
+            if initial_state.size != self.log_theta.shape[1]:
+                raise ValueError(f"The initial state must be of size {self.log_theta.shape[1]}")
+            if not set(initial_state.flatten()).issubset({0, 1}):
+                raise ValueError("The initial state array must only contain 0s and 1s")
+        else:
+            init_state_copy = list(initial_state)
+            initial_state = np.zeros(self.log_theta.shape[1], dtype=np.int32)
+            if len(init_state_copy) != 0 and self.events is None:
+                raise RuntimeError(
+                    "You can only use event names for the initial state, if event was set during initialization of the MHN object"
+                )
+
+            for event in init_state_copy:
+                index = self.events.index(event)
+                initial_state[index] = 1
+
+        trajectory_list, observation_times = Likelihood.gillespie(self.log_theta, initial_state, trajectory_num)
+
+        if output_event_names:
+            if self.events is None:
+                raise ValueError("output_event_names can only be set to True, if events was set for the MHN object")
+            trajectory_list = list(map(
+                lambda trajectory: list(map(
+                    lambda event: self.events[event],
+                    trajectory
+                )),
+                trajectory_list
+            ))
+
+        return trajectory_list, observation_times
 
     def compute_marginal_likelihood(self, state: np.ndarray) -> float:
         """
@@ -74,6 +120,40 @@ class MHN:
         p_th = state_space_restriction.compute_restricted_inverse(
             self.log_theta, state, p0, False)
         return p_th[-1]
+
+    def compute_next_event_probs(self, state: np.ndarray, as_dataframe: bool = False,
+                                 allow_observation: bool = False) -> np.ndarray | pd.DataFrame:
+        """
+        Compute the probability for each event that it will be the next one to occur given the current state.
+
+        :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
+        :param as_dataframe: if True, the result is returned as a pandas DataFrame, else as a numpy array
+        :param allow_observation: if True, the observation event can happen before any other event -> the probabilities of the remaining events will not add up to 100%
+
+        :returns: array or DataFrame that contains the probability for each event that it will be the next one to occur
+
+        :raise ValueError: if the number of events in state does not align with the number of events modeled by this MHN object
+        """
+        n = self.log_theta.shape[1]
+        if n != state.shape[0]:
+            raise ValueError(
+                f"This MHN object models {n} events, but state contains {state.shape[0]}")
+        if allow_observation:
+            observation_rate = self._get_observation_rate(state)
+        else:
+            observation_rate = 0
+        result = Likelihood.compute_next_event_probs(
+            self.log_theta, state, observation_rate)
+        if not as_dataframe:
+            return result
+        df = pd.DataFrame(result)
+        df.columns = ["PROBS"]
+        if self.events is not None:
+            df.index = self.events
+        return df
+
+    def _get_observation_rate(self, state: np.ndarray) -> float:
+        return 1.
 
     def save(self, filename: str):
         """
@@ -131,30 +211,53 @@ class MHN:
             colorbar: bool = True,
             annot: Union[float, bool] = 0.1,
             ax: Optional[matplotlib.axes.Axes] = None,
+            logarithmic: bool = True
     ) -> None:
-        """Plots the logarithmic theta matrix
+        """
+        Plots the theta matrix.
 
         Args:
             cmap (Union[str, matplotlib.colors.Colormap], optional):
-            Colormap to use. Defaults to "RdBu_r".
-            colorbar (bool, optional): Whether to display a colorbar.
-            Defaults to True.
-            annot (Union[float, bool], optional): If boolean, either all
-            or no annotations are displayed. If numerical, displays
-            annotations from this threshold. Defaults to 0.1.
-            ax (Optional[matplotlib.axes.Axes], optional): Matplotlib
-            axes to plot on. Defaults to None.
+                Colormap to use. Defaults to "RdBu_r".
+            colorbar (bool, optional):
+                Whether to display a colorbar. Defaults to True.
+            annot (Union[float, bool], optional):
+                If boolean, either all or no annotations are displayed. If numerical, displays
+                annotations for all effects greater than this threshold in the logarithmic theta matrix.
+                Defaults to 0.1.
+            ax (Optional[matplotlib.axes.Axes], optional):
+                Matplotlib axes to plot on. Defaults to None.
+            logarithmic (bool, optional):
+                If set to True, plots the logarithmic theta matrix, else plots the exponential theta matrix.
+                Defaults to True.
         """
         if ax is None:
             _, ax = plt.subplots()
 
-        _max = np.abs(self.log_theta).max()
-        im = ax.imshow(
-            self.log_theta,
-            cmap=cmap,
-            vmin=-_max, vmax=_max)
+        if logarithmic:
+            _max = np.abs(self.log_theta).max()
+            theta = self.log_theta
+            im = ax.imshow(
+                self.log_theta,
+                cmap=cmap,
+                vmin=-_max, vmax=_max)
+        else:
+            _max = np.abs(self.log_theta).max()
+            _max = np.exp(_max)
+            theta = np.around(np.exp(self.log_theta), decimals=2)
+            im = ax.imshow(
+                theta,
+                norm=colors.LogNorm(vmin=1 / _max, vmax=_max),
+                cmap=cmap)
         if colorbar:
-            plt.colorbar(im, ax=ax)
+            cbar = plt.colorbar(im, ax=ax)
+            if not logarithmic:
+                cbar.minorticks_off()
+                ticks = np.exp(np.linspace(np.log(1 / _max), np.log(_max), 9))
+                labels = [f'{t:.1e}'[:-3] for t in ticks]
+                cbar.set_ticks(
+                    ticks, labels=labels
+                )
         ax.tick_params(length=0)
         ax.set_yticks(
             np.arange(0, self.log_theta.shape[0], 1),
@@ -168,7 +271,7 @@ class MHN:
             for i in range(self.log_theta.shape[0]):
                 for j in range(self.log_theta.shape[1]):
                     if annot is True or np.abs(self.log_theta[i, j]) >= annot:
-                        text = ax.text(j, i, self.log_theta[i, j],
+                        text = ax.text(j, i, theta[i, j],
                                        ha="center", va="center")
 
 
@@ -212,6 +315,9 @@ class OmegaMHN(MHN):
         # undo changes to the diagonal
         equivalent_classical_mhn[range(n), range(n)] += self.log_theta[-1]
         return MHN(equivalent_classical_mhn, self.events, self.meta)
+
+    def _get_observation_rate(self, state: np.ndarray) -> float:
+        return np.exp(np.sum(self.log_theta[-1, state != 0]))
 
     def save(self, filename: str):
         """

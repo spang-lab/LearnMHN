@@ -54,3 +54,7 @@ class TestCudaGradient(unittest.TestCase):
 
         print(res1)
         print(res2)
+
+
+if __name__ == '__main__':
+    unittest.main()

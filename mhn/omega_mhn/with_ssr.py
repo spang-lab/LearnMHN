@@ -144,10 +144,10 @@ def gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
     """
     Computes the score as well as the gradient in log format.
 
-    This function computes the gradient using Cython AND CUDA (only if CUDA is installed).
-    It will compute the gradients for data points with few mutations using the Cython implementation
+    This function computes the gradient using both the CPU AND CUDA (only if CUDA is installed).
+    It will compute the gradients for data points with few mutations using the CPU implementation
     and compute the gradients for data points with many mutations using CUDA.
-    If CUDA is not installed on your device, this function will only use the Cython implementation.
+    If CUDA is not installed on your device, this function will only use the CPU implementation.
 
     :param omega_theta: theta matrix for the OmegaMHN (shape: (n+1) x n), last row contains observation rates
     :param mutation_data: StateContainer object containing the data which is used for training
@@ -156,7 +156,7 @@ def gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
     return _internal_gradient_and_score(omega_theta, mutation_data, state_space_restriction.gradient_and_score)
 
 
-def cython_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
+def cpu_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
     """
     Computes the score as well as the gradient in log format on the CPU.
 
@@ -164,7 +164,7 @@ def cython_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateConta
     :param mutation_data: StateContainer object containing the data which is used for training
     :returns: tuple containing the gradient and the score of the current OmegaMHN
     """
-    return _internal_gradient_and_score(omega_theta, mutation_data, state_space_restriction.cython_gradient_and_score)
+    return _internal_gradient_and_score(omega_theta, mutation_data, state_space_restriction.cpu_gradient_and_score)
 
 
 def cuda_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):

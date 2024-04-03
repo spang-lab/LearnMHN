@@ -9,6 +9,7 @@ import warnings
 from enum import Enum
 import abc
 
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
@@ -64,24 +65,34 @@ class _Optimizer(abc.ABC):
 
     def get_data_properties(self):
         """
-        You can use this method to get some information about the loaded mutation data, e.g. how many events and samples
-        are present in the data, how many mutations a sample has on average etc.
+        You can use this method to get some information about the loaded training data, e.g. how many events and samples
+        are present in the data, how many events have occurred in a sample on average etc.
 
         :returns: a dictionary containing information about the data
         """
         if self._bin_datamatrix is None:
             return {}
 
-        total_mutations_per_sample = np.sum(self._bin_datamatrix, axis=1)
+        total_event_occurrence = np.sum(self._bin_datamatrix, axis=0)
+        event_frequencies = total_event_occurrence / self._bin_datamatrix.shape[0]
+        event_dataframe = pd.DataFrame.from_dict({
+            "Total": total_event_occurrence,
+            "Frequency": event_frequencies
+        })
+        if self._events is not None:
+            event_dataframe.index = self._events
+
+        total_events_per_sample = np.sum(self._bin_datamatrix, axis=1)
         return {
             'samples': self._bin_datamatrix.shape[0],
             'events': self._bin_datamatrix.shape[1],
-            'mutations per sample': {
-                'mean': np.mean(total_mutations_per_sample),
-                'median': np.median(total_mutations_per_sample),
-                'max': np.max(total_mutations_per_sample),
-                'min': np.min(total_mutations_per_sample)
-            }
+            'occurred events per sample': {
+                'mean': np.mean(total_events_per_sample),
+                'median': np.median(total_events_per_sample),
+                'max': np.max(total_events_per_sample),
+                'min': np.min(total_events_per_sample)
+            },
+            'event statistics': event_dataframe
         }
 
     def set_callback_func(self, callback=None):
@@ -293,6 +304,8 @@ class StateSpaceOptimizer(_Optimizer):
         if isinstance(data_matrix, pd.DataFrame):
             self._events = data_matrix.columns.to_list()
             data_matrix = np.array(data_matrix, dtype=np.int32)
+        else:
+            self._events = None
         data_matrix = self._preprocess_binary_matrix(data_matrix)
         self._data = StateContainer(data_matrix)
         self._bin_datamatrix = data_matrix
@@ -313,24 +326,42 @@ class StateSpaceOptimizer(_Optimizer):
         return self
 
     def find_lambda(self, lambda_min: float = 0.0001, lambda_max: float = 0.1,
-                    steps: int = 9, nfolds: int = 5) -> float:
+                    steps: int = 9, nfolds: int = 5, lambda_vector: np.ndarray | None = None,
+                    show_progressbar: bool = False, return_lambda_scores: bool = False
+                    ) -> float | tuple[float, pd.DataFrame]:
         """
         Find the best value for lambda according to the "one standard error rule" through n-fold cross-validation.
+
+        You can specify the lambda values that should be tested in cross-validation by setting the lambda_vector
+        parameter accordingly.
+
+        Alternatively, you can specify the minimum, maximum and step size for potential lambda values. This method
+        will then create a range of possible lambdas with logarithmic grid-spacing, e.g. (0.0001, 0.0010, 0.0100, 0.1000)
+        for lambda_min=0.0001, lambda_max=0.1 and steps=4.
+
         Use np.random.seed() to make results reproducible.
 
-        :param lambda_min: minimum lambda value that should be tested
-        :param lambda_max: maximum lambda value that should be tested
-        :param steps: number of steps between lambda_min and lambda_max
+        :param lambda_min: minimum lambda value that should be tested; this will be ignored if lambda_vector is set
+        :param lambda_max: maximum lambda value that should be tested; this will be ignored if lambda_vector is set
+        :param steps: number of steps between lambda_min and lambda_max; this will be ignored if lambda_vector is set
         :param nfolds: number of folds used for cross-validation
+        :param lambda_vector: a numpy array containing lambda values that should be used for cross-validation
+        :param show_progressbar: if True, shows a progressbar during cross-validation
+        :param return_lambda_scores: if True, this method will return a tuple containing the best lambda value as well as a Dataframe that contains the mean score of each lambda value tested in cross-validation
 
-        :returns: lambda value that performed best during cross-validation
+        :returns: lambda value that performed best during cross-validation. If return_lambda_scores is set to True, this
+        method will return a tuple that contains the best lambda value as well as a Dataframe that contains the mean
+        score of each lambda value tested in cross-validation.
         """
         if self._bin_datamatrix is None:
             raise ValueError("You have to load data before you start cross-validation")
 
-        # create a range of possible lambdas with logarithmic grid-spacing
-        # e.g. (0.0001,0.0010,0.0100,0.1000) for 4 steps
-        lambda_path = np.exp(np.linspace(np.log(lambda_min + 1e-10), np.log(lambda_max + 1e-10), steps))
+        if lambda_vector is None:
+            # create a range of possible lambdas with logarithmic grid-spacing
+            # e.g. (0.0001,0.0010,0.0100,0.1000) for 4 steps
+            lambda_path: np.ndarray = np.exp(np.linspace(np.log(lambda_min + 1e-10), np.log(lambda_max + 1e-10), steps))
+        else:
+            lambda_path = lambda_vector
 
         # shuffle the dataset and cut it into n folds
         shuffled_data = self._bin_datamatrix.copy()
@@ -348,14 +379,16 @@ class StateSpaceOptimizer(_Optimizer):
         opt._regularized_score_func_builder = self._regularized_score_func_builder
         opt._regularized_gradient_func_builder = self._regularized_gradient_func_builder
 
-        for j in range(nfolds):
+        disable_progressbar = not show_progressbar
+
+        for j in tqdm(range(nfolds), desc="Cross-Validation Folds", position=0, disable=disable_progressbar):
             # designate one of folds as test set and the others as training set
             test_data = shuffled_data[np.where(folds == j)]
             test_data_container = StateContainer(test_data)
             train_data = shuffled_data[np.where(folds != j)]
             opt.load_data_matrix(train_data)
 
-            for i in range(steps):
+            for i in tqdm(range(steps), desc="Lambda Evaluation", position=1, leave=False, disable=disable_progressbar):
                 opt.train(lam=lambda_path[i])
                 theta = opt.result.log_theta
                 scores[j, i] = self._gradient_and_score_func(theta, test_data_container)[1]
@@ -368,6 +401,14 @@ class StateSpaceOptimizer(_Optimizer):
         standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
         threshold = np.max(score_means) - standard_error
         chosen_lambda_idx = np.max(np.argwhere(score_means > threshold))
+
+        if return_lambda_scores:
+            score_dataframe = pd.DataFrame.from_dict({
+                "Lambda Value": lambda_path,
+                "Mean Score": score_means,
+                "Standard Error": np.std(scores, axis=0) / np.sqrt(nfolds)
+            })
+            return lambda_path[chosen_lambda_idx], score_dataframe
 
         return lambda_path[chosen_lambda_idx]
 
@@ -391,7 +432,7 @@ class StateSpaceOptimizer(_Optimizer):
         else:
             self._gradient_and_score_func = {
                 _Optimizer.Device.AUTO: marginalized_funcs.gradient_and_score,
-                _Optimizer.Device.CPU: marginalized_funcs.cython_gradient_and_score
+                _Optimizer.Device.CPU: marginalized_funcs.cpu_gradient_and_score
             }[device]
         return self
 
@@ -557,7 +598,7 @@ class OmegaOptimizer(StateSpaceOptimizer):
         else:
             self._gradient_and_score_func = {
                 _Optimizer.Device.AUTO: omega_funcs.gradient_and_score,
-                _Optimizer.Device.CPU: omega_funcs.cython_gradient_and_score
+                _Optimizer.Device.CPU: omega_funcs.cpu_gradient_and_score
             }[device]
         return self
 
