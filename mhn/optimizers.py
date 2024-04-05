@@ -362,6 +362,7 @@ class StateSpaceOptimizer(_Optimizer):
             lambda_path: np.ndarray = np.exp(np.linspace(np.log(lambda_min + 1e-10), np.log(lambda_max + 1e-10), steps))
         else:
             lambda_path = lambda_vector
+            steps = lambda_vector.size
 
         # shuffle the dataset and cut it into n folds
         shuffled_data = self._bin_datamatrix.copy()
