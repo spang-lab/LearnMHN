@@ -9,7 +9,7 @@ import warnings
 from enum import Enum
 import abc
 
-from tqdm import tqdm
+from tqdm.auto import trange
 import numpy as np
 import pandas as pd
 
@@ -362,6 +362,7 @@ class StateSpaceOptimizer(_Optimizer):
             lambda_path: np.ndarray = np.exp(np.linspace(np.log(lambda_min + 1e-10), np.log(lambda_max + 1e-10), steps))
         else:
             lambda_path = lambda_vector
+            steps = lambda_vector.size
 
         # shuffle the dataset and cut it into n folds
         shuffled_data = self._bin_datamatrix.copy()
@@ -381,15 +382,15 @@ class StateSpaceOptimizer(_Optimizer):
 
         disable_progressbar = not show_progressbar
 
-        for j in tqdm(range(nfolds), desc="Cross-Validation Folds", position=0, disable=disable_progressbar):
+        for j in trange(nfolds, desc="Cross-Validation Folds", position=0, disable=disable_progressbar):
             # designate one of folds as test set and the others as training set
             test_data = shuffled_data[np.where(folds == j)]
             test_data_container = StateContainer(test_data)
             train_data = shuffled_data[np.where(folds != j)]
             opt.load_data_matrix(train_data)
 
-            for i in tqdm(range(steps), desc="Lambda Evaluation", position=1, leave=False, disable=disable_progressbar):
-                opt.train(lam=lambda_path[i])
+            for i in trange(steps, desc="Lambda Evaluation", position=1, leave=False, disable=disable_progressbar):
+                opt.train(lam=lambda_path[i].item())
                 theta = opt.result.log_theta
                 scores[j, i] = self._gradient_and_score_func(theta, test_data_container)[1]
 
@@ -408,9 +409,9 @@ class StateSpaceOptimizer(_Optimizer):
                 "Mean Score": score_means,
                 "Standard Error": np.std(scores, axis=0) / np.sqrt(nfolds)
             })
-            return lambda_path[chosen_lambda_idx], score_dataframe
+            return lambda_path[chosen_lambda_idx].item(), score_dataframe
 
-        return lambda_path[chosen_lambda_idx]
+        return lambda_path[chosen_lambda_idx].item()
 
     def set_device(self, device: "StateSpaceOptimizer.Device"):
         """
