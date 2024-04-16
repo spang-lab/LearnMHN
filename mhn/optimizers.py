@@ -9,7 +9,7 @@ import warnings
 from enum import Enum
 import abc
 
-from tqdm import tqdm
+from tqdm.auto import trange
 import numpy as np
 import pandas as pd
 
@@ -382,14 +382,14 @@ class StateSpaceOptimizer(_Optimizer):
 
         disable_progressbar = not show_progressbar
 
-        for j in tqdm(range(nfolds), desc="Cross-Validation Folds", position=0, disable=disable_progressbar):
+        for j in trange(nfolds, desc="Cross-Validation Folds", position=0, disable=disable_progressbar):
             # designate one of folds as test set and the others as training set
             test_data = shuffled_data[np.where(folds == j)]
             test_data_container = StateContainer(test_data)
             train_data = shuffled_data[np.where(folds != j)]
             opt.load_data_matrix(train_data)
 
-            for i in tqdm(range(steps), desc="Lambda Evaluation", position=1, leave=False, disable=disable_progressbar):
+            for i in trange(steps, desc="Lambda Evaluation", position=1, leave=False, disable=disable_progressbar):
                 opt.train(lam=lambda_path[i])
                 theta = opt.result.log_theta
                 scores[j, i] = self._gradient_and_score_func(theta, test_data_container)[1]
