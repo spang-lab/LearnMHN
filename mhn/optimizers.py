@@ -390,7 +390,7 @@ class StateSpaceOptimizer(_Optimizer):
             opt.load_data_matrix(train_data)
 
             for i in trange(steps, desc="Lambda Evaluation", position=1, leave=False, disable=disable_progressbar):
-                opt.train(lam=lambda_path[i])
+                opt.train(lam=lambda_path[i].item())
                 theta = opt.result.log_theta
                 scores[j, i] = self._gradient_and_score_func(theta, test_data_container)[1]
 
@@ -409,9 +409,9 @@ class StateSpaceOptimizer(_Optimizer):
                 "Mean Score": score_means,
                 "Standard Error": np.std(scores, axis=0) / np.sqrt(nfolds)
             })
-            return lambda_path[chosen_lambda_idx], score_dataframe
+            return lambda_path[chosen_lambda_idx].item(), score_dataframe
 
-        return lambda_path[chosen_lambda_idx]
+        return lambda_path[chosen_lambda_idx].item()
 
     def set_device(self, device: "StateSpaceOptimizer.Device"):
         """

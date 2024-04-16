@@ -83,6 +83,33 @@ class TestStateSpaceOptimizer(BaseOptimizerTestClass.TestOptimizer):
         self.opt.load_data_matrix(random_data)
         self.opt.train()
 
+    def test_find_lambda(self):
+        """
+        Tests if cross-validation works with no errors.
+        """
+        nfolds = 2
+        steps = 3
+        lambda_min = 0.05
+        lambda_max = 0.5
+        lambda_vector = np.array([0.09, 0.1])
+
+        # test with lambda_min/max
+        np.random.seed(0)
+        best_lambda = self.opt.find_lambda(lambda_min, lambda_max, steps, nfolds)
+        np.random.seed(0)
+        best_lambda2, df = self.opt.find_lambda(lambda_min, lambda_max, steps, nfolds, return_lambda_scores=True)
+        # test reproducibility
+        self.assertEqual(best_lambda, best_lambda2)
+
+        # test with lambda_vector, also test that steps parameter is ignored
+        np.random.seed(0)
+        best_lambda = self.opt.find_lambda(lambda_vector=lambda_vector, steps=1, nfolds=nfolds)
+        np.random.seed(0)
+        best_lambda2, df = self.opt.find_lambda(lambda_vector=lambda_vector, steps=1, nfolds=nfolds,
+                                                return_lambda_scores=True)
+        # test reproducibility
+        self.assertEqual(best_lambda, best_lambda2)
+
     @staticmethod
     def _get_random_model(event_num: int) -> np.ndarray:
         """
