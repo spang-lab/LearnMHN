@@ -1,5 +1,5 @@
 """
-This submodule contains a class to represent Mutual Hazard Networks
+This submodule contains classes to represent Mutual Hazard Networks
 """
 # author(s): Y. Linda Hu, Stefan Vocht
 
@@ -76,7 +76,7 @@ class bits_fixed_n:
 
 class MHN:
     """
-    This class represents the Mutual Hazard Network.
+    This class represents a classical Mutual Hazard Network.
     """
 
     def __init__(self, log_theta: np.array, events: list[str] = None, meta: dict = None):
@@ -85,8 +85,11 @@ class MHN:
         :param events: (optional) list of strings containing the names of the events considered by the MHN
         :param meta: (optional) dictionary containing metadata for the MHN, e.g. parameters used to train the model
         """
-
+        n = log_theta.shape[1]
         self.log_theta = log_theta
+        if events is not None and len(events) != n:
+            raise ValueError(
+                f"the number of events ({len(events)}) does not align with the shape of log_theta ({n}x{n})")
         self.events = events
         self.meta = meta
 
@@ -138,8 +141,16 @@ class MHN:
         pd.DataFrame(self.log_theta, columns=self.events,
                      index=self.events).to_csv(f"{filename}.csv")
         if self.meta is not None:
+            json_serializable_meta = {}
+            # check if objects in self.meta are JSON serializable, if not, convert them to a string
+            for meta_key, meta_value in self.meta.items():
+                try:
+                    json.dumps(meta_value)
+                    json_serializable_meta[meta_key] = meta_value
+                except TypeError:
+                    json_serializable_meta[meta_key] = str(meta_value)
             with open(f"{filename}_meta.json", "x") as file:
-                json.dump(self.meta, file, indent=4)
+                json.dump(json_serializable_meta, file, indent=4)
 
     @classmethod
     def load(cls, filename: str, events: list[str] = None) -> MHN:
@@ -317,9 +328,78 @@ class MHN:
         return (A[i], (np.arange(self.log_theta.shape[0])[state.astype(bool)])[B[i].flatten()].reshape(-1, k))
 
 
-if __name__ == "__main__":
-    mhn = MHN.load("../likeliestorder/data/breast/log_theta")
-    n = mhn.log_theta.shape[0]
-    state = np.zeros(n, dtype=int)
-    state[:3] = 1
-    mhn.m_likeliest_orders(state, m=4)
+
+    def __str__(self):
+        if isinstance(self.meta, dict):
+            meta_data_string = '\n'.join([f'{key}:\n{value}\n' for key, value in self.meta.items()])
+        else:
+            meta_data_string = "None"
+        return f"EVENTS: \n{self.events}\n\n" \
+               f"THETA IN LOG FORMAT: \n {self.log_theta}\n\n" \
+               f"ADDITIONAL METADATA: \n\n{meta_data_string}"
+
+
+class OmegaMHN(MHN):
+    """
+    This class represents an OmegaMHN.
+    """
+
+    def sample_artificial_data(self, sample_num: int, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
+        """
+        Returns artificial data sampled from this MHN. Random values are generated with numpy, use np.random.seed()
+        to make results reproducible.
+
+        :param sample_num: number of samples in the generated data
+        :param as_dataframe: if True, the data is returned as a pandas DataFrame, else numpy matrix
+
+        :returns: array or DataFrame with samples as rows and events as columns
+        """
+        return self.get_equivalent_classical_mhn().sample_artificial_data(sample_num, as_dataframe)
+
+    def compute_marginal_likelihood(self, state: np.ndarray) -> float:
+        """
+        Computes the likelihood of observing a given state, where we consider the observation time to be an
+        exponential random variable with mean 1.
+
+        :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
+
+        :returns: the likelihood of observing the given state according to this MHN
+        """
+        return self.get_equivalent_classical_mhn().compute_marginal_likelihood(state)
+
+    def get_equivalent_classical_mhn(self) -> MHN:
+        """
+        This method returns a classical MHN object that represents the same distribution as this OmegaMHN object.
+
+        :returns: classical MHN object representing the same distribution as this OmegaMHN object
+        """
+        n = self.log_theta.shape[1]
+        # subtract observation rates from each element in each column
+        equivalent_classical_mhn = self.log_theta[:-1] - self.log_theta[-1]
+        # undo changes to the diagonal
+        equivalent_classical_mhn[range(n), range(n)] += self.log_theta[-1]
+        return MHN(equivalent_classical_mhn, self.events, self.meta)
+
+    def save(self, filename: str):
+        """
+        Save the MHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
+
+        :param filename: name of the CSV file without(!) the '.csv', JSON will be named accordingly
+        """
+        if self.events is None:
+            events_and_observation_labels = None
+        else:
+            events_and_observation_labels = self.events + ["Observation"]
+        pd.DataFrame(self.log_theta, columns=self.events,
+                     index=events_and_observation_labels).to_csv(f"{filename}.csv")
+        if self.meta is not None:
+            json_serializable_meta = {}
+            # check if objects in self.meta are JSON serializable, if not, convert them to a string
+            for meta_key, meta_value in self.meta.items():
+                try:
+                    json.dumps(meta_value)
+                    json_serializable_meta[meta_key] = meta_value
+                except TypeError:
+                    json_serializable_meta[meta_key] = str(meta_value)
+            with open(f"{filename}_meta.json", "x") as file:
+                json.dump(json_serializable_meta, file, indent=4)

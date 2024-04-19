@@ -58,33 +58,59 @@ installed on your device. You can check that in the terminal with
 nvcc --version
 ```
 If this command is recognized, then CUDA should be installed on your device.  
-You can also use the following function of the ```state_space_restriction``` submodule:
+You can also use the following function to test if the *mhn* package has access to 
+GPU-accelerated  functions:
 ```python
-from mhn.ssr import state_space_restriction
+import mhn
 
-print(state_space_restriction.cuda_available())
+print(mhn.cuda_available())
 
 # the three possible results are also available as constants:
 # CUDA_AVAILABLE, CUDA_NOT_AVAILABLE, CUDA_NOT_FUNCTIONAL
 
-if state_space_restriction.cuda_available() == state_space_restriction.CUDA_AVAILABLE:
+if mhn.cuda_available() == mhn.CUDA_AVAILABLE:
     print('CUDA is available')
 
-if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_AVAILABLE:
+if mhn.cuda_available() == mhn.CUDA_NOT_AVAILABLE:
     print('CUDA compiler nvcc was not present during installation')
 
-if state_space_restriction.cuda_available() == state_space_restriction.CUDA_NOT_FUNCTIONAL:
+if mhn.cuda_available() == mhn.CUDA_NOT_FUNCTIONAL:
     print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')
 ```
 
 Be especially aware of the ```CUDA_NOT_FUNCTIONAL``` case: This means that the CUDA compiler
 is installed on your device but basic functionalities like allocating memory on the GPU
-are not working as expected. In this case
-something is probably wrong with your CUDA drivers and you should check your CUDA
+are not working as expected.
+In this case something is probably wrong with your CUDA drivers and you should check your CUDA
 installation.
+
+If you cannot resolve ```CUDA_NOT_FUNCTIONAL``` by changing CUDA drivers, we recommend to install the package with CPU support only.
+This can be accomplished on Linux via
+```bash
+export INSTALL_MHN_NO_CUDA=1
+pip install mhn
+```
+and on Windows via
+```bash
+set INSTALL_MHN_NO_CUDA=1
+pip install mhn
+```
+
 
 If you installed ``nvcc`` after installing the ``mhn`` package, you have to
 reinstall this package to gain access to the CUDA functions.
+
+### Reinstalling the package for CUDA-related reasons
+
+If you want to reinstall the package because you want to either 
+enable or disable CUDA support, you should add the ```--no-cache-dir``` flag during 
+installation to ensure that *pip* does not use a cached version of the 
+package and that the package is actually recompiled:
+
+```bash
+pip uninstall mhn
+pip install mhn --no-cache-dir
+```
 
 ## How to train a new MHN
 

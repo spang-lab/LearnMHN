@@ -8,14 +8,26 @@ import platform
 from shutil import which
 import subprocess
 
-IS_WINDOWS = (platform.system() == 'Windows')   # get the operating system
-STATE_SIZE = 8                                  # the compiled code supports MHNs with maximum size of 32 * STATE_SIZE
-GENERATE_DEBUG_HTML = False                     # set this to True so that Cython generates a optimization HTML file
+VERSION = "0.0.17"                                 # current package version
 
-assert STATE_SIZE > 0                           # make sure STATE_SIZE is greater zero
+IS_WINDOWS = (platform.system() == 'Windows')      # get the operating system
+STATE_SIZE = 8                                     # the compiled code supports MHNs with maximum size of 32 * STATE_SIZE
+GENERATE_DEBUG_HTML = False                        # set this to True so that Cython generates an optimization HTML file
+NO_CUDA_INSTALLATION_FLAG = "INSTALL_MHN_NO_CUDA"  # set this environmental variable to install CPU version only
+
+assert STATE_SIZE > 0                              # make sure STATE_SIZE is greater zero
 
 with open("README.md", 'r') as f:
     long_description = f.read()
+
+
+def create_metadata_file(**metadata):
+    """
+    This function creates the METADATA file which contains metadata about this package that can be accessed at runtime.
+    """
+    with open("mhn/METADATA", "w") as file:
+        for key in metadata:
+            file.write(f"{key} {metadata[key]}\n")
 
 
 def compile_cuda_code(folder, cuda_filename, lib_name, *extra_compile_args, additional_cuda_files=None):
@@ -58,7 +70,12 @@ def compile_cuda_code(folder, cuda_filename, lib_name, *extra_compile_args, addi
 # check if nvcc (the cuda compiler) is available on the device
 nvcc_available = int(which('nvcc') is not None)
 
+# check if manual instruction not to use CUDA was given
+if NO_CUDA_INSTALLATION_FLAG in os.environ:
+    nvcc_available = 0
+
 libraries = []
+extra_cuda_link_args = []
 # only compile CUDA code if nvcc is available and if we do not create a source distribution
 if nvcc_available and 'sdist' not in sys.argv:
     libraries.append("CudaStateSpaceRestriction")
@@ -67,6 +84,11 @@ if nvcc_available and 'sdist' not in sys.argv:
                       additional_cuda_files=["./mhn/original/cuda_inverse_by_substitution.cu"])
     compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction", f'-I./mhn/original/',
                       additional_cuda_files=["./mhn/original/cuda_inverse_by_substitution.cu"])
+    if not IS_WINDOWS:
+        extra_cuda_link_args = [
+            '-Wl,-rpath,$ORIGIN/../original/',
+            '-Wl,-rpath,$ORIGIN/../ssr/',
+        ]
 
 
 # define compile options for the Cython files
@@ -88,10 +110,7 @@ ext_modules = [
             '/Ox' if IS_WINDOWS else '-O2',
             f'-DSTATE_SIZE={STATE_SIZE}'
         ],
-        extra_link_args=[] if IS_WINDOWS else [
-            '-Wl,-rpath,$ORIGIN',
-            '-Wl,-rpath-link,../original/',
-        ]
+        extra_link_args=extra_cuda_link_args
     ),
     Extension(
         "mhn.ssr.matrix_exponential",
@@ -115,10 +134,7 @@ ext_modules = [
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2'
         ],
-        extra_link_args=[] if IS_WINDOWS else [
-            '-Wl,-rpath,$ORIGIN',
-            '-Wl,-rpath-link,../ssr/',
-        ]
+        extra_link_args=extra_cuda_link_args
     ),
     Extension(
         "mhn.original.PerformanceCriticalCode",
@@ -139,10 +155,12 @@ ext_modules = [
 # we only want the source code in a source distribution
 if 'sdist' in sys.argv:
     ext_modules = []
+else:
+    create_metadata_file(version=VERSION)
 
 setup(
     name="mhn",
-    version="0.0.11",
+    version=VERSION,
     packages=find_packages(),
     author="Stefan Vocht, Kevin Rupp, Y. Linda Hu",
     description="A package to train and work with Mutual Hazard Networks",
@@ -160,8 +178,8 @@ setup(
     include_package_data=True,
     install_requires=[
         'numpy>=1.23.0',
-        'scipy>=1.8.0',
+        'scipy>=1.10.0',
         'pandas>=1.5.3'
     ],
-    python_requires='>=3.8'
+    python_requires='>=3.8, <3.12'
 )

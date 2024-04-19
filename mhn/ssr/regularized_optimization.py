@@ -31,6 +31,37 @@ def L1_(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     return theta_ / np.sqrt(theta_**2 + eps)
 
 
+def sym_sparse(theta: np.ndarray, eps: float = 1e-05) -> float:
+    """
+    A penalty which induces sparsity and soft symmetry.
+    """
+    theta_copy = theta.copy()
+    np.fill_diagonal(theta_copy, 0)
+    n = theta_copy.shape[0]
+    theta_sum = np.sum(
+        np.sqrt(theta_copy.T**2 + theta_copy**2 - theta_copy.T * theta_copy + eps)
+    )
+    # remove all eps that were added to the diagonal (which should be zero) in the equation above
+    theta_sum -= n * np.sqrt(eps)
+    # due to the symmetry of the formula, we get twice the value of what we want, so halve it
+    theta_sum *= 0.5
+    return theta_sum
+
+
+def sym_sparse_deriv(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
+    """
+    Derivative of the sym_sparse penalty.
+    """
+    theta_copy = theta.copy()
+    np.fill_diagonal(theta_copy, 0)
+    theta_sum_denominator = 2 * np.sqrt(
+        theta_copy.T**2 + theta_copy**2 - theta_copy.T * theta_copy + eps
+    )
+    theta_sum_numerator = 2 * theta_copy - theta_copy.T
+    theta_derivative = theta_sum_numerator / theta_sum_denominator
+    return theta_derivative
+
+
 def reg_state_space_restriction_score(theta: np.ndarray, states: StateContainer, lam: float,
                                       n: int, score_grad_container: list) -> float:
     """
@@ -75,7 +106,7 @@ def reg_state_space_restriction_gradient(theta: np.ndarray, states: StateContain
     return -(grad - lam * L1_(theta_)).flatten()
 
 
-def build_regularized_score_func(gradient_and_score_function: Callable):
+def build_regularized_score_func(gradient_and_score_function: Callable, penalty_function: Callable = L1):
     """
     This function gets a function which can compute a gradient and a score at the same time and returns a function
     which computes the score and adds a L1 regularization
@@ -96,11 +127,11 @@ def build_regularized_score_func(gradient_and_score_function: Callable):
         grad, score = gradient_and_score_function(theta, states)
         score_grad_container[0] = grad
 
-        return -(score - lam * L1(theta))
+        return -(score - lam * penalty_function(theta))
     return reg_score_func
 
 
-def build_regularized_gradient_func(gradient_and_score_function: Callable):
+def build_regularized_gradient_func(gradient_and_score_function: Callable, penalty_derivative: Callable = L1_):
     """
     This function gets a function which can compute a gradient and a score at the same time and returns a function
     which computes the gradient and adds the gradient of the L1 regularization
@@ -122,7 +153,7 @@ def build_regularized_gradient_func(gradient_and_score_function: Callable):
         grad = score_grad_container[0]
         if grad is None:
             grad, score = gradient_and_score_function(theta_, states)
-        return -(grad - lam * L1_(theta_)).flatten()
+        return -(grad - lam * penalty_derivative(theta_)).flatten()
     return reg_gradient_func
 
 
@@ -151,13 +182,16 @@ def learn_MHN(states: StateContainer, init: np.ndarray = None, lam: float = 0, m
     if init is None:
         init = create_indep_model(states)
 
+    init_shape = init.shape
+    init = init.flatten()
+
     # this container is given to the score and gradient function to communicate with each other
     score_and_gradient_container = [None, None]
 
     opt = minimize(fun=score_func, x0=init, args=(states, lam, n, score_and_gradient_container), method="L-BFGS-B",
                    jac=jacobi, options={'maxiter': maxit, 'disp': trace, 'gtol': reltol}, callback=callback)
 
-    opt.x = opt.x.reshape((n, n))
+    opt.x = opt.x.reshape(init_shape)
 
     if round_result:
         opt.x = np.around(opt.x, decimals=2)
