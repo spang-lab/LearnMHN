@@ -18,3 +18,4 @@ mhn/ssr/*.pyd
 mhn/ssr/*.dll
 mhn/ssr/*.exp
 mhn/ssr/*.lib
+build
