@@ -5,6 +5,8 @@ This submodule contains classes to represent Mutual Hazard Networks
 
 from __future__ import annotations
 
+from numpy.core.multiarray import array as array
+
 from .original import Likelihood
 from .ssr import state_space_restriction
 
@@ -327,11 +329,10 @@ class MHN:
             A[i] /= self.compute_marginal_likelihood(state=state)
         return (A[i], (np.arange(self.log_theta.shape[0])[state.astype(bool)])[B[i].flatten()].reshape(-1, k))
 
-
-
     def __str__(self):
         if isinstance(self.meta, dict):
-            meta_data_string = '\n'.join([f'{key}:\n{value}\n' for key, value in self.meta.items()])
+            meta_data_string = '\n'.join(
+                [f'{key}:\n{value}\n' for key, value in self.meta.items()])
         else:
             meta_data_string = "None"
         return f"EVENTS: \n{self.events}\n\n" \
@@ -403,3 +404,44 @@ class OmegaMHN(MHN):
                     json_serializable_meta[meta_key] = str(meta_value)
             with open(f"{filename}_meta.json", "x") as file:
                 json.dump(json_serializable_meta, file, indent=4)
+
+    def order_likelihood(self, sigma: tuple[int]) -> float:
+        """Marginal likelihood of an order of events.
+
+        Args:
+            sigma (tuple[int]): Tuple of integers where the integers represent the events. 
+
+        Returns:
+            float: Marginal likelihood of observing sigma.
+        """
+        return self.get_equivalent_classical_mhn().order_likelihood(sigma)
+
+    def likeliest_order(self, state: np.array, normalize: bool = False) -> tuple[float, np.array]:
+        """Returns the likeliest order in which a given state accumulated according to the MHN.
+
+        Args:
+            state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
+            events.
+            normalize (bool, optional): Whether to normalize among all possible accumulation orders.
+            Defaults to False.
+
+        Returns:
+            tuple[float, Any]: Likelihood of the likeliest accumulation order and the order itself.  
+        """
+        return self.get_equivalent_classical_mhn().likeliest_order(state, normalize)
+
+    def m_likeliest_orders(self, state: np.array, m: int, normalize: bool = False) -> tuple[np.array, np.array]:
+        """Returns the m likeliest orders in which a given state accumulated according to the MHN.
+
+        Args:
+            state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
+            events.
+            m (int): Number of likeliest orders to compute.
+            normalize (bool, optional): Whether to normalize among all possible accumulation orders.
+            Defaults to False.
+
+        Returns:
+            tuple[np.array, np.array]: Array of likelihoods of the likeliest accumulation order and
+            array of the order itself.
+        """
+        return self.get_equivalent_classical_mhn().m_likeliest_orders(state, m, normalize)
