@@ -346,10 +346,10 @@ class cMHNOptimizer(_Optimizer):
         self.load_data_matrix(df)
         return self
 
-    def find_lambda(self, lambda_min: float = 0.0001, lambda_max: float = 0.1,
-                    steps: int = 9, nfolds: int = 5, lambda_vector: np.ndarray | None = None,
-                    show_progressbar: bool = False, return_lambda_scores: bool = False
-                    ) -> float | tuple[float, pd.DataFrame]:
+    def lambda_from_cv(self, lambda_min: float = 0.0001, lambda_max: float = 0.1,
+                       steps: int = 9, nfolds: int = 5, lambda_vector: np.ndarray | None = None,
+                       show_progressbar: bool = False, return_lambda_scores: bool = False
+                       ) -> float | tuple[float, pd.DataFrame]:
         """
         Find the best value for lambda according to the "one standard error rule" through n-fold cross-validation.
 
