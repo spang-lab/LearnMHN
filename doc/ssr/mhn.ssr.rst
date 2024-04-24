@@ -21,14 +21,6 @@
 
 :ref:`View documentation <The *state_containers* submodule>`
 
-*matrix\_exponential*
----------------------
-
-.. automodule:: mhn.ssr.matrix_exponential
-    :noindex:
-
-:ref:`View documentation <The *matrix_exponential* submodule>`
-
 
 *regularized\_optimization*
 ---------------------------

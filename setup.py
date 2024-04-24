@@ -113,19 +113,6 @@ ext_modules = [
         extra_link_args=extra_cuda_link_args
     ),
     Extension(
-        "mhn.ssr.matrix_exponential",
-        ["./mhn/ssr/matrix_exponential.pyx"],
-        libraries=libraries,
-        library_dirs=["./mhn/ssr/", "./mhn/original/"],
-        # runtime_library_dirs=None if IS_WINDOWS else ["./mhn/ssr/", "./mhn/original/"],
-        include_dirs=['./mhn/ssr/', "./mhn/original/"],
-        extra_compile_args=[
-            '/Ox' if IS_WINDOWS else '-O2',
-            f'-DSTATE_SIZE={STATE_SIZE}'
-        ],
-        extra_link_args=[]
-    ),
-    Extension(
         "mhn.original.Likelihood",
         ["./mhn/original/Likelihood.pyx"],
         libraries=libraries,
