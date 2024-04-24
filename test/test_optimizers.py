@@ -95,18 +95,18 @@ class TestcMHNOptimizer(BaseOptimizerTestClass.TestOptimizer):
 
         # test with lambda_min/max
         np.random.seed(0)
-        best_lambda = self.opt.find_lambda(lambda_min, lambda_max, steps, nfolds)
+        best_lambda = self.opt.lambda_from_cv(lambda_min, lambda_max, steps, nfolds)
         np.random.seed(0)
-        best_lambda2, df = self.opt.find_lambda(lambda_min, lambda_max, steps, nfolds, return_lambda_scores=True)
+        best_lambda2, df = self.opt.lambda_from_cv(lambda_min, lambda_max, steps, nfolds, return_lambda_scores=True)
         # test reproducibility
         self.assertEqual(best_lambda, best_lambda2)
 
         # test with lambda_vector, also test that steps parameter is ignored
         np.random.seed(0)
-        best_lambda = self.opt.find_lambda(lambda_vector=lambda_vector, steps=1, nfolds=nfolds)
+        best_lambda = self.opt.lambda_from_cv(lambda_vector=lambda_vector, steps=1, nfolds=nfolds)
         np.random.seed(0)
-        best_lambda2, df = self.opt.find_lambda(lambda_vector=lambda_vector, steps=1, nfolds=nfolds,
-                                                return_lambda_scores=True)
+        best_lambda2, df = self.opt.lambda_from_cv(lambda_vector=lambda_vector, steps=1, nfolds=nfolds,
+                                                   return_lambda_scores=True)
         # test reproducibility
         self.assertEqual(best_lambda, best_lambda2)
 
