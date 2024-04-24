@@ -185,11 +185,11 @@ class cMHN:
 
         :returns: cMHN object
         """
-        df = pd.read_csv(f"{filename}.csv", index_col=0)
+        df = pd.read_csv(f"{filename}", index_col=0)
         if events is None and (df.columns != pd.Index([str(x) for x in range(len(df.columns))])).any():
             events = df.columns.to_list()
         try:
-            with open(f"{filename}_meta.json", "r") as file:
+            with open(f"{filename[:-4]}_meta.json", "r") as file:
                 meta = json.load(file)
         except FileNotFoundError:
             meta = None
@@ -330,7 +330,7 @@ class oMHN(cMHN):
         else:
             events_and_observation_labels = self.events + ["Observation"]
         pd.DataFrame(self.log_theta, columns=self.events,
-                     index=events_and_observation_labels).to_csv(f"{filename}.csv")
+                     index=events_and_observation_labels).to_csv(f"{filename}")
         if self.meta is not None:
             json_serializable_meta = {}
             # check if objects in self.meta are JSON serializable, if not, convert them to a string
@@ -340,5 +340,5 @@ class oMHN(cMHN):
                     json_serializable_meta[meta_key] = meta_value
                 except TypeError:
                     json_serializable_meta[meta_key] = str(meta_value)
-            with open(f"{filename}_meta.json", "x") as file:
+            with open(f"{filename[:-4]}_meta.json", "x") as file:
                 json.dump(json_serializable_meta, file, indent=4)
