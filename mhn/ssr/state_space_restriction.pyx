@@ -11,7 +11,7 @@ from libc.stdlib cimport malloc, free
 from libc.math cimport exp, log
 
 from mhn.ssr.state_containers cimport State, StateContainer
-from mhn.original.PerformanceCriticalCode cimport _compute_inverse, _compute_inverse_t
+from mhn.full_state_space.PerformanceCriticalCode cimport _compute_inverse, _compute_inverse_t
 
 import numpy as np
 cimport numpy as np

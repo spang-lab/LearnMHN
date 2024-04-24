@@ -4,7 +4,7 @@ The *Likelihood* submodule
 ==========================
 
 
-.. automodule:: mhn.original.Likelihood
+.. automodule:: mhn.full_state_space.Likelihood
    :members:
    :undoc-members:
    :show-inheritance:

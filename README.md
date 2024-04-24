@@ -35,7 +35,7 @@ pip install --upgrade mhn
 The package contains the original MHN functions implemented in Python. You import them from ``mhn.original``:
 
 ```python
-from mhn.original import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
+from mhn.full_state_space import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
 ```
 You can train an MHN using state-space restriction. The corresponding functions
 can be imported with

@@ -1,9 +1,9 @@
 :orphan:
 
-The *PerformanceCriticalCode* submodule
+The *RegularizedOptimization* submodule
 =======================================
 
-.. automodule:: mhn.original.PerformanceCriticalCode
+.. automodule:: mhn.full_state_space.RegularizedOptimization
    :members:
    :undoc-members:
    :show-inheritance:

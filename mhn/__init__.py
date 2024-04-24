@@ -1,7 +1,7 @@
 from . import optimizers
 from . import model
 from . import ssr
-from . import original
+from . import full_state_space
 from . import omega_mhn
 
 from .ssr.state_space_restriction import cuda_available

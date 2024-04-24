@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from mhn import model
-from mhn.original import ModelConstruction, UtilityFunctions, Likelihood
+from mhn.full_state_space import ModelConstruction, UtilityFunctions, Likelihood
 
 
 class TestMHN(unittest.TestCase):

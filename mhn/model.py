@@ -5,7 +5,7 @@ This submodule contains classes to represent Mutual Hazard Networks
 
 from __future__ import annotations
 
-from .original import Likelihood
+from .full_state_space import Likelihood
 from .ssr import state_space_restriction
 
 import numpy as np

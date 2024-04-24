@@ -27,16 +27,16 @@ Directly callable functions and constants
    <br>
    <hr>
 
-The *original* subpackage
--------------------------
+The *full_state_space* subpackage
+---------------------------------
 
-.. automodule:: mhn.original
+.. automodule:: mhn.full_state_space
     :noindex:
 
 .. toctree::
     :maxdepth: 1
 
-    View documentation of original <original/mhn.original>
+    View documentation of full_state_space <full_state_space/mhn.full_state_space>
 
 The *ssr* subpackage
 --------------------

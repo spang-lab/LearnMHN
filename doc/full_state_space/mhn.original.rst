@@ -1,5 +1,5 @@
-*original*: The package for working on full state-space
-=======================================================
+*full_state_space*: The package for working on full state-space
+===============================================================
 
 This part of the mhn package contains functions to compute and work with MHNs on the full state-space.
 
@@ -7,7 +7,7 @@ The structure of this part of the package is very similar to the original R impl
 
 *Likelihood*
 ------------
-.. automodule:: mhn.original.Likelihood
+.. automodule:: mhn.full_state_space.Likelihood
     :noindex:
 
 :ref:`View documentation <The *Likelihood* submodule>`
@@ -16,7 +16,7 @@ The structure of this part of the package is very similar to the original R impl
 *ModelConstruction*
 -------------------
 
-.. automodule:: mhn.original.ModelConstruction
+.. automodule:: mhn.full_state_space.ModelConstruction
     :noindex:
 
 :ref:`View documentation <The *ModelConstruction* submodule>`
@@ -24,7 +24,7 @@ The structure of this part of the package is very similar to the original R impl
 *PerformanceCriticalCode*
 -------------------------
 
-.. automodule:: mhn.original.PerformanceCriticalCode
+.. automodule:: mhn.full_state_space.PerformanceCriticalCode
     :noindex:
 
 :ref:`View documentation <The *PerformanceCriticalCode* submodule>`
@@ -32,7 +32,7 @@ The structure of this part of the package is very similar to the original R impl
 *RegularizedOptimization*
 -------------------------
 
-.. automodule:: mhn.original.RegularizedOptimization
+.. automodule:: mhn.full_state_space.RegularizedOptimization
     :noindex:
 
 :ref:`View documentation <The *RegularizedOptimization* submodule>`
@@ -40,7 +40,7 @@ The structure of this part of the package is very similar to the original R impl
 *UtilityFunctions*
 ------------------
 
-.. automodule:: mhn.original.UtilityFunctions
+.. automodule:: mhn.full_state_space.UtilityFunctions
     :noindex:
 
 :ref:`View documentation <The *UtilityFunctions* submodule>`
