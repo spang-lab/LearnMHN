@@ -27,8 +27,6 @@ from .ssr.state_containers import create_indep_model
 from .ssr.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
 from mhn.ssr import state_space_restriction as marginalized_funcs
 
-from mhn.ssr import matrix_exponential as mat_exp
-
 import mhn.omega_mhn.with_ssr as omega_funcs
 
 
@@ -468,81 +466,50 @@ class StateSpaceOptimizer(_Optimizer):
         return self._bin_datamatrix
 
 
-class DUAOptimizer(_Optimizer):
+class OmegaOptimizer(StateSpaceOptimizer):
     """
-    This optimizer can make use of age information for each state in the data and can learn an MHN from that using
-    methods described in Rupp et al.(2021).
+    This optimizer models the data with the OmegaMHN.
     """
 
     def __init__(self):
         super().__init__()
-        # the matrix exponential functions expect an additional parameter eps for the accuracy of the result
-        # therefore, we have two separate "gradient_and_score" members, one that takes eps as parameter, and one that
-        # does not and which we use in the train() method
-        # the eps can be specified as parameter in the train() method
-        self.__gradient_and_score_func_with_eps = mat_exp.cython_gradient_and_score
-        self._gradient_and_score_func = lambda theta, data: self.__gradient_and_score_func_with_eps(theta, data, 1e-2)
-        self._state_ages = None
+        self._gradient_and_score_func = omega_funcs.gradient_and_score
+        self._regularized_score_func_builder = lambda grad_score_func: \
+            omega_funcs.build_regularized_score_func(grad_score_func, omega_funcs.L1)
+        self._regularized_gradient_func_builder = lambda grad_score_func: \
+            omega_funcs.build_regularized_gradient_func(grad_score_func, omega_funcs.L1_)
+        self._OutputMHNClass = model.OmegaMHN
 
-    def load_data(self, data_matrix: np.ndarray, state_ages: np.ndarray):
-        """
-        Load training data consisting of a data matrix containing the observed states (rows represent samples
-        and columns genes) and an array containing the ages of each state in the data matrix. Thus, the number of ages
-        must align with the number of rows in the given data matrix.
-
-        :param data_matrix: two-dimensional numpy array which should have dtype=np.int32
-        :param state_ages: one-dimensional numpy array which should have dtype=np.double
-        """
-        data_matrix = self._preprocess_binary_matrix(data_matrix)
-        if data_matrix.shape[0] != state_ages.shape[0]:
-            raise ValueError("The number of samples in the data matrix must align with the number of ages given")
-
-        if not np.all(state_ages[:-1] <= state_ages[1:]):
-            warnings.warn("The data is not sorted by age yet. This should be no problem, but if you expected your data"
-                          "to be sorted by age, something went wrong.")
-        self._data = StateAgeContainer(data_matrix, state_ages)
-        self._bin_datamatrix = data_matrix
-        self._state_ages = state_ages
-        return self
-
-    def set_device(self, device: _Optimizer.Device):
-        """
-        Set the device that should be used for training.
-
-        You have three options:
-            Device.AUTO: (default) automatically select the device that is likely to match the data
-            Device.CPU:  use the CPU implementations to compute the scores and gradients
-            Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
-
-        The Device enum is part of this optimizer class.
-        """
-        super().set_device(device)
-        if device == _Optimizer.Device.GPU:
-            raise NotImplementedError("There is currently no GPU version available for the DUA algorithm,"
-                                      " might be added later")
-        else:
-            self.__gradient_and_score_func_with_eps = mat_exp.cython_gradient_and_score
-        return self
-
-    def train(self, lam: float = 0, eps: float = 1e-2, maxit: int = 5000, trace: bool = False,
-              reltol: float = 1e-7, round_result: bool = True) -> model.MHN:
+    def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
+              reltol: float = 1e-7, round_result: bool = True) -> model.OmegaMHN:
         """
         Use this function to learn a new MHN from the data given to this optimizer.
 
-        :param lam: tuning parameter lambda for the L1 regularization
-        :param eps: accuracy of the matrix exponential
+        :param lam: tuning parameter lambda for regularization (default: 1/(number of samples in the dataset))
         :param maxit: maximum number of training iterations
         :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
         :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
         :param round_result: if True, the result is rounded to two decimal places
         :return: trained model
         """
-        self._gradient_and_score_func = lambda theta, data: self.__gradient_and_score_func_with_eps(theta, data, eps)
-        return super().train(lam, maxit, trace, reltol, round_result)
+        if self._data is None:
+            raise ValueError("You have to load data before training!")
 
-    @property
-    def result(self):
-        return MHN(log_theta=self.__result)
+        undo_init_theta = False
+        if self._init_theta is None:
+            undo_init_theta = True
+            vanilla_theta = create_indep_model(self._data)
+            n = vanilla_theta.shape[0]
+            omega_theta = np.zeros((n + 1, n))
+            omega_theta[:n] = vanilla_theta
+            self._init_theta = omega_theta
+
+        super().train(lam, maxit, trace, reltol, round_result)
+
+        if undo_init_theta:
+            self._init_theta = None
+
+        return self.result
 
     @property
     def result(self) -> model.OmegaMHN:
