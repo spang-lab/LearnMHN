@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 
 from mhn.ssr import state_space_restriction
-from mhn.original import Likelihood, ModelConstruction, PerformanceCriticalCode
+from mhn.full_state_space import Likelihood, ModelConstruction, PerformanceCriticalCode
 
 
 class TestCudaGradient(unittest.TestCase):

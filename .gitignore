@@ -6,12 +6,12 @@ __pycache__
 mhn.egg-info
 
 # cython build files
-mhn/original/*.so
-mhn/original/*.c
-mhn/original/*.pyd
-mhn/original/*.dll
-mhn/original/*.exp
-mhn/original/*.lib
+mhn/full_state_space/*.so
+mhn/full_state_space/*.c
+mhn/full_state_space/*.pyd
+mhn/full_state_space/*.dll
+mhn/full_state_space/*.exp
+mhn/full_state_space/*.lib
 mhn/ssr/*.so
 mhn/ssr/*.c
 mhn/ssr/*.pyd

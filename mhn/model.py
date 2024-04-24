@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from numpy.core.multiarray import array as array
 
-from .original import Likelihood
+from .full_state_space import Likelihood
 from .ssr import state_space_restriction
 
 from cmath import log

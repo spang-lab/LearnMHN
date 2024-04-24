@@ -4,7 +4,7 @@ The *ModelConstruction* submodule
 =================================
 
 
-.. automodule:: mhn.original.ModelConstruction
+.. automodule:: mhn.full_state_space.ModelConstruction
    :members:
    :undoc-members:
    :show-inheritance:

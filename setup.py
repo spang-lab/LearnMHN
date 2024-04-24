@@ -80,13 +80,14 @@ extra_cuda_link_args = []
 if nvcc_available and 'sdist' not in sys.argv:
     libraries.append("CudaStateSpaceRestriction")
     libraries.append("CudaFullStateSpace")
-    compile_cuda_code("./mhn/original/", "cuda_full_state_space.cu", "CudaFullStateSpace",
-                      additional_cuda_files=["./mhn/original/cuda_inverse_by_substitution.cu"])
-    compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction", f'-I./mhn/original/',
-                      additional_cuda_files=["./mhn/original/cuda_inverse_by_substitution.cu"])
+    compile_cuda_code("./mhn/full_state_space/", "cuda_full_state_space.cu", "CudaFullStateSpace",
+                      additional_cuda_files=["./mhn/full_state_space/cuda_inverse_by_substitution.cu"])
+    compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction",
+                      f'-I./mhn/full_state_space/',
+                      additional_cuda_files=["./mhn/full_state_space/cuda_inverse_by_substitution.cu"])
     if not IS_WINDOWS:
         extra_cuda_link_args = [
-            '-Wl,-rpath,$ORIGIN/../original/',
+            '-Wl,-rpath,$ORIGIN/../full_state_space/',
             '-Wl,-rpath,$ORIGIN/../ssr/',
         ]
 
@@ -104,8 +105,8 @@ ext_modules = [
         "mhn.ssr.state_space_restriction",
         ["./mhn/ssr/state_space_restriction.pyx"],
         libraries=libraries,
-        library_dirs=["./mhn/ssr/", "./mhn/original/"],
-        include_dirs=['./mhn/ssr/', "./mhn/original/"],
+        library_dirs=["./mhn/ssr/", "./mhn/full_state_space/"],
+        include_dirs=['./mhn/ssr/', "./mhn/full_state_space/"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2',
             f'-DSTATE_SIZE={STATE_SIZE}'
@@ -113,26 +114,26 @@ ext_modules = [
         extra_link_args=extra_cuda_link_args
     ),
     Extension(
-        "mhn.original.Likelihood",
-        ["./mhn/original/Likelihood.pyx"],
+        "mhn.full_state_space.Likelihood",
+        ["./mhn/full_state_space/Likelihood.pyx"],
         libraries=libraries,
-        library_dirs=["./mhn/ssr/", "./mhn/original/"],
-        include_dirs=['./mhn/ssr/', "./mhn/original/"],
+        library_dirs=["./mhn/ssr/", "./mhn/full_state_space/"],
+        include_dirs=['./mhn/ssr/', "./mhn/full_state_space/"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2'
         ],
         extra_link_args=extra_cuda_link_args
     ),
     Extension(
-        "mhn.original.PerformanceCriticalCode",
-        ["./mhn/original/PerformanceCriticalCode.pyx"],
+        "mhn.full_state_space.PerformanceCriticalCode",
+        ["./mhn/full_state_space/PerformanceCriticalCode.pyx"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2',
         ]
     ),
     Extension(
-        "mhn.original.ModelConstruction",
-        ["./mhn/original/ModelConstruction.pyx"],
+        "mhn.full_state_space.ModelConstruction",
+        ["./mhn/full_state_space/ModelConstruction.pyx"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2'
         ]

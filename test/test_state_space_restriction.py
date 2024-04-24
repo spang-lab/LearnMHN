@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 from mhn.ssr import state_space_restriction
 from mhn.ssr.state_containers import StateContainer
-from mhn.original import Likelihood, UtilityFunctions, ModelConstruction
+from mhn.full_state_space import Likelihood, UtilityFunctions, ModelConstruction
 
 
 class TestCythonGradient(unittest.TestCase):
@@ -73,7 +73,7 @@ class TestCythonGradient(unittest.TestCase):
         # make sure that there are mutations in two different "parts" of the "State" C struct
         random_sample[:, 0] = 1
         random_sample[:, -1] = 1
-        # compute original gradient and score
+        # compute full_state_space gradient and score
         gradient1, score1 = state_space_restriction.cpu_gradient_and_score(theta, StateContainer(random_sample))
         # permute the sample and theta, compute gradient and score and reverse the permutation
         permutation = np.random.permutation(n)
@@ -127,7 +127,7 @@ class TestCudaGradient(unittest.TestCase):
         # make sure that there are mutations in two different "parts" of the "State" C struct
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
-        # compute original gradient and score
+        # compute full_state_space gradient and score
         gradient1, score1 = state_space_restriction.cuda_gradient_and_score(theta, StateContainer(random_sample))
         # permute the sample and theta, compute gradient and score and reverse the permutation
         permutation = np.random.permutation(n)

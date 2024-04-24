@@ -5,4 +5,3 @@ compute scores and their gradients that are needed for learning MHNs much faster
 
 from . import state_containers
 from . import state_space_restriction
-from . import matrix_exponential

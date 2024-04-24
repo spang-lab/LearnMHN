@@ -3,8 +3,8 @@ from __future__ import annotations
 import unittest
 import numpy as np
 import mhn
-from mhn.optimizers import _Optimizer, StateSpaceOptimizer, DUAOptimizer, OmegaOptimizer
-from mhn.original import ModelConstruction, Likelihood, UtilityFunctions
+from mhn.optimizers import _Optimizer, StateSpaceOptimizer, OmegaOptimizer
+from mhn.full_state_space import ModelConstruction, Likelihood, UtilityFunctions
 
 
 class BaseOptimizerTestClass:
