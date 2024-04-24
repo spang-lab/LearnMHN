@@ -4,7 +4,7 @@ Available Optimizers in the *optimizers* module
 You can use the following *Optimizer* classes of the *mhn* package to learn a new
 MHN for given training data:
 
-.. autoclass:: mhn.optimizers.StateSpaceOptimizer
+.. autoclass:: mhn.optimizers.cMHNOptimizer
    :members:
    :undoc-members:
    :inherited-members:
@@ -16,7 +16,7 @@ MHN for given training data:
    <br>
 
 
-.. autoclass:: mhn.optimizers.OmegaOptimizer
+.. autoclass:: mhn.optimizers.oMHNOptimizer
    :members:
    :undoc-members:
    :inherited-members:

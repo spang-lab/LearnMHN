@@ -43,9 +43,11 @@ can be imported with
 from mhn.ssr import state_space_restriction, state_containers
 ```
 Training a new MHN can be as simple as writing the following few lines of code:
+
 ```python
-from mhn.optimizers import StateSpaceOptimizer
-opt = StateSpaceOptimizer()
+from mhn.optimizers import cMHNOptimizer
+
+opt = cMHNOptimizer()
 opt = opt.load_data_from_csv("path/to/training_data")
 new_mhn = opt.train()
 new_mhn.save("path/to/saving/location")
@@ -118,10 +120,12 @@ pip install mhn --no-cache-dir
 ## How to Train a New MHN
 
 The simplest way to train a new MHN is to import the ```optimizers``` module and
-use the ```StateSpaceOptimizer``` class.
+use the ```cMHNOptimizer``` class.
+
 ```python
-from mhn.optimizers import StateSpaceOptimizer
-opt = StateSpaceOptimizer()
+from mhn.optimizers import cMHNOptimizer
+
+opt = cMHNOptimizer()
 ```
 We can specify the data that we want our MHN to be trained on:
 ```python
@@ -147,11 +151,11 @@ If you work with a CUDA-capable device, you can choose which device you want to 
 train a new MHN:
 ```python
 # uses both CPU and GPU depending on the number of mutations in the individual sample
-opt.set_device(StateSpaceOptimizer.Device.AUTO)
+opt.set_device(cMHNOptimizer.Device.AUTO)
 # use the CPU to compute log-likelihood score and gradient
-opt.set_device(StateSpaceOptimizer.Device.CPU)
+opt.set_device(cMHNOptimizer.Device.CPU)
 # use the GPU to compute log-likelihood score and gradient
-opt.set_device(StateSpaceOptimizer.Device.GPU)
+opt.set_device(cMHNOptimizer.Device.GPU)
 # you can also access the Device enum directly with an Optimizer object
 opt.set_device(opt.Device.AUTO)
 ```
@@ -179,9 +183,11 @@ opt.set_callback_func(some_callback_function)
 ```
 
 Finally, you can train a new MHN with
+
 ```python
-from mhn.optimizers import StateSpaceOptimizer
-opt = StateSpaceOptimizer()
+from mhn.optimizers import cMHNOptimizer
+
+opt = cMHNOptimizer()
 opt = opt.load_data_from_csv(filename, delimiter)
 opt.train()
 ```
