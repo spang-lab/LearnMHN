@@ -8,7 +8,7 @@ import platform
 from shutil import which
 import subprocess
 
-VERSION = "0.0.20"                                 # current package version
+VERSION = "1.0.0"                                  # current package version
 
 IS_WINDOWS = (platform.system() == 'Windows')      # get the operating system
 STATE_SIZE = 8                                     # the compiled code supports MHNs with maximum size of 32 * STATE_SIZE
