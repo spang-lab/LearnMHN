@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 import numpy as np
 import mhn
-from mhn.optimizers import _Optimizer, StateSpaceOptimizer, OmegaOptimizer
+from mhn.optimizers import _Optimizer, cMHNOptimizer, oMHNOptimizer
 from mhn.full_state_space import ModelConstruction, Likelihood, UtilityFunctions
 
 
@@ -64,12 +64,12 @@ class BaseOptimizerTestClass:
             self.assertRaises(ValueError, lambda: self.opt.set_penalty("L1"))
 
 
-class TestStateSpaceOptimizer(BaseOptimizerTestClass.TestOptimizer):
+class TestcMHNOptimizer(BaseOptimizerTestClass.TestOptimizer):
 
     def setUp(self) -> None:
         super().setUp()
         dummy_data = np.random.choice([0, 1], (20, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
-        self.opt = StateSpaceOptimizer()
+        self.opt = cMHNOptimizer()
         self.opt.load_data_matrix(dummy_data)
 
     def test_learn_model(self):
@@ -118,12 +118,12 @@ class TestStateSpaceOptimizer(BaseOptimizerTestClass.TestOptimizer):
         return ModelConstruction.random_theta(event_num, sparsity=0.3)
 
 
-class TestOmegaOptimizer(TestStateSpaceOptimizer):
+class TestoMHNOptimizer(TestcMHNOptimizer):
 
     def setUp(self) -> None:
         super().setUp()
         dummy_data = np.random.choice([0, 1], (20, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
-        self.opt = OmegaOptimizer()
+        self.opt = oMHNOptimizer()
         self.opt.load_data_matrix(dummy_data)
 
     def test_init_stays_same(self):
@@ -141,7 +141,7 @@ class TestOmegaOptimizer(TestStateSpaceOptimizer):
         """
         Helper method to create a random MHN.
         """
-        classical_theta = TestStateSpaceOptimizer._get_random_model(event_num)
+        classical_theta = TestcMHNOptimizer._get_random_model(event_num)
         return np.vstack((classical_theta, np.random.random((1, event_num))))
 
 

@@ -303,7 +303,7 @@ class _Optimizer(abc.ABC):
         L1, SYM_SPARSE = range(2)
 
 
-class StateSpaceOptimizer(_Optimizer):
+class cMHNOptimizer(_Optimizer):
     """
     This optimizer uses state-space restriction to optimize an MHN on data with no age information for the individual
     samples.
@@ -434,7 +434,7 @@ class StateSpaceOptimizer(_Optimizer):
 
         return lambda_path[chosen_lambda_idx].item()
 
-    def set_device(self, device: "StateSpaceOptimizer.Device"):
+    def set_device(self, device: "cMHNOptimizer.Device"):
         """
         Set the device that should be used for training.
 
@@ -466,7 +466,7 @@ class StateSpaceOptimizer(_Optimizer):
         return self._bin_datamatrix
 
 
-class OmegaOptimizer(StateSpaceOptimizer):
+class oMHNOptimizer(cMHNOptimizer):
     """
     This optimizer models the data with the OmegaMHN.
     """
@@ -554,11 +554,11 @@ class OmegaOptimizer(StateSpaceOptimizer):
 
         The Penalty enum is part of this optimizer class.
         """
-        if not isinstance(penalty, OmegaOptimizer.Penalty):
-            raise ValueError(f"The given penalty is not an instance of {OmegaOptimizer.Penalty}")
+        if not isinstance(penalty, oMHNOptimizer.Penalty):
+            raise ValueError(f"The given penalty is not an instance of {oMHNOptimizer.Penalty}")
         penalty_score, penalty_gradient = {
-            OmegaOptimizer.Penalty.L1: (omega_funcs.L1, omega_funcs.L1_),
-            OmegaOptimizer.Penalty.SYM_SPARSE: (omega_funcs.sym_sparse, omega_funcs.sym_sparse_deriv)
+            oMHNOptimizer.Penalty.L1: (omega_funcs.L1, omega_funcs.L1_),
+            oMHNOptimizer.Penalty.SYM_SPARSE: (omega_funcs.sym_sparse, omega_funcs.sym_sparse_deriv)
         }[penalty]
         self._regularized_score_func_builder = lambda grad_score_func: \
             omega_funcs.build_regularized_score_func(grad_score_func, penalty_score)
