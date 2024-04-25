@@ -381,7 +381,7 @@ class cMHN:
                     json_serializable_meta[meta_key] = meta_value
                 except TypeError:
                     json_serializable_meta[meta_key] = str(meta_value)
-            with open(f"{filename[:-4]}_meta.json", "x") as file:
+            with open(f"{filename[:-4]}_meta.json", "w") as file:
                 json.dump(json_serializable_meta, file, indent=4)
 
     @classmethod
@@ -549,7 +549,7 @@ class oMHN(cMHN):
                     json_serializable_meta[meta_key] = meta_value
                 except TypeError:
                     json_serializable_meta[meta_key] = str(meta_value)
-            with open(f"{filename[:-4]}_meta.json", "x") as file:
+            with open(f"{filename[:-4]}_meta.json", "w") as file:
                 json.dump(json_serializable_meta, file, indent=4)
 
     def order_likelihood(self, sigma: tuple[int]) -> float:
