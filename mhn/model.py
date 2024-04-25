@@ -368,10 +368,10 @@ class cMHN:
         """
         Save the cMHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
 
-        :param filename: name of the CSV file without(!) the '.csv', JSON will be named accordingly
+        :param filename: name of the CSV file, JSON will be named accordingly
         """
         pd.DataFrame(self.log_theta, columns=self.events,
-                     index=self.events).to_csv(f"{filename}.csv")
+                     index=self.events).to_csv(f"{filename}")
         if self.meta is not None:
             json_serializable_meta = {}
             # check if objects in self.meta are JSON serializable, if not, convert them to a string
@@ -381,7 +381,7 @@ class cMHN:
                     json_serializable_meta[meta_key] = meta_value
                 except TypeError:
                     json_serializable_meta[meta_key] = str(meta_value)
-            with open(f"{filename}_meta.json", "x") as file:
+            with open(f"{filename[:-4]}_meta.json", "x") as file:
                 json.dump(json_serializable_meta, file, indent=4)
 
     @classmethod
@@ -389,7 +389,7 @@ class cMHN:
         """
         Load an cMHN object from a CSV file.
 
-        :param filename: name of the CSV file without(!) the '.csv'
+        :param filename: name of the CSV file
         :param events: list of strings containing the names of the events considered by the cMHN
 
         :returns: cMHN object
@@ -532,7 +532,7 @@ class oMHN(cMHN):
         """
         Save the oMHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
 
-        :param filename: name of the CSV file without(!) the '.csv', JSON will be named accordingly
+        :param filename: name of the CSV file, JSON will be named accordingly
         """
         if self.events is None:
             events_and_observation_labels = None
