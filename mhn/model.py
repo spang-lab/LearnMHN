@@ -223,8 +223,8 @@ class cMHN:
     def _get_observation_rate(self, state: np.ndarray) -> float:
         return 1.
 
-        def get_restr_diag(self, events: np.array):
-        k = events.sum()
+    def get_restr_diag(self, state: np.array):
+        k = state.sum()
         nx = 1 << k
         n = self.log_theta.shape[0]
         diag = np.zeros(nx)
