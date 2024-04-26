@@ -19,6 +19,7 @@ import matplotlib.colors as colors
 
 from . import utilities
 from .training import likelihood_cmhn
+import warnings
 
 from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
 import json
@@ -136,9 +137,11 @@ class cMHN:
         if type(initial_state) is np.ndarray:
             initial_state = initial_state.astype(np.int32)
             if initial_state.size != self.log_theta.shape[1]:
-                raise ValueError(f"The initial state must be of size {self.log_theta.shape[1]}")
+                raise ValueError(
+                    f"The initial state must be of size {self.log_theta.shape[1]}")
             if not set(initial_state.flatten()).issubset({0, 1}):
-                raise ValueError("The initial state array must only contain 0s and 1s")
+                raise ValueError(
+                    "The initial state array must only contain 0s and 1s")
         else:
             init_state_copy = list(initial_state)
             initial_state = np.zeros(self.log_theta.shape[1], dtype=np.int32)
@@ -440,13 +443,22 @@ class cMHN:
                 If set to True, plots the logarithmic theta matrix, else plots the exponential theta matrix.
                 Defaults to True.
         """
+
         if ax is None:
-            _, ax = plt.subplots()
+            _, ax = plt.subplots(ncols=2, figsize=(10, 8))
+        else:
+            # check if ax is 2 dimensional
+            if not isinstance(ax, np.ndarray) or ax.shape != (1, 2):
+                # warn and create new axes object
+                warnings.warn(
+                    "Provided axes object is not 2-dimensional, creating new axes object")
+                _, ax = plt.subplots(ncols=2, figsize=(10, 8))
 
         if logarithmic:
             _max = np.abs(self.log_theta).max()
-            theta = self.log_theta
-            im = ax.imshow(
+            theta = self.log_theta.copy()
+            np.fill_diagonal(theta, 0)
+            im = ax[0].imshow(
                 self.log_theta,
                 cmap=cmap,
                 vmin=-_max, vmax=_max)
@@ -454,34 +466,35 @@ class cMHN:
             _max = np.abs(self.log_theta).max()
             _max = np.exp(_max)
             theta = np.around(np.exp(self.log_theta), decimals=2)
-            im = ax.imshow(
+            np.fill_diagonal(theta, 0)
+            im = ax[0].imshow(
                 theta,
                 norm=colors.LogNorm(vmin=1 / _max, vmax=_max),
                 cmap=cmap)
         if colorbar:
-            cbar = plt.colorbar(im, ax=ax)
+            cbar_0 = plt.colorbar(im, ax=ax)
             if not logarithmic:
-                cbar.minorticks_off()
+                cbar_0.minorticks_off()
                 ticks = np.exp(np.linspace(np.log(1 / _max), np.log(_max), 9))
                 labels = [f'{t:.1e}'[:-3] for t in ticks]
-                cbar.set_ticks(
+                cbar_0.set_ticks(
                     ticks, labels=labels
                 )
-        ax.tick_params(length=0)
-        ax.set_yticks(
+        ax[0].tick_params(length=0)
+        ax[0].set_yticks(
             np.arange(0, self.log_theta.shape[0], 1),
             (self.events or list(range(self.log_theta.shape[1]))) +
             (["Observation"] if self.log_theta.shape[0] == self.log_theta.shape[1] + 1 else []))
-        ax.set_xticks(
+        ax[0].set_xticks(
             np.arange(0, self.log_theta.shape[1], 1),
             self.events)
-        ax.tick_params(axis="x", rotation=90)
+        ax[0].tick_params(axis="x", rotation=90)
         if annot:
             for i in range(self.log_theta.shape[0]):
                 for j in range(self.log_theta.shape[1]):
                     if annot is True or np.abs(self.log_theta[i, j]) >= annot:
-                        text = ax.text(j, i, theta[i, j],
-                                       ha="center", va="center")
+                        text = ax[0].text(j, i, theta[i, j],
+                                          ha="center", va="center")
 
 
 class oMHN(cMHN):
