@@ -6,7 +6,7 @@ This file contains unit tests for the full state-space functions of the mhn pack
 import unittest
 import numpy as np
 
-from mhn.ssr import state_space_restriction
+from mhn.training import state_space_restriction
 from mhn.full_state_space import Likelihood, ModelConstruction, PerformanceCriticalCode
 
 

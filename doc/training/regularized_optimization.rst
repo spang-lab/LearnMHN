@@ -3,6 +3,6 @@
 The *regularized_optimization* submodule
 ----------------------------------------
 
-.. automodule:: mhn.ssr.regularized_optimization
+.. automodule:: mhn.training.regularized_optimization
    :members:
    :undoc-members:

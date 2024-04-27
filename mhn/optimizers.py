@@ -15,11 +15,11 @@ import pandas as pd
 
 from . import model
 
-from mhn.ssr import regularized_optimization as reg_optim
-from .ssr.state_containers import StateContainer, StateAgeContainer
-from .ssr.state_containers import create_indep_model
-from .ssr.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
-from mhn.ssr import state_space_restriction as marginalized_funcs
+from mhn.training import regularized_optimization as reg_optim
+from .training.state_containers import StateContainer, StateAgeContainer
+from .training.state_containers import create_indep_model
+from .training.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
+from mhn.training import state_space_restriction as marginalized_funcs
 
 import mhn.omega_mhn.with_ssr as omega_funcs
 
