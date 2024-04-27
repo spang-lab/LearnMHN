@@ -19,7 +19,7 @@ np.import_array()
 
 def random_theta(n: int, sparsity: float = 0, rounded: bool = True) -> np.ndarray:
     """
-    Creates a random MHN with (log-transformed) parameters Theta
+    Creates a random cMHN with (log-transformed) parameters Theta
 
     :param n: size of Theta -> size of corresponding Q is 2^n
     :param sparsity: sparsity of Theta as percentage
@@ -66,7 +66,7 @@ def build_q(theta: np.ndarray) -> np.ndarray:
     """
     Build the transition rate matrix Q from its subdiagonals for a given Theta
 
-    :param theta: matrix representing the MHN
+    :param theta: matrix representing the cMHN
     :return: rate matrix Q
     """
     n = theta.shape[0]
@@ -84,7 +84,7 @@ cpdef np.ndarray[np.double_t, ndim=1]  q_diag(double[:, :] theta):
     """
     get the diagonal of Q
 
-    :param theta: theta representing the MHN
+    :param theta: theta representing the cMHN
     """
     cdef int n = theta.shape[0]
     cdef int i

@@ -1,5 +1,5 @@
 """
-This submodule contains functions and classes to store and convert mutation states used for state-space restriction.
+This submodule contains functions and classes to store and convert mutation states used for training.
 It also contains a function to compute an independence model that can be used as a starting point for training
 a new MHN.
 """

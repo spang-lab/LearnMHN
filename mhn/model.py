@@ -82,16 +82,16 @@ class bits_fixed_n:
         return w
 
 
-class MHN:
+class cMHN:
     """
     This class represents a classical Mutual Hazard Network.
     """
 
     def __init__(self, log_theta: np.array, events: list[str] = None, meta: dict = None):
         """
-        :param log_theta: logarithmic values of the theta matrix representing the MHN
-        :param events: (optional) list of strings containing the names of the events considered by the MHN
-        :param meta: (optional) dictionary containing metadata for the MHN, e.g. parameters used to train the model
+        :param log_theta: logarithmic values of the theta matrix representing the cMHN
+        :param events: (optional) list of strings containing the names of the events considered by the cMHN
+        :param meta: (optional) dictionary containing metadata for the cMHN, e.g. parameters used to train the model
         """
         n = log_theta.shape[1]
         self.log_theta = log_theta
@@ -103,7 +103,7 @@ class MHN:
 
     def sample_artificial_data(self, sample_num: int, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
         """
-        Returns artificial data sampled from this MHN. Random values are generated with numpy, use np.random.seed()
+        Returns artificial data sampled from this cMHN. Random values are generated with numpy, use np.random.seed()
         to make results reproducible.
 
         :param sample_num: number of samples in the generated data
@@ -128,7 +128,7 @@ class MHN:
 
         :param trajectory_num: Number of trajectories sampled by the Gillespie algorithm
         :param initial_state: Initial state from which the trajectories start. Can be either a numpy array containing 0s and 1s, where each entry represents an event being present (1) or not (0),
-        or a list of strings, where each string is the name of an event. The later can only be used if events were specified during creation of the MHN object.
+        or a list of strings, where each string is the name of an event. The later can only be used if events were specified during creation of the cMHN object.
         :param output_event_names: If True, the trajectories are returned as lists containing the event names, else they contain the event indices
 
         :return: A tuple: first element as a list of trajectories, the second element contains the observation times of each trajectory
@@ -144,7 +144,7 @@ class MHN:
             initial_state = np.zeros(self.log_theta.shape[1], dtype=np.int32)
             if len(init_state_copy) != 0 and self.events is None:
                 raise RuntimeError(
-                    "You can only use event names for the initial state, if event was set during initialization of the MHN object"
+                    "You can only use event names for the initial state, if event was set during initialization of the cMHN object"
                 )
 
             for event in init_state_copy:
@@ -155,7 +155,7 @@ class MHN:
 
         if output_event_names:
             if self.events is None:
-                raise ValueError("output_event_names can only be set to True, if events was set for the MHN object")
+                raise ValueError("output_event_names can only be set to True, if events was set for the cMHN object")
             trajectory_list = list(map(
                 lambda trajectory: list(map(
                     lambda event: self.events[event],
@@ -173,7 +173,7 @@ class MHN:
 
         :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
 
-        :returns: the likelihood of observing the given state according to this MHN
+        :returns: the likelihood of observing the given state according to this cMHN
         """
         if not set(state.flatten()).issubset({0, 1}):
             raise ValueError("The state array must only contain 0s and 1s")
@@ -196,12 +196,12 @@ class MHN:
 
         :returns: array or DataFrame that contains the probability for each event that it will be the next one to occur
 
-        :raise ValueError: if the number of events in state does not align with the number of events modeled by this MHN object
+        :raise ValueError: if the number of events in state does not align with the number of events modeled by this cMHN object
         """
         n = self.log_theta.shape[1]
         if n != state.shape[0]:
             raise ValueError(
-                f"This MHN object models {n} events, but state contains {state.shape[0]}")
+                f"This cMHN object models {n} events, but state contains {state.shape[0]}")
         if allow_observation:
             observation_rate = self._get_observation_rate(state)
         else:
@@ -366,7 +366,7 @@ class MHN:
 
     def save(self, filename: str):
         """
-        Save the MHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
+        Save the cMHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
 
         :param filename: name of the CSV file without(!) the '.csv', JSON will be named accordingly
         """
@@ -385,14 +385,14 @@ class MHN:
                 json.dump(json_serializable_meta, file, indent=4)
 
     @classmethod
-    def load(cls, filename: str, events: list[str] = None) -> MHN:
+    def load(cls, filename: str, events: list[str] = None) -> cMHN:
         """
-        Load an MHN object from a CSV file.
+        Load an cMHN object from a CSV file.
 
         :param filename: name of the CSV file without(!) the '.csv'
-        :param events: list of strings containing the names of the events considered by the MHN
+        :param events: list of strings containing the names of the events considered by the cMHN
 
-        :returns: MHN object
+        :returns: cMHN object
         """
         df = pd.read_csv(f"{filename}.csv", index_col=0)
         if events is None and (df.columns != pd.Index([str(x) for x in range(len(df.columns))])).any():
@@ -484,14 +484,14 @@ class MHN:
                                        ha="center", va="center")
 
 
-class OmegaMHN(MHN):
+class oMHN(cMHN):
     """
-    This class represents an OmegaMHN.
+    This class represents an oMHN.
     """
 
     def sample_artificial_data(self, sample_num: int, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
         """
-        Returns artificial data sampled from this MHN. Random values are generated with numpy, use np.random.seed()
+        Returns artificial data sampled from this oMHN. Random values are generated with numpy, use np.random.seed()
         to make results reproducible.
 
         :param sample_num: number of samples in the generated data
@@ -508,29 +508,29 @@ class OmegaMHN(MHN):
 
         :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
 
-        :returns: the likelihood of observing the given state according to this MHN
+        :returns: the likelihood of observing the given state according to this oMHN
         """
         return self.get_equivalent_classical_mhn().compute_marginal_likelihood(state)
 
-    def get_equivalent_classical_mhn(self) -> MHN:
+    def get_equivalent_classical_mhn(self) -> cMHN:
         """
-        This method returns a classical MHN object that represents the same distribution as this OmegaMHN object.
+        This method returns a classical cMHN object that represents the same distribution as this oMHN object.
 
-        :returns: classical MHN object representing the same distribution as this OmegaMHN object
+        :returns: classical cMHN object representing the same distribution as this oMHN object
         """
         n = self.log_theta.shape[1]
         # subtract observation rates from each element in each column
         equivalent_classical_mhn = self.log_theta[:-1] - self.log_theta[-1]
         # undo changes to the diagonal
         equivalent_classical_mhn[range(n), range(n)] += self.log_theta[-1]
-        return MHN(equivalent_classical_mhn, self.events, self.meta)
+        return cMHN(equivalent_classical_mhn, self.events, self.meta)
 
     def _get_observation_rate(self, state: np.ndarray) -> float:
         return np.exp(np.sum(self.log_theta[-1, state != 0]))
 
     def save(self, filename: str):
         """
-        Save the MHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
+        Save the oMHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
 
         :param filename: name of the CSV file without(!) the '.csv', JSON will be named accordingly
         """

@@ -22,16 +22,3 @@ MHN for given training data:
    :inherited-members:
    :noindex: Device
 
-.. raw:: html
-
-   <br>
-   <hr>
-   <br>
-
-
-.. autoclass:: mhn.optimizers.DUAOptimizer
-   :members:
-   :undoc-members:
-   :inherited-members:
-   :noindex: Device
-

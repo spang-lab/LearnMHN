@@ -15,7 +15,7 @@ def learn_mhn(states: StateContainer, score_func: Callable, jacobi: Callable, in
               maxit: int = 5000, trace: bool = False, reltol: float = 1e-07, round_result: bool = True,
               callback: Callable = None) -> OptimizeResult:
     """
-    This function is used to train a MHN, it is very similar to the learn_MHN function from the original MHN
+    This function is used to train an MHN.
 
     :param states: a StateContainer object containing all mutation states observed in the data
     :param init: starting point for the training (initial theta)

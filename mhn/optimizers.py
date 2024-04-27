@@ -59,7 +59,7 @@ class _Optimizer(abc.ABC):
         self._regularized_gradient_func_builder = lambda grad_score_func: \
             penalties_cmhn.build_regularized_gradient_func(grad_score_func, penalties_cmhn.l1_)
 
-        self._OutputMHNClass = model.MHN
+        self._OutputMHNClass = model.cMHN
 
     def set_init_theta(self, init: np.ndarray):
         """
@@ -168,7 +168,7 @@ class _Optimizer(abc.ABC):
                 np.save(f, theta)
 
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
-              reltol: float = 1e-7, round_result: bool = True) -> model.MHN:
+              reltol: float = 1e-7, round_result: bool = True) -> model.cMHN:
         """
         Use this function to learn a new MHN from the data given to this optimizer.
 
@@ -218,9 +218,9 @@ class _Optimizer(abc.ABC):
         return self._result
 
     @property
-    def result(self) -> model.MHN:
+    def result(self) -> model.cMHN:
         """
-        The resulting MHN after training, same as the return value of the train() method.
+        The resulting cMHN after training, same as the return value of the train() method.
         This property mainly exists as a kind of backup to ensure that the result of the training is not lost, if the
         user forgets to save the returned value of the train() method in a variable.
         """
@@ -230,7 +230,7 @@ class _Optimizer(abc.ABC):
     @abc.abstractmethod
     def training_data(self):
         """
-        This property returns all the data given to this optimizer to train a new MHN.
+        This property returns all the data given to this optimizer to train a new cMHN.
         """
         pass
 
@@ -311,8 +311,7 @@ class _Optimizer(abc.ABC):
 
 class cMHNOptimizer(_Optimizer):
     """
-    This optimizer uses state-space restriction to optimize an MHN on data with no age information for the individual
-    samples.
+    Optimizes an cMHN for given cross-sectional data.
     """
 
     def __init__(self):
@@ -467,14 +466,14 @@ class cMHNOptimizer(_Optimizer):
     @property
     def training_data(self) -> np.ndarray:
         """
-        This property returns all the data given to this optimizer to train a new MHN.
+        This property returns all the data given to this optimizer to train a new cMHN.
         """
         return self._bin_datamatrix
 
 
 class oMHNOptimizer(cMHNOptimizer):
     """
-    This optimizer models the data with the OmegaMHN.
+    This optimizer models the data with the oMHN.
     """
 
     def __init__(self):
@@ -484,12 +483,12 @@ class oMHNOptimizer(cMHNOptimizer):
             penalties_omhn.build_regularized_score_func(grad_score_func, penalties_omhn.l1)
         self._regularized_gradient_func_builder = lambda grad_score_func: \
             penalties_omhn.build_regularized_gradient_func(grad_score_func, penalties_omhn.l1_)
-        self._OutputMHNClass = model.OmegaMHN
+        self._OutputMHNClass = model.oMHN
 
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
-              reltol: float = 1e-7, round_result: bool = True) -> model.OmegaMHN:
+              reltol: float = 1e-7, round_result: bool = True) -> model.oMHN:
         """
-        Use this function to learn a new MHN from the data given to this optimizer.
+        Use this function to learn a new oMHN from the data given to this optimizer.
 
         :param lam: tuning parameter lambda for regularization (default: 1/(number of samples in the dataset))
         :param maxit: maximum number of training iterations
@@ -518,9 +517,9 @@ class oMHNOptimizer(cMHNOptimizer):
         return self.result
 
     @property
-    def result(self) -> model.OmegaMHN:
+    def result(self) -> model.oMHN:
         """
-        The resulting OmegaMHN after training, same as the return value of the train() method.
+        The resulting oMHN after training, same as the return value of the train() method.
         This property mainly exists as a kind of backup to ensure that the result of the training is not lost, if the
         user forgets to save the returned value of the train() method in a variable.
         """

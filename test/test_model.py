@@ -8,7 +8,7 @@ from mhn.full_state_space import ModelConstruction, UtilityFunctions, Likelihood
 
 class TestMHN(unittest.TestCase):
     """
-    Tests methods of the MHN class.
+    Tests methods of the cMHN class.
     """
 
     def setUp(self) -> None:
@@ -19,10 +19,10 @@ class TestMHN(unittest.TestCase):
 
     def test_sample_artificial_data(self):
         """
-        Tests if the distribution sampled by sample_artificial_data() equals the distribution represented by the MHN.
+        Tests if the distribution sampled by sample_artificial_data() equals the distribution represented by the cMHN.
         """
         theta = ModelConstruction.random_theta(8)
-        mhn_object = model.MHN(theta)
+        mhn_object = model.cMHN(theta)
         p_th = Likelihood.generate_pTh(theta)
 
         art_data = mhn_object.sample_artificial_data(500_000)
@@ -31,11 +31,11 @@ class TestMHN(unittest.TestCase):
 
     def test_sample_trajectories(self):
         """
-        Tests if the distribution sampled by sample_trajectories() equals the distribution represented by the MHN.
+        Tests if the distribution sampled by sample_trajectories() equals the distribution represented by the cMHN.
         """
         n = 8
         theta = ModelConstruction.random_theta(n)
-        mhn_object = model.MHN(theta)
+        mhn_object = model.cMHN(theta)
         p_th = Likelihood.generate_pTh(theta)
 
         trajectories, obs_times = mhn_object.sample_trajectories(500_000, [])
@@ -53,7 +53,7 @@ class TestMHN(unittest.TestCase):
         """
         n = 8
         theta = ModelConstruction.random_theta(n)
-        mhn_object = model.MHN(theta)
+        mhn_object = model.cMHN(theta)
         mhn_object.events = ["A" * i for i in range(n)]
 
         initial_event_num = 2
@@ -75,7 +75,7 @@ class TestMHN(unittest.TestCase):
         """
         n = 5
         theta = ModelConstruction.random_theta(n)
-        mhn_object = model.MHN(theta)
+        mhn_object = model.cMHN(theta)
 
         p_th = Likelihood.generate_pTh(theta)
 
@@ -93,7 +93,7 @@ class TestMHN(unittest.TestCase):
         """
         n = 5
         theta = ModelConstruction.random_theta(n)
-        mhn_object = model.MHN(theta)
+        mhn_object = model.cMHN(theta)
 
         state = np.zeros(n, dtype=np.int32)
         state[0] = 1
@@ -109,7 +109,7 @@ class TestMHN(unittest.TestCase):
 
 class TestOmegaMHN(unittest.TestCase):
     """
-    Tests methods of the OmegaMHN class.
+    Tests methods of the oMHN class.
     """
 
     def setUp(self) -> None:
@@ -125,7 +125,7 @@ class TestOmegaMHN(unittest.TestCase):
         n = 8
         theta = ModelConstruction.random_theta(n)
         theta = np.vstack((theta, np.random.random(n)))
-        mhn_object = model.OmegaMHN(theta)
+        mhn_object = model.oMHN(theta)
         p_th = Likelihood.generate_pTh(mhn_object.get_equivalent_classical_mhn().log_theta)
 
         trajectories, obs_times = mhn_object.sample_trajectories(500_000, [])
@@ -144,7 +144,7 @@ class TestOmegaMHN(unittest.TestCase):
         n = 5
         theta = ModelConstruction.random_theta(n)
         theta = np.vstack((theta, np.random.random(n)))
-        mhn_object = model.OmegaMHN(theta)
+        mhn_object = model.oMHN(theta)
 
         state = np.zeros(n, dtype=np.int32)
         state[0] = 1
