@@ -21,7 +21,8 @@ from .training.state_containers import create_indep_model
 from .training.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
 from mhn.training import state_space_restriction as marginalized_funcs
 
-import mhn.training.likelihood_omhn as omega_funcs
+from mhn.training import likelihood_omhn
+from mhn.training import penalties_omhn
 
 
 class _Optimizer(abc.ABC):
@@ -450,11 +451,11 @@ class oMHNOptimizer(cMHNOptimizer):
 
     def __init__(self):
         super().__init__()
-        self._gradient_and_score_func = omega_funcs.gradient_and_score
+        self._gradient_and_score_func = likelihood_omhn.gradient_and_score
         self._regularized_score_func_builder = lambda grad_score_func: \
-            omega_funcs.build_regularized_score_func(grad_score_func, omega_funcs.L1)
+            penalties_omhn.build_regularized_score_func(grad_score_func, penalties_omhn.L1)
         self._regularized_gradient_func_builder = lambda grad_score_func: \
-            omega_funcs.build_regularized_gradient_func(grad_score_func, omega_funcs.L1_)
+            penalties_omhn.build_regularized_gradient_func(grad_score_func, penalties_omhn.L1_)
         self._OutputMHNClass = model.OmegaMHN
 
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
@@ -513,11 +514,11 @@ class oMHNOptimizer(cMHNOptimizer):
             if cuda_available() != CUDA_AVAILABLE:
                 raise CUDAError(cuda_available())
 
-            self._gradient_and_score_func = omega_funcs.cuda_gradient_and_score
+            self._gradient_and_score_func = likelihood_omhn.cuda_gradient_and_score
         else:
             self._gradient_and_score_func = {
-                _Optimizer.Device.AUTO: omega_funcs.gradient_and_score,
-                _Optimizer.Device.CPU: omega_funcs.cpu_gradient_and_score
+                _Optimizer.Device.AUTO: likelihood_omhn.gradient_and_score,
+                _Optimizer.Device.CPU: likelihood_omhn.cpu_gradient_and_score
             }[device]
         return self
 
@@ -534,11 +535,11 @@ class oMHNOptimizer(cMHNOptimizer):
         if not isinstance(penalty, oMHNOptimizer.Penalty):
             raise ValueError(f"The given penalty is not an instance of {oMHNOptimizer.Penalty}")
         penalty_score, penalty_gradient = {
-            oMHNOptimizer.Penalty.L1: (omega_funcs.L1, omega_funcs.L1_),
-            oMHNOptimizer.Penalty.SYM_SPARSE: (omega_funcs.sym_sparse, omega_funcs.sym_sparse_deriv)
+            oMHNOptimizer.Penalty.L1: (penalties_omhn.L1, penalties_omhn.L1_),
+            oMHNOptimizer.Penalty.SYM_SPARSE: (penalties_omhn.sym_sparse, penalties_omhn.sym_sparse_deriv)
         }[penalty]
         self._regularized_score_func_builder = lambda grad_score_func: \
-            omega_funcs.build_regularized_score_func(grad_score_func, penalty_score)
+            penalties_omhn.build_regularized_score_func(grad_score_func, penalty_score)
         self._regularized_gradient_func_builder = lambda grad_score_func: \
-            omega_funcs.build_regularized_gradient_func(grad_score_func, penalty_gradient)
+            penalties_omhn.build_regularized_gradient_func(grad_score_func, penalty_gradient)
         return self
