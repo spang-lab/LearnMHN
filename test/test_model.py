@@ -151,7 +151,7 @@ class TestOmegaMHN(unittest.TestCase):
 
         # Here the probabilities should not sum up to 1 as the observation event is possible
         probs_df = mhn_object.compute_next_event_probs(state, True, True)
-        self.assertNotAlmostEquals(probs_df["PROBS"].sum(), 1., 10)
+        self.assertNotAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
 
         # Here the probabilities should sum up to 1 as there is no observation event
         probs_df = mhn_object.compute_next_event_probs(state, True, False)
