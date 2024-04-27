@@ -8,7 +8,7 @@ a new MHN.
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 
-from mhn.ssr.state_containers cimport State
+from mhn.training.state_containers cimport State
 
 import numpy as np
 import warnings

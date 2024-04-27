@@ -10,7 +10,7 @@ from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot, dnrm2
 from libc.stdlib cimport malloc, free
 from libc.math cimport exp, log
 
-from mhn.ssr.state_containers cimport State, StateContainer
+from mhn.training.state_containers cimport State, StateContainer
 from mhn.full_state_space.PerformanceCriticalCode cimport _compute_inverse, _compute_inverse_t
 
 import numpy as np
