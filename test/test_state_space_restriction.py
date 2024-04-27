@@ -1,11 +1,11 @@
 # by Stefan Vocht
 #
-# this file contains unittests for state_space_restriction.pyx
+# this file contains unittests for likelihood_cmhn.pyx
 #
 
 import unittest
 import numpy as np
-from mhn.training import state_space_restriction
+from mhn.training import likelihood_cmhn
 from mhn.training.state_containers import StateContainer
 from mhn.training import likelihood_omhn
 from mhn.full_state_space import Likelihood, UtilityFunctions, ModelConstruction
@@ -41,7 +41,7 @@ class TestCythonGradient(unittest.TestCase):
                 new_score = Likelihood.score(theta_copy, pD)
                 numerical_gradient[i, j] = (new_score - original_score) / h
 
-        analytic_gradient, score = state_space_restriction.cpu_gradient_and_score(theta, StateContainer(random_sample))
+        analytic_gradient, score = likelihood_cmhn.cpu_gradient_and_score(theta, StateContainer(random_sample))
         self.assertEqual(round(score, 8), round(original_score, 8))
         np.testing.assert_array_equal(np.around(numerical_gradient, decimals=3), np.around(analytic_gradient, decimals=3))
 
@@ -57,9 +57,9 @@ class TestCythonGradient(unittest.TestCase):
         random_sample[:, 0] = 1
         random_sample[:, -1] = 1
         # compute gradient and score
-        gradient, score = state_space_restriction.cpu_gradient_and_score(theta, StateContainer(random_sample))
+        gradient, score = likelihood_cmhn.cpu_gradient_and_score(theta, StateContainer(random_sample))
         # compute only score
-        score2 = state_space_restriction.cpu_score(theta, StateContainer(random_sample))
+        score2 = likelihood_cmhn.cpu_score(theta, StateContainer(random_sample))
         self.assertEqual(score, score2)
 
     def test_scores_match_omhn(self):
@@ -93,14 +93,14 @@ class TestCythonGradient(unittest.TestCase):
         random_sample[:, 0] = 1
         random_sample[:, -1] = 1
         # compute full_state_space gradient and score
-        gradient1, score1 = state_space_restriction.cpu_gradient_and_score(theta, StateContainer(random_sample))
+        gradient1, score1 = likelihood_cmhn.cpu_gradient_and_score(theta, StateContainer(random_sample))
         # permute the sample and theta, compute gradient and score and reverse the permutation
         permutation = np.random.permutation(n)
         reverse = np.empty(n, int)
         reverse[permutation] = np.arange(n)
         permutation_sample = random_sample[:, permutation]
         permutation_theta = theta[permutation][:, permutation]
-        gradient2, score2 = state_space_restriction.cpu_gradient_and_score(permutation_theta, StateContainer(permutation_sample))
+        gradient2, score2 = likelihood_cmhn.cpu_gradient_and_score(permutation_theta, StateContainer(permutation_sample))
         reversed_gradient = gradient2[reverse][:, reverse]
         np.testing.assert_array_equal(permutation_sample[:, reverse], random_sample)
         # compare gradients and scores
@@ -117,7 +117,7 @@ class TestCudaGradient(unittest.TestCase):
         Preparation for each test
         """
         np.random.seed(0)  # set random seed for reproducibility
-        if state_space_restriction.cuda_available() != state_space_restriction.CUDA_AVAILABLE:
+        if likelihood_cmhn.cuda_available() != likelihood_cmhn.CUDA_AVAILABLE:
             self.skipTest("CUDA not available for testing")
 
     def test_compare_with_cython(self):
@@ -129,8 +129,8 @@ class TestCudaGradient(unittest.TestCase):
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
         state_containers = StateContainer(random_sample)
-        gradient1, score1 = state_space_restriction.cpu_gradient_and_score(theta, state_containers)
-        gradient2, score2 = state_space_restriction.cuda_gradient_and_score(theta, state_containers)
+        gradient1, score1 = likelihood_cmhn.cpu_gradient_and_score(theta, state_containers)
+        gradient2, score2 = likelihood_cmhn.cuda_gradient_and_score(theta, state_containers)
         self.assertEqual(round(score1, 8), round(score2, 8))
         np.testing.assert_array_equal(np.around(gradient1, decimals=8), np.around(gradient2, decimals=8))
 
@@ -147,14 +147,14 @@ class TestCudaGradient(unittest.TestCase):
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
         # compute full_state_space gradient and score
-        gradient1, score1 = state_space_restriction.cuda_gradient_and_score(theta, StateContainer(random_sample))
+        gradient1, score1 = likelihood_cmhn.cuda_gradient_and_score(theta, StateContainer(random_sample))
         # permute the sample and theta, compute gradient and score and reverse the permutation
         permutation = np.random.permutation(n)
         reverse = np.empty(n, int)
         reverse[permutation] = np.arange(n)
         permutation_sample = random_sample[:, permutation]
         permutation_theta = theta[permutation][:, permutation]
-        gradient2, score2 = state_space_restriction.cuda_gradient_and_score(permutation_theta.copy(), StateContainer(permutation_sample))
+        gradient2, score2 = likelihood_cmhn.cuda_gradient_and_score(permutation_theta.copy(), StateContainer(permutation_sample))
         reversed_gradient = gradient2[reverse][:, reverse]
         np.testing.assert_array_equal(permutation_sample[:, reverse], random_sample)
         # compare gradients and scores
@@ -179,8 +179,8 @@ class TestCudaGradient(unittest.TestCase):
         random_sample[1, :] = 0
         random_sample[1, :5] = 1
         state_containers = StateContainer(random_sample)
-        gradient1, score1 = state_space_restriction.gradient_and_score(theta, state_containers)
-        gradient2, score2 = state_space_restriction.cuda_gradient_and_score(theta, state_containers)
+        gradient1, score1 = likelihood_cmhn.gradient_and_score(theta, state_containers)
+        gradient2, score2 = likelihood_cmhn.cuda_gradient_and_score(theta, state_containers)
         self.assertEqual(round(score1, 8), round(score2, 8))
         np.testing.assert_array_equal(np.around(gradient1, decimals=8), np.around(gradient2, decimals=8))
 

@@ -102,8 +102,8 @@ ext_modules = [
         ]
     ),
     Extension(
-        "mhn.training.state_space_restriction",
-        ["./mhn/training/state_space_restriction.pyx"],
+        "mhn.training.likelihood_cmhn",
+        ["./mhn/training/likelihood_cmhn.pyx"],
         libraries=libraries,
         library_dirs=["./mhn/training/", "./mhn/full_state_space/"],
         include_dirs=['./mhn/training/', "./mhn/full_state_space/"],
