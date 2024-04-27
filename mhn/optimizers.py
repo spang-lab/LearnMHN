@@ -22,11 +22,11 @@ import pandas as pd
 from . import model
 
 from mhn.training import regularized_optimization as reg_optim
-from .training.state_containers import StateContainer, StateAgeContainer
+from .training.state_containers import StateContainer
 from .training.state_containers import create_indep_model
-from .training.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
+from .training.likelihood_cmhn import CUDAError, cuda_available, CUDA_AVAILABLE
 
-from mhn.training import state_space_restriction as likelihood_cmhn
+from mhn.training import likelihood_cmhn
 from mhn.training import penalties_cmhn
 
 from mhn.training import likelihood_omhn

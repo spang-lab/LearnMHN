@@ -809,7 +809,7 @@ extern "C"
 
 
     /**
-     * This function is used by state_space_restriction.pyx to get the error name and description if an error occurred
+     * This function is used by likelihood_cmhn.pyx to get the error name and description if an error occurred
      *
      * @param[in] error is the cudaError_t returned by the CUDA function casted to int to be usable in Cython
      * @param[out] error_name the name of the error will be stored in this variable

@@ -41,7 +41,7 @@ You can train an MHN using state-space restriction. The corresponding functions
 can be imported with
 
 ```python
-from mhn.training import state_space_restriction, state_containers
+from mhn.training import likelihood_cmhn, state_containers
 ```
 Training a new MHN can be as simple as writing the following few lines of code:
 

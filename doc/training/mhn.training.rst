@@ -4,13 +4,13 @@
 .. automodule:: mhn.training
 
 
-*state\_space\_restriction*
+*likelihood\_cmhn*
 ---------------------------
 
-.. automodule:: mhn.training.state_space_restriction
+.. automodule:: mhn.training.likelihood_cmhn
     :noindex:
 
-:ref:`View documentation <The *state_space_restriction* submodule>`
+:ref:`View documentation <The *likelihood_cmhn* submodule>`
 
 *state\_containers*
 -------------------

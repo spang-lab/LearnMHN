@@ -7,9 +7,6 @@ from __future__ import annotations
 
 from numpy.core.multiarray import array as array
 
-from .full_state_space import Likelihood
-from .training import state_space_restriction
-
 from cmath import log
 import numpy as np
 import pandas as pd
@@ -20,6 +17,8 @@ import matplotlib
 import matplotlib.axes
 import matplotlib.colors as colors
 
+from .full_state_space import Likelihood
+from .training import likelihood_cmhn
 
 from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
 import json
@@ -182,7 +181,7 @@ class MHN:
         nx = 1 << mutation_num
         p0 = np.zeros(nx)
         p0[0] = 1
-        p_th = state_space_restriction.compute_restricted_inverse(
+        p_th = likelihood_cmhn.compute_restricted_inverse(
             self.log_theta, state, p0, False)
         return p_th[-1]
 

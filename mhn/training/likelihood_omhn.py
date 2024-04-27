@@ -7,7 +7,7 @@ using state-space restriction.
 import numpy as np
 from typing import Callable
 
-from . import state_space_restriction
+from . import likelihood_cmhn
 from .state_containers import StateContainer
 
 
@@ -50,7 +50,7 @@ def gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
     :param mutation_data: StateContainer object containing the data which is used for training
     :returns: tuple containing the gradient and the score of the current OmegaMHN
     """
-    return _internal_gradient_and_score(omega_theta, mutation_data, state_space_restriction.gradient_and_score)
+    return _internal_gradient_and_score(omega_theta, mutation_data, likelihood_cmhn.gradient_and_score)
 
 
 def cpu_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
@@ -61,7 +61,7 @@ def cpu_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContaine
     :param mutation_data: StateContainer object containing the data which is used for training
     :returns: tuple containing the gradient and the score of the current OmegaMHN
     """
-    return _internal_gradient_and_score(omega_theta, mutation_data, state_space_restriction.cpu_gradient_and_score)
+    return _internal_gradient_and_score(omega_theta, mutation_data, likelihood_cmhn.cpu_gradient_and_score)
 
 
 def cpu_score(omega_theta: np.ndarray, mutation_data: StateContainer):
@@ -84,7 +84,7 @@ def cpu_score(omega_theta: np.ndarray, mutation_data: StateContainer):
     equivalent_vanilla_mhn = omega_theta[:-1] - omega_theta[-1]
     # undo changes to the diagonal
     equivalent_vanilla_mhn[range(n), range(n)] += omega_theta[-1]
-    score = state_space_restriction.cpu_score(equivalent_vanilla_mhn, mutation_data)
+    score = likelihood_cmhn.cpu_score(equivalent_vanilla_mhn, mutation_data)
     return score
 
 
@@ -98,5 +98,5 @@ def cuda_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContain
     :param mutation_data: StateContainer object containing the data which is used for training
     :returns: tuple containing the gradient and the score of the current OmegaMHN
     """
-    return _internal_gradient_and_score(omega_theta, mutation_data, state_space_restriction.cuda_gradient_and_score)
+    return _internal_gradient_and_score(omega_theta, mutation_data, likelihood_cmhn.cuda_gradient_and_score)
 
