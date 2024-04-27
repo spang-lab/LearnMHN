@@ -91,7 +91,7 @@ IF NVCC_AVAILABLE:
 @cython.boundscheck(False)
 cdef void restricted_kronvec(double[:, :] theta_mat, int i, double[:] x_vec, State *state, int mutation_num, double *pout, bint diag = False, bint transp = False) nogil:
     """
-    This function multiplies the kronecker product described in the original MHN paper in eq.9 with a vector
+    This function multiplies the kronecker product described in the original cMHN paper in eq.9 with a vector
 
     :param theta_mat: matrix containing the theta entries
     :param i: vector is multiplied with the ith kronecker product (ith summand in eq. 9 of the original paper) 
@@ -458,7 +458,7 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
     daxpy(&nx, &one, &mOne, &incx0, dg, &incx)  # subtract 1 from each entry to get the diagonal of [Q-I]
     dscal(&nx, &mOne, dg, &incx)                # scale with -1 to get the diagonal of [I-Q]
 
-    # compute parts of the probability distribution yielded by the current MHN
+    # compute parts of the probability distribution yielded by the current cMHN
     cdef np.ndarray[np.double_t] pth = np.empty(nx, dtype=np.double)
     _compute_restricted_inverse(theta, dg, state, p0, pth)
 
@@ -528,10 +528,10 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
 
 cpdef cpu_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
-    Computes the total gradient and score for a given MHN and given mutation data.
+    Computes the total gradient and score for a given cMHN and given mutation data.
 
-    :param theta: matrix containing the theta entries of the current MHN
-    :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
+    :param theta: matrix containing the theta entries of the current cMHN
+    :param mutation_data: StateContainer containing the mutation data the cMHN should be trained on
     :return: tuple containing the gradient and the score
     """
     cdef int n = theta.shape[0]
@@ -561,10 +561,10 @@ cpdef cython_gradient_and_score(double[:, :] theta, StateContainer mutation_data
     """
     ** This function is deprecated. Use cpu_gradient_and_score() instead. **
     
-    Computes the total gradient and score for a given MHN and given mutation data.
+    Computes the total gradient and score for a given cMHN and given mutation data.
 
-    :param theta: matrix containing the theta entries of the current MHN
-    :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
+    :param theta: matrix containing the theta entries of the current cMHN
+    :param mutation_data: StateContainer containing the mutation data the cMHN should be trained on
     :return: tuple containing the gradient and the score
     """
     return cpu_gradient_and_score(theta, mutation_data)
@@ -595,7 +595,7 @@ cdef double restricted_score(double[:, :] theta, State *state):
     daxpy(&nx, &one, &mOne, &incx0, dg, &incx)  # subtract 1 from each entry to get the diagonal of [Q-I]
     dscal(&nx, &mOne, dg, &incx)                # scale with -1 to get the diagonal of [I-Q]
 
-    # compute parts of the probability distribution yielded by the current MHN
+    # compute parts of the probability distribution yielded by the current cMHN
     cdef np.ndarray[np.double_t] pth = np.empty(nx, dtype=np.double)
     _compute_restricted_inverse(theta, dg, state, p0, pth)
 
@@ -605,10 +605,10 @@ cdef double restricted_score(double[:, :] theta, State *state):
 
 cpdef cpu_score(double[:, :] theta, StateContainer mutation_data):
     """
-    Computes the total log-likelihood score for a given MHN and given mutation data.
+    Computes the total log-likelihood score for a given cMHN and given mutation data.
 
-    :param theta: matrix containing the theta entries of the current MHN
-    :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
+    :param theta: matrix containing the theta entries of the current cMHN
+    :param mutation_data: StateContainer containing the mutation data the cMHN should be trained on
     :return: normalized log-likelihood score
     """
     cdef int i
@@ -636,8 +636,8 @@ cpdef cuda_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     
     **It can only be used if the mhn package was compiled with CUDA.**
 
-    :param theta: matrix containing the theta entries of the current MHN
-    :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
+    :param theta: matrix containing the theta entries of the current cMHN
+    :param mutation_data: StateContainer containing the mutation data the cMHN should be trained on
     :return: tuple containing the normalized gradient and score
     
     :raise RuntimeError: this function raises a RuntimeError if the mhn package was not compiled with CUDA
@@ -670,8 +670,8 @@ cpdef gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     and compute the gradients for data points with many mutations using CUDA.
     If CUDA is not installed on your device, this function will only use the CPU implementation.
     
-    :param theta: matrix containing the theta entries of the current MHN
-    :param mutation_data: StateContainer containing the mutation data the MHN should be trained on
+    :param theta: matrix containing the theta entries of the current cMHN
+    :param mutation_data: StateContainer containing the mutation data the cMHN should be trained on
     :return: tuple containing the normalized gradient and score
     """
     IF NVCC_AVAILABLE:

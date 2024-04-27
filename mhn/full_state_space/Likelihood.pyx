@@ -3,8 +3,8 @@ This submodule implements Likelihood.R from the original implementation in Cytho
 
 It contains functions to compute the log-likelihood score and its gradient without state-space restriction as
 well as functions for matrix-vector multiplications with the transition rate matrix and [I-Q]^(-1).
-There are also functions to compute the probability distribution represented by an MHN and to sample artificial data
-from a given MHN.
+There are also functions to compute the probability distribution represented by an cMHN and to sample artificial data
+from a given cMHN.
 """
 # author(s): Stefan Vocht
 
@@ -181,10 +181,10 @@ def grad(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t]
 @cython.boundscheck(False)
 def sample_artificial_data(np.ndarray[np.double_t, ndim=2] theta, int sample_num) -> np.ndarray:
     """
-    Returns artificial data sampled from an MHN. Random values are generated with numpy, use np.random.seed()
+    Returns artificial data sampled from an cMHN. Random values are generated with numpy, use np.random.seed()
     to make results reproducible.
 
-    :param theta: theta matrix representing an MHN
+    :param theta: theta matrix representing an cMHN
     :param sample_num: number of samples in the generated data
     :returns: 2d numpy array in which every row corresponds to a sample and each column to a gene
     """
@@ -244,7 +244,7 @@ def gillespie(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int32_t, ndim
     """
     Gillespie algorithm to simulate event accumulation.
 
-    :param theta: theta matrix representing the MHN
+    :param theta: theta matrix representing the cMHN
     :param initial_state: Array representing the starting state, each entry corresponds to an event being present (1) or not (0)
     :param sample_num: number of samples that should be simulated
 
@@ -265,10 +265,10 @@ def gillespie(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int32_t, ndim
     cdef np.ndarray[np.double_t] observation_rates
 
     if theta.shape[0] == n:
-        # case of the classical MHN
+        # case of the classical cMHN
         observation_rates = np.ones(n, dtype=np.double)
     elif theta.shape[0] == n+1:
-        # case of the observation MHN
+        # case of the observation cMHN
         observation_rates = exp_theta[n]
     else:
         raise ValueError(f"Theta must have dimensions {n}x{n} or {n+1}x{n}, but is has dimension {theta.shape[0]}x{theta.shape[1]}")
@@ -336,14 +336,14 @@ def compute_next_event_probs(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[n
     """
     Compute the probability for each event that it will be the next one to occur given the current state.
 
-    :param theta: theta matrix representing an MHN
+    :param theta: theta matrix representing an cMHN
     :param current_state: array representing the current state, each entry corresponds to an event being present (1) or not (0)
     :param observation_rate: rate of the observation event, by default set to 0 which means no observation before some other event occurs
     :returns: array that contains the probability for each event that it will be the next one to occur
 
     :raise ValueError: if the size of theta does not match the size of current_state, a ValueError is raised
     """
-    cdef int n = theta.shape[1]  # use shape[1] to be compatible with OmegaMHN
+    cdef int n = theta.shape[1]  # use shape[1] to be compatible with oMHN
     if n != current_state.shape[0]:
         raise ValueError(f"Number of events represented by theta ({n}) does not match the size of current_state ({current_state.shape[0]})")
 
@@ -387,7 +387,7 @@ def cuda_gradient_and_score(double[:, :] theta, double[:] pD):
 
     **It can only be used if the mhn package was compiled with CUDA.**
 
-    :param theta: theta matrix representing the MHN
+    :param theta: theta matrix representing the cMHN
     :param pD: probability distribution according to the training data
     :returns: tuple containing the gradient and the score
 
@@ -413,7 +413,7 @@ def cuda_compute_inverse(double[:, :] theta, double[:] b, bint transp = False):
 
     **It can only be used if the mhn package was compiled with CUDA.**
 
-    :param theta: theta matrix representing the MHN
+    :param theta: theta matrix representing the cMHN
     :param b: vector that is multiplied with [I-Q]^(-1)
     :param transp: if set to True, computes solution for [I-Q]^T x = b
     :returns: the solution for [I-Q] x = b

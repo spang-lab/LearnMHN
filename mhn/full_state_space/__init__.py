@@ -12,7 +12,7 @@ ModelConstruction:
     and independence model for a given distribution
 
 RegularizedOptimization:
-    contains functions to learn an MHN for a given data distribution, implements the L1 regularization
+    contains functions to learn an cMHN for a given data distribution, implements the L1 regularization
 
 UtilityFunctions:
     contains functions useful for preprocessing data to be used as training data

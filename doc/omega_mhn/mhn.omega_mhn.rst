@@ -1,4 +1,4 @@
-*omega_mhn*: The package containing all functions to work with the OmegaMHN
+*omega_mhn*: The package containing all functions to work with the oMHN
 ===========================================================================
 
 .. automodule:: mhn.omega_mhn

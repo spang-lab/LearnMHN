@@ -113,7 +113,7 @@ class TestcMHNOptimizer(BaseOptimizerTestClass.TestOptimizer):
     @staticmethod
     def _get_random_model(event_num: int) -> np.ndarray:
         """
-        Helper method to create a random MHN.
+        Helper method to create a random cMHN.
         """
         return ModelConstruction.random_theta(event_num, sparsity=0.3)
 
@@ -139,7 +139,7 @@ class TestoMHNOptimizer(TestcMHNOptimizer):
     @staticmethod
     def _get_random_model(event_num: int) -> np.ndarray:
         """
-        Helper method to create a random MHN.
+        Helper method to create a random cMHN.
         """
         classical_theta = TestcMHNOptimizer._get_random_model(event_num)
         return np.vstack((classical_theta, np.random.random((1, event_num))))

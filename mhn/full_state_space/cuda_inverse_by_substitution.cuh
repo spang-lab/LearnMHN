@@ -18,7 +18,7 @@ int compute_binom_coef(int n, int k);
  * Internal function to compute the solution for [I-Q] x = b using forward and backward substitution
  * All arrays given to this function must be allocated using cudaMalloc()!
  * 
- * @param[in] theta theta matrix representing the MHN with size n x n
+ * @param[in] theta theta matrix representing the cMHN with size n x n
  * @param[in] n number of rows and columns of the theta matrix
  * @param[in] dg diagonal of [I-Q], you could also use a different diagonal to compute the inverse for a matrix that only differs in the diagonal from [I-Q]
  * @param[in, out] xout this vector of size 2^n must contain b at the beginning at will contain x at the end
