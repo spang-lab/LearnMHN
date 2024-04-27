@@ -7,8 +7,8 @@ using state-space restriction.
 import numpy as np
 from typing import Callable
 
-from ..training import state_space_restriction
-from ..training.state_containers import StateContainer
+from . import state_space_restriction
+from .state_containers import StateContainer
 
 
 def L1(theta: np.ndarray, eps: float = 1e-05) -> float:
