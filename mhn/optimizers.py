@@ -21,7 +21,7 @@ from .training.state_containers import create_indep_model
 from .training.state_space_restriction import CUDAError, cuda_available, CUDA_AVAILABLE
 from mhn.training import state_space_restriction as marginalized_funcs
 
-import mhn.omega_mhn.with_ssr as omega_funcs
+import mhn.training.likelihood_omhn as omega_funcs
 
 
 class _Optimizer(abc.ABC):

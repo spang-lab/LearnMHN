@@ -2,7 +2,6 @@ from . import optimizers
 from . import model
 from . import training
 from . import full_state_space
-from . import omega_mhn
 
 from .training.state_space_restriction import cuda_available
 from .training.state_space_restriction import CUDA_AVAILABLE, CUDA_NOT_AVAILABLE, CUDA_NOT_FUNCTIONAL
