@@ -7,6 +7,7 @@ import unittest
 import numpy as np
 from mhn.training import state_space_restriction
 from mhn.training.state_containers import StateContainer
+from mhn.training import likelihood_omhn
 from mhn.full_state_space import Likelihood, UtilityFunctions, ModelConstruction
 
 
@@ -44,7 +45,7 @@ class TestCythonGradient(unittest.TestCase):
         self.assertEqual(round(score, 8), round(original_score, 8))
         np.testing.assert_array_equal(np.around(numerical_gradient, decimals=3), np.around(analytic_gradient, decimals=3))
 
-    def test_scores_match(self):
+    def test_scores_match_cmhn(self):
         """
         Tests if the score computed by cpu_score() is the same as by cpu_gradient_and_score()
         """
@@ -59,6 +60,24 @@ class TestCythonGradient(unittest.TestCase):
         gradient, score = state_space_restriction.cpu_gradient_and_score(theta, StateContainer(random_sample))
         # compute only score
         score2 = state_space_restriction.cpu_score(theta, StateContainer(random_sample))
+        self.assertEqual(score, score2)
+
+    def test_scores_match_omhn(self):
+        """
+        Tests if the score computed by cpu_score() is the same as by cpu_gradient_and_score()
+        """
+        n = 40  # make n > 32 to make sure that the logic of the State struct in the C implementation works as expected
+        sample_num = 30
+        theta = ModelConstruction.random_theta(n)
+        theta = np.vstack((theta, np.random.random(n)))
+        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.8, 0.2]).astype(np.int32)
+        # make sure that there are mutations in two different "parts" of the "State" C struct
+        random_sample[:, 0] = 1
+        random_sample[:, -1] = 1
+        # compute gradient and score
+        gradient, score = likelihood_omhn.cpu_gradient_and_score(theta, StateContainer(random_sample))
+        # compute only score
+        score2 = likelihood_omhn.cpu_score(theta, StateContainer(random_sample))
         self.assertEqual(score, score2)
 
     def test_gene_position_permutation(self):
