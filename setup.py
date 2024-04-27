@@ -78,11 +78,11 @@ libraries = []
 extra_cuda_link_args = []
 # only compile CUDA code if nvcc is available and if we do not create a source distribution
 if nvcc_available and 'sdist' not in sys.argv:
-    libraries.append("CudaStateSpaceRestriction")
+    libraries.append("CudaLikelihood")
     libraries.append("CudaFullStateSpace")
     compile_cuda_code("./mhn/full_state_space/", "cuda_full_state_space.cu", "CudaFullStateSpace",
                       additional_cuda_files=["./mhn/full_state_space/cuda_inverse_by_substitution.cu"])
-    compile_cuda_code("./mhn/training/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction",
+    compile_cuda_code("./mhn/training/", "cuda_likelihood.cu", "CudaLikelihood",
                       f'-I./mhn/full_state_space/',
                       additional_cuda_files=["./mhn/full_state_space/cuda_inverse_by_substitution.cu"])
     if not IS_WINDOWS:
