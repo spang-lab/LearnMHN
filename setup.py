@@ -82,31 +82,31 @@ if nvcc_available and 'sdist' not in sys.argv:
     libraries.append("CudaFullStateSpace")
     compile_cuda_code("./mhn/full_state_space/", "cuda_full_state_space.cu", "CudaFullStateSpace",
                       additional_cuda_files=["./mhn/full_state_space/cuda_inverse_by_substitution.cu"])
-    compile_cuda_code("./mhn/ssr/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction",
+    compile_cuda_code("./mhn/training/", "cuda_state_space_restriction.cu", "CudaStateSpaceRestriction",
                       f'-I./mhn/full_state_space/',
                       additional_cuda_files=["./mhn/full_state_space/cuda_inverse_by_substitution.cu"])
     if not IS_WINDOWS:
         extra_cuda_link_args = [
             '-Wl,-rpath,$ORIGIN/../full_state_space/',
-            '-Wl,-rpath,$ORIGIN/../ssr/',
+            '-Wl,-rpath,$ORIGIN/../training/',
         ]
 
 
 # define compile options for the Cython files
 ext_modules = [
     Extension(
-        "mhn.ssr.state_containers",
-        ["./mhn/ssr/state_containers.pyx"],
+        "mhn.training.state_containers",
+        ["./mhn/training/state_containers.pyx"],
         extra_compile_args=[
             f'-DSTATE_SIZE={STATE_SIZE}'
         ]
     ),
     Extension(
-        "mhn.ssr.state_space_restriction",
-        ["./mhn/ssr/state_space_restriction.pyx"],
+        "mhn.training.state_space_restriction",
+        ["./mhn/training/state_space_restriction.pyx"],
         libraries=libraries,
-        library_dirs=["./mhn/ssr/", "./mhn/full_state_space/"],
-        include_dirs=['./mhn/ssr/', "./mhn/full_state_space/"],
+        library_dirs=["./mhn/training/", "./mhn/full_state_space/"],
+        include_dirs=['./mhn/training/', "./mhn/full_state_space/"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2',
             f'-DSTATE_SIZE={STATE_SIZE}'
@@ -117,8 +117,8 @@ ext_modules = [
         "mhn.full_state_space.Likelihood",
         ["./mhn/full_state_space/Likelihood.pyx"],
         libraries=libraries,
-        library_dirs=["./mhn/ssr/", "./mhn/full_state_space/"],
-        include_dirs=['./mhn/ssr/', "./mhn/full_state_space/"],
+        library_dirs=["./mhn/training/", "./mhn/full_state_space/"],
+        include_dirs=['./mhn/training/', "./mhn/full_state_space/"],
         extra_compile_args=[
             '/Ox' if IS_WINDOWS else '-O2'
         ],

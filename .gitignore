@@ -12,10 +12,9 @@ mhn/full_state_space/*.pyd
 mhn/full_state_space/*.dll
 mhn/full_state_space/*.exp
 mhn/full_state_space/*.lib
-mhn/ssr/*.so
-mhn/ssr/*.c
-mhn/ssr/*.pyd
-mhn/ssr/*.dll
-mhn/ssr/*.exp
-mhn/ssr/*.lib
-build
+mhn/training/*.so
+mhn/training/*.c
+mhn/training/*.pyd
+mhn/training/*.dll
+mhn/training/*.exp
+mhn/training/*.lib

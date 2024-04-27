@@ -1,13 +1,13 @@
-*ssr*: The package containing everything related to state-space restriction
-===========================================================================
+*training*: The package containing everything related to state-space restriction
+================================================================================
 
-.. automodule:: mhn.ssr
+.. automodule:: mhn.training
 
 
 *state\_space\_restriction*
 ---------------------------
 
-.. automodule:: mhn.ssr.state_space_restriction
+.. automodule:: mhn.training.state_space_restriction
     :noindex:
 
 :ref:`View documentation <The *state_space_restriction* submodule>`
@@ -15,7 +15,7 @@
 *state\_containers*
 -------------------
 
-.. automodule:: mhn.ssr.state_containers
+.. automodule:: mhn.training.state_containers
     :noindex:
 
 
@@ -25,7 +25,7 @@
 *regularized\_optimization*
 ---------------------------
 
-.. automodule:: mhn.ssr.regularized_optimization
+.. automodule:: mhn.training.regularized_optimization
     :noindex:
 
 :ref:`View documentation <The *regularized_optimization* submodule>`

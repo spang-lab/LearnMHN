@@ -5,8 +5,8 @@
 
 import unittest
 import numpy as np
-from mhn.ssr import state_space_restriction
-from mhn.ssr.state_containers import StateContainer
+from mhn.training import state_space_restriction
+from mhn.training.state_containers import StateContainer
 from mhn.full_state_space import Likelihood, UtilityFunctions, ModelConstruction
 
 
