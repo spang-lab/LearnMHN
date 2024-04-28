@@ -17,7 +17,7 @@ import matplotlib
 import matplotlib.axes
 import matplotlib.colors as colors
 
-from .full_state_space import Likelihood
+from . import utilities
 from .training import likelihood_cmhn
 
 from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
@@ -111,7 +111,7 @@ class cMHN:
 
         :returns: array or DataFrame with samples as rows and events as columns
         """
-        art_data = Likelihood.sample_artificial_data(
+        art_data = utilities.sample_artificial_data(
             self.log_theta, sample_num)
         if as_dataframe:
             df = pd.DataFrame(art_data)
@@ -151,7 +151,7 @@ class cMHN:
                 index = self.events.index(event)
                 initial_state[index] = 1
 
-        trajectory_list, observation_times = Likelihood.gillespie(self.log_theta, initial_state, trajectory_num)
+        trajectory_list, observation_times = utilities.gillespie(self.log_theta, initial_state, trajectory_num)
 
         if output_event_names:
             if self.events is None:
@@ -206,7 +206,7 @@ class cMHN:
             observation_rate = self._get_observation_rate(state)
         else:
             observation_rate = 0
-        result = Likelihood.compute_next_event_probs(
+        result = utilities.compute_next_event_probs(
             self.log_theta, state, observation_rate)
         if not as_dataframe:
             return result
