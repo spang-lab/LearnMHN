@@ -114,6 +114,17 @@ ext_modules = [
         extra_link_args=extra_cuda_link_args
     ),
     Extension(
+        "mhn.utilities",
+        ["./mhn/utilities.pyx"],
+        libraries=libraries,
+        library_dirs=["./mhn/training/", "./mhn/full_state_space/"],
+        include_dirs=['./mhn/training/', "./mhn/full_state_space/"],
+        extra_compile_args=[
+            '/Ox' if IS_WINDOWS else '-O2'
+        ],
+        extra_link_args=extra_cuda_link_args
+    ),
+    Extension(
         "mhn.full_state_space.Likelihood",
         ["./mhn/full_state_space/Likelihood.pyx"],
         libraries=libraries,
