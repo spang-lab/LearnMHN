@@ -419,7 +419,8 @@ class cMHN:
 
     def plot(
             self,
-            cmap: Union[str, matplotlib.colors.Colormap] = "RdBu_r",
+            cmap_thetas: Union[str, matplotlib.colors.Colormap] = "RdBu_r",
+            cmap_brs: Union[str, matplotlib.colors.Colormap] = "Greens",
             colorbar: bool = True,
             annot: Union[float, bool] = 0.1,
             ax: Optional[matplotlib.axes.Axes] = None,
@@ -429,8 +430,10 @@ class cMHN:
         Plots the theta matrix.
 
         Args:
-            cmap (Union[str, matplotlib.colors.Colormap], optional):
-                Colormap to use. Defaults to "RdBu_r".
+            cmap_thetas (Union[str, matplotlib.colors.Colormap], optional):
+                Colormap to use fot THetas. Defaults to "RdBu_r".
+            cmap_brs (Union[str, matplotlib.colors.Colormap], optional):
+                Colormap to use for the base rates. Defaults to "Greens".
             colorbar (bool, optional):
                 Whether to display a colorbar. Defaults to True.
             annot (Union[float, bool], optional):
@@ -444,58 +447,128 @@ class cMHN:
                 Defaults to True.
         """
 
+        # configure basic plot setup
+        n_col = 3 if colorbar else 2
+        figsize = (
+            self.log_theta.shape[1] * 0.35 +
+            (3.2 if colorbar else 1.8),
+            self.log_theta.shape[0] * 0.35 + 1)
+        width_ratios = [4, self.log_theta.shape[1] + 6,
+                        3] if colorbar else [4, self.log_theta.shape[1] + 3]
+
+        # create axes object if not provided
         if ax is None:
-            _, ax = plt.subplots(ncols=2, figsize=(10, 8))
+            _, ax = plt.subplots(
+                1, n_col,
+                figsize=figsize,
+                width_ratios=width_ratios,
+                sharey=True,
+                layout="tight")
         else:
-            # check if ax is 2 dimensional
+            # check if ax is n_col dimensional
             if not isinstance(ax, np.ndarray) or ax.shape != (1, 2):
                 # warn and create new axes object
                 warnings.warn(
-                    "Provided axes object is not 2-dimensional, creating new axes object")
-                _, ax = plt.subplots(ncols=2, figsize=(10, 8))
+                    f"Provided axes object is not {n_col}-dimensional, creating new axes object")
+            _, ax = plt.subplots(
+                1, n_col,
+                figsize=figsize,
+                width_ratios=width_ratios,
+                sharey=True,
+                layout="tight")
+
+        # name axes
+        ax_brs, ax_theta = ax[:2]
+
+        # get base rates
+        base_rates = np.diag(self.log_theta).reshape(-1, 1)
+        if not logarithmic:
+            base_rates = np.exp(base_rates)
+
+        # plot thetas
 
         if logarithmic:
-            _max = np.abs(self.log_theta).max()
+            _max_th = np.abs(self.log_theta).max()
             theta = self.log_theta.copy()
             np.fill_diagonal(theta, 0)
-            im = ax[0].imshow(
-                self.log_theta,
-                cmap=cmap,
-                vmin=-_max, vmax=_max)
-        else:
-            _max = np.abs(self.log_theta).max()
-            _max = np.exp(_max)
-            theta = np.around(np.exp(self.log_theta), decimals=2)
-            np.fill_diagonal(theta, 0)
-            im = ax[0].imshow(
+            im_thetas = ax_theta.imshow(
                 theta,
-                norm=colors.LogNorm(vmin=1 / _max, vmax=_max),
-                cmap=cmap)
-        if colorbar:
-            cbar_0 = plt.colorbar(im, ax=ax)
-            if not logarithmic:
-                cbar_0.minorticks_off()
-                ticks = np.exp(np.linspace(np.log(1 / _max), np.log(_max), 9))
-                labels = [f'{t:.1e}'[:-3] for t in ticks]
-                cbar_0.set_ticks(
-                    ticks, labels=labels
-                )
-        ax[0].tick_params(length=0)
-        ax[0].set_yticks(
+                cmap=cmap_thetas,
+                vmin=-_max_th, vmax=_max_th)
+            im_brs = ax_brs.imshow(
+                base_rates,
+                cmap=cmap_brs)
+        else:
+            # FIXME remove diag from max calculation
+            _max_th = np.exp(np.abs(self.log_theta).max())
+            # FIXME adapt to diag
+            _max_br = np.exp(np.abs(self.log_theta).max())
+            theta = np.exp(self.log_theta)
+            np.fill_diagonal(theta, 0)
+            im_thetas = ax_theta.imshow(
+                theta,
+                norm=colors.LogNorm(vmin=1 / _max_th, vmax=_max_th),
+                cmap=cmap_thetas)
+            im_brs = ax_brs.imshow(
+                base_rates,
+                norm=colors.LogNorm(vmin=1 / _max_br, vmax=_max_br),
+                cmap=cmap_brs)
+
+        # style the plot ticks
+        ax_theta.tick_params(length=0)
+        ax_theta.set_yticks(
             np.arange(0, self.log_theta.shape[0], 1),
             (self.events or list(range(self.log_theta.shape[1]))) +
-            (["Observation"] if self.log_theta.shape[0] == self.log_theta.shape[1] + 1 else []))
-        ax[0].set_xticks(
+            (["Observation"] if
+             self.log_theta.shape[0] == self.log_theta.shape[1] + 1
+             else []))
+        ax_theta.set_xticks(
             np.arange(0, self.log_theta.shape[1], 1),
             self.events)
-        ax[0].tick_params(axis="x", rotation=90)
+        ax_theta.tick_params(axis="x", rotation=90)
+
+        ax_brs.tick_params(length=0)
+        ax_brs.set_yticks(
+            np.arange(0, self.log_theta.shape[0], 1),
+            (self.events or list(range(self.log_theta.shape[1]))) +
+            (["Observation"] if
+             self.log_theta.shape[0] == self.log_theta.shape[1] + 1
+             else []))
+        ax_brs.set_xticks([0], ["Base Rate"])
+        ax_brs.tick_params(axis="x", rotation=90)
+
+        ax_theta.set_ylim((self.log_theta.shape[1] + 0.5, -0.5))
+
+        # add annotations
+        # FIXME annot scales logarithmically!
         if annot:
+            for i in range(self.log_theta.shape[1]):
+                _ = ax_brs.text(
+                    0, i, np.around(base_rates[i, 0], decimals=2),
+                    ha="center", va="center", fontsize=8)
             for i in range(self.log_theta.shape[0]):
                 for j in range(self.log_theta.shape[1]):
-                    if annot is True or np.abs(self.log_theta[i, j]) >= annot:
-                        text = ax[0].text(j, i, theta[i, j],
-                                          ha="center", va="center")
+                    if not i == j and \
+                            (annot is True
+                             or np.abs(self.log_theta[i, j]) >= annot):
+                        _ = ax_theta.text(
+                            j, i, np.around(theta[i, j], decimals=2),
+                            ha="center", va="center", fontsize=8)
 
+        # add colorbars
+        if colorbar:
+            ax_cbar = ax[2]
+            ax_cbar.axis("off")
+            cbar_brs = plt.colorbar(
+                im_brs, ax=ax_cbar, orientation="horizontal", aspect=3)
+            cbar_thetas = plt.colorbar(
+                im_thetas, ax=ax_cbar, orientation="horizontal", aspect=3)
+
+        if colorbar:
+            return im_brs, im_thetas, cbar_thetas, cbar_brs
+        else:
+            return im_brs, im_thetas
+        
 
 class oMHN(cMHN):
     """
