@@ -21,3 +21,5 @@ mhn/training/*.pyd
 mhn/training/*.dll
 mhn/training/*.exp
 mhn/training/*.lib
+
+build
