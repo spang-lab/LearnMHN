@@ -155,11 +155,13 @@ class cMHN:
                 index = self.events.index(event)
                 initial_state[index] = 1
 
-        trajectory_list, observation_times = utilities.gillespie(self.log_theta, initial_state, trajectory_num)
+        trajectory_list, observation_times = utilities.gillespie(
+            self.log_theta, initial_state, trajectory_num)
 
         if output_event_names:
             if self.events is None:
-                raise ValueError("output_event_names can only be set to True, if events was set for the cMHN object")
+                raise ValueError(
+                    "output_event_names can only be set to True, if events was set for the cMHN object")
             trajectory_list = list(map(
                 lambda trajectory: list(map(
                     lambda event: self.events[event],
@@ -578,7 +580,7 @@ class cMHN:
             return im_brs, im_thetas, cbar_thetas, cbar_brs
         else:
             return im_brs, im_thetas
-        
+
 
 class oMHN(cMHN):
     """
