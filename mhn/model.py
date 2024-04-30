@@ -13,9 +13,11 @@ from typing import Union, Optional
 import matplotlib
 import matplotlib.axes
 import matplotlib.colors as colors
+import warnings
 
 from . import utilities
 from .training import likelihood_cmhn
+import warnings
 
 
 class cMHN:
@@ -72,9 +74,11 @@ class cMHN:
         if type(initial_state) is np.ndarray:
             initial_state = initial_state.astype(np.int32)
             if initial_state.size != self.log_theta.shape[1]:
-                raise ValueError(f"The initial state must be of size {self.log_theta.shape[1]}")
+                raise ValueError(
+                    f"The initial state must be of size {self.log_theta.shape[1]}")
             if not set(initial_state.flatten()).issubset({0, 1}):
-                raise ValueError("The initial state array must only contain 0s and 1s")
+                raise ValueError(
+                    "The initial state array must only contain 0s and 1s")
         else:
             init_state_copy = list(initial_state)
             initial_state = np.zeros(self.log_theta.shape[1], dtype=np.int32)
@@ -87,11 +91,13 @@ class cMHN:
                 index = self.events.index(event)
                 initial_state[index] = 1
 
-        trajectory_list, observation_times = utilities.gillespie(self.log_theta, initial_state, trajectory_num)
+        trajectory_list, observation_times = utilities.gillespie(
+            self.log_theta, initial_state, trajectory_num)
 
         if output_event_names:
             if self.events is None:
-                raise ValueError("output_event_names can only be set to True, if events was set for the cMHN object")
+                raise ValueError(
+                    "output_event_names can only be set to True, if events was set for the cMHN object")
             trajectory_list = list(map(
                 lambda trajectory: list(map(
                     lambda event: self.events[event],
@@ -159,10 +165,10 @@ class cMHN:
         """
         Save the cMHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
 
-        :param filename: name of the CSV file without(!) the '.csv', JSON will be named accordingly
+        :param filename: name of the CSV file, JSON will be named accordingly
         """
         pd.DataFrame(self.log_theta, columns=self.events,
-                     index=self.events).to_csv(f"{filename}.csv")
+                     index=self.events).to_csv(f"{filename}")
         if self.meta is not None:
             json_serializable_meta = {}
             # check if objects in self.meta are JSON serializable, if not, convert them to a string
@@ -172,7 +178,7 @@ class cMHN:
                     json_serializable_meta[meta_key] = meta_value
                 except TypeError:
                     json_serializable_meta[meta_key] = str(meta_value)
-            with open(f"{filename}_meta.json", "x") as file:
+            with open(f"{filename[:-4]}_meta.json", "w") as file:
                 json.dump(json_serializable_meta, file, indent=4)
 
     @classmethod
@@ -180,16 +186,16 @@ class cMHN:
         """
         Load an cMHN object from a CSV file.
 
-        :param filename: name of the CSV file without(!) the '.csv'
+        :param filename: name of the CSV file
         :param events: list of strings containing the names of the events considered by the cMHN
 
         :returns: cMHN object
         """
-        df = pd.read_csv(f"{filename}.csv", index_col=0)
+        df = pd.read_csv(f"{filename}", index_col=0)
         if events is None and (df.columns != pd.Index([str(x) for x in range(len(df.columns))])).any():
             events = df.columns.to_list()
         try:
-            with open(f"{filename}_meta.json", "r") as file:
+            with open(f"{filename[:-4]}_meta.json", "r") as file:
                 meta = json.load(file)
         except FileNotFoundError:
             meta = None
@@ -207,20 +213,23 @@ class cMHN:
 
     def plot(
             self,
-            cmap: Union[str, matplotlib.colors.Colormap] = "RdBu_r",
+            cmap_thetas: Union[str, matplotlib.colors.Colormap] = "RdBu_r",
+            cmap_brs: Union[str, matplotlib.colors.Colormap] = "Greens",
             colorbar: bool = True,
             annot: Union[float, bool] = 0.1,
-            ax: Optional[matplotlib.axes.Axes] = None,
+            ax: Optional[np.arraymatplotlib.axes.Axes] = None,
             logarithmic: bool = True
-    ) -> None:
+    ) -> tuple[matplotlib.image.AxesImage, matplotlib.image.AxesImage, matplotlib.colorbar.Colorbar, matplotlib.colorbar.Colorbar] | tuple[matplotlib.image.AxesImage, matplotlib.image.AxesImage]:
         """
         Plots the theta matrix.
 
         Args:
-            cmap (Union[str, matplotlib.colors.Colormap], optional):
-                Colormap to use. Defaults to "RdBu_r".
+            cmap_thetas (Union[str, matplotlib.colors.Colormap], optional):
+                Colormap to use for thetas. Defaults to "RdBu_r".
+            cmap_brs (Union[str, matplotlib.colors.Colormap], optional):
+                Colormap to use for the base rates. Defaults to "Greens".
             colorbar (bool, optional):
-                Whether to display a colorbar. Defaults to True.
+                Whether to display the colorbars. Defaults to True.
             annot (Union[float, bool], optional):
                 If boolean, either all or no annotations are displayed. If numerical, displays
                 annotations for all effects greater than this threshold in the logarithmic theta matrix.
@@ -230,49 +239,138 @@ class cMHN:
             logarithmic (bool, optional):
                 If set to True, plots the logarithmic theta matrix, else plots the exponential theta matrix.
                 Defaults to True.
-        """
-        if ax is None:
-            _, ax = plt.subplots()
 
-        if logarithmic:
-            _max = np.abs(self.log_theta).max()
-            theta = self.log_theta
-            im = ax.imshow(
-                self.log_theta,
-                cmap=cmap,
-                vmin=-_max, vmax=_max)
+        Returns:
+            tuple[matplotlib.image.AxesImage, matplotlib.image.AxesImage, matplotlib.colorbar.Colorbar, matplotlib.colorbar.Colorbar] | tuple[matplotlib.image.AxesImage, matplotlib.image.AxesImage]:
+                If colorbar is True, returns the two heatmaps and the two colorbars. Else, returns only the two axes images.
+        """
+
+        # raise warning that the threshold is applied to the logarithmic values
+        if isinstance(annot, float) and not logarithmic:
+            warnings.warn(
+                f"The annotation threshold of {annot} is applied to the logarithmic theta, not the exponential values. " +
+                f"thetas with |exp(theta)| < {annot} are hidden.")
+
+        # configure basic plot setup
+        n_col = 3 if colorbar else 2
+        dim_theta_0 = self.log_theta.shape[0]
+        dim_theta_1 = self.log_theta.shape[1]
+        figsize = (
+            dim_theta_1 * 0.35 +
+            (3.2 if colorbar else 1.8),
+            dim_theta_0 * 0.35 + 1)
+        width_ratios = [4, dim_theta_1 + 6,
+                        3] if colorbar else [4, dim_theta_1 + 3]
+
+        # create axes object if not provided
+        if ax is None:
+            _, ax = plt.subplots(
+                1, n_col,
+                figsize=figsize,
+                width_ratios=width_ratios,
+                sharey=True,
+                layout="tight")
         else:
-            _max = np.abs(self.log_theta).max()
-            _max = np.exp(_max)
-            theta = np.around(np.exp(self.log_theta), decimals=2)
-            im = ax.imshow(
+            # check if ax is n_col dimensional
+            if not isinstance(ax, np.ndarray) or ax.shape != (n_col,):
+                # warn and create new axes object
+                warnings.warn(
+                    f"Provided axes object is not {n_col}-dimensional, creating new axes object")
+                _, ax = plt.subplots(
+                    1, n_col,
+                    figsize=figsize,
+                    width_ratios=width_ratios,
+                    sharey=True,
+                    layout="tight")
+
+        # name axes
+        ax_brs, ax_theta = ax[:2]
+
+        # get base rates
+        base_rates = np.diag(self.log_theta).reshape(-1, 1)
+        if not logarithmic:
+            base_rates = np.exp(base_rates)
+
+        # plot thetas
+        if logarithmic:
+            _max_th = np.abs(self.log_theta).max()
+            theta = self.log_theta.copy()
+            np.fill_diagonal(theta, 0)
+            im_brs = ax_brs.imshow(
+                base_rates,
+                cmap=cmap_brs)
+            im_thetas = ax_theta.imshow(
                 theta,
-                norm=colors.LogNorm(vmin=1 / _max, vmax=_max),
-                cmap=cmap)
-        if colorbar:
-            cbar = plt.colorbar(im, ax=ax)
-            if not logarithmic:
-                cbar.minorticks_off()
-                ticks = np.exp(np.linspace(np.log(1 / _max), np.log(_max), 9))
-                labels = [f'{t:.1e}'[:-3] for t in ticks]
-                cbar.set_ticks(
-                    ticks, labels=labels
-                )
-        ax.tick_params(length=0)
-        ax.set_yticks(
-            np.arange(0, self.log_theta.shape[0], 1),
-            (self.events or list(range(self.log_theta.shape[1]))) +
-            (["Observation"] if self.log_theta.shape[0] == self.log_theta.shape[1] + 1 else []))
-        ax.set_xticks(
-            np.arange(0, self.log_theta.shape[1], 1),
+                cmap=cmap_thetas,
+                vmin=-_max_th, vmax=_max_th)
+        else:
+            _max_th = np.exp(
+                np.abs(self.log_theta - np.diag(self.log_theta)).max())
+            _max_br = np.exp(np.abs(np.diag(self.log_theta)).max())
+            theta = np.exp(self.log_theta)
+            np.fill_diagonal(theta, 1)
+            im_brs = ax_brs.imshow(
+                base_rates,
+                norm=colors.LogNorm(vmin=1 / _max_br, vmax=_max_br),
+                cmap=cmap_brs)
+            im_thetas = ax_theta.imshow(
+                theta,
+                norm=colors.LogNorm(vmin=1 / _max_th, vmax=_max_th),
+                cmap=cmap_thetas)
+
+        # style the plot ticks
+        ax_brs.tick_params(length=0)
+        ax_brs.set_yticks(
+            np.arange(0, dim_theta_0, 1),
+            (self.events or list(range(dim_theta_1))) +
+            (["Observation"] if
+             dim_theta_0 == dim_theta_1 + 1
+             else []))
+        ax_brs.set_xticks([0], ["Base Rate"])
+        ax_brs.tick_params(axis="x", rotation=90)
+
+        ax_theta.tick_params(length=0)
+        ax_theta.set_yticks(
+            np.arange(0, dim_theta_0, 1),
+            (self.events or list(range(dim_theta_1))) +
+            (["Observation"] if
+             dim_theta_0 == dim_theta_1 + 1
+             else []))
+        ax_theta.set_xticks(
+            np.arange(0, dim_theta_1, 1),
             self.events)
-        ax.tick_params(axis="x", rotation=90)
+        ax_theta.tick_params(axis="x", rotation=90)
+
+        ax_theta.set_ylim((dim_theta_0 - 0.5, -0.5))
+
+        # add annotations
         if annot:
-            for i in range(self.log_theta.shape[0]):
-                for j in range(self.log_theta.shape[1]):
-                    if annot is True or np.abs(self.log_theta[i, j]) >= annot:
-                        text = ax.text(j, i, theta[i, j],
-                                       ha="center", va="center")
+            for i in range(dim_theta_1):
+                _ = ax_brs.text(
+                    0, i, np.around(base_rates[i, 0], decimals=2),
+                    ha="center", va="center", fontsize=8)
+            for i in range(dim_theta_0):
+                for j in range(dim_theta_1):
+                    if not i == j and \
+                            (annot is True
+                             or np.abs(self.log_theta[i, j]) >= annot):
+                        _ = ax_theta.text(
+                            j, i, np.around(theta[i, j], decimals=2),
+                            ha="center", va="center", fontsize=8)
+
+        # add colorbars
+        if colorbar:
+            ax_cbar = ax[2]
+            ax_cbar.axis("off")
+            cbar_brs = plt.colorbar(
+                im_brs, ax=ax_cbar, orientation="horizontal", aspect=3)
+            cbar_thetas = plt.colorbar(
+                im_thetas, ax=ax_cbar, orientation="horizontal", aspect=3)
+
+        if colorbar:
+            return im_brs, im_thetas, cbar_thetas, cbar_brs
+        else:
+            return im_brs, im_thetas
 
 
 class oMHN(cMHN):
@@ -323,14 +421,14 @@ class oMHN(cMHN):
         """
         Save the oMHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
 
-        :param filename: name of the CSV file without(!) the '.csv', JSON will be named accordingly
+        :param filename: name of the CSV file, JSON will be named accordingly
         """
         if self.events is None:
             events_and_observation_labels = None
         else:
             events_and_observation_labels = self.events + ["Observation"]
         pd.DataFrame(self.log_theta, columns=self.events,
-                     index=events_and_observation_labels).to_csv(f"{filename}.csv")
+                     index=events_and_observation_labels).to_csv(f"{filename}")
         if self.meta is not None:
             json_serializable_meta = {}
             # check if objects in self.meta are JSON serializable, if not, convert them to a string
@@ -340,5 +438,5 @@ class oMHN(cMHN):
                     json_serializable_meta[meta_key] = meta_value
                 except TypeError:
                     json_serializable_meta[meta_key] = str(meta_value)
-            with open(f"{filename}_meta.json", "x") as file:
+            with open(f"{filename[:-4]}_meta.json", "w") as file:
                 json.dump(json_serializable_meta, file, indent=4)
