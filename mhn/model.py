@@ -214,19 +214,19 @@ class cMHN:
             cmap_brs: Union[str, matplotlib.colors.Colormap] = "Greens",
             colorbar: bool = True,
             annot: Union[float, bool] = 0.1,
-            ax: Optional[matplotlib.axes.Axes] = None,
+            ax: Optional[np.arraymatplotlib.axes.Axes] = None,
             logarithmic: bool = True
-    ) -> None:
+    ) -> tuple[matplotlib.image.AxesImage, matplotlib.image.AxesImage, matplotlib.colorbar.Colorbar, matplotlib.colorbar.Colorbar] | tuple[matplotlib.image.AxesImage, matplotlib.image.AxesImage]:
         """
         Plots the theta matrix.
 
         Args:
             cmap_thetas (Union[str, matplotlib.colors.Colormap], optional):
-                Colormap to use fot THetas. Defaults to "RdBu_r".
+                Colormap to use for thetas. Defaults to "RdBu_r".
             cmap_brs (Union[str, matplotlib.colors.Colormap], optional):
                 Colormap to use for the base rates. Defaults to "Greens".
             colorbar (bool, optional):
-                Whether to display a colorbar. Defaults to True.
+                Whether to display the colorbars. Defaults to True.
             annot (Union[float, bool], optional):
                 If boolean, either all or no annotations are displayed. If numerical, displays
                 annotations for all effects greater than this threshold in the logarithmic theta matrix.
@@ -236,16 +236,28 @@ class cMHN:
             logarithmic (bool, optional):
                 If set to True, plots the logarithmic theta matrix, else plots the exponential theta matrix.
                 Defaults to True.
+
+        Returns:
+            tuple[matplotlib.image.AxesImage, matplotlib.image.AxesImage, matplotlib.colorbar.Colorbar, matplotlib.colorbar.Colorbar] | tuple[matplotlib.image.AxesImage, matplotlib.image.AxesImage]:
+                If colorbar is True, returns the two heatmaps and the two colorbars. Else, returns only the two axes images.
         """
+
+        # raise warning that the threshold is applied to the logarithmic values
+        if isinstance(annot, float) and not logarithmic:
+            warnings.warn(
+                f"The annotation threshold of {annot} is applied to the logarithmic theta, not the exponential values. " +
+                f"thetas with |exp(theta)| < {annot} are hidden.")
 
         # configure basic plot setup
         n_col = 3 if colorbar else 2
+        dim_theta_0 = self.log_theta.shape[0]
+        dim_theta_1 = self.log_theta.shape[1]
         figsize = (
-            self.log_theta.shape[1] * 0.35 +
+            dim_theta_1 * 0.35 +
             (3.2 if colorbar else 1.8),
-            self.log_theta.shape[0] * 0.35 + 1)
-        width_ratios = [4, self.log_theta.shape[1] + 6,
-                        3] if colorbar else [4, self.log_theta.shape[1] + 3]
+            dim_theta_0 * 0.35 + 1)
+        width_ratios = [4, dim_theta_1 + 6,
+                        3] if colorbar else [4, dim_theta_1 + 3]
 
         # create axes object if not provided
         if ax is None:
@@ -277,68 +289,65 @@ class cMHN:
             base_rates = np.exp(base_rates)
 
         # plot thetas
-
         if logarithmic:
             _max_th = np.abs(self.log_theta).max()
             theta = self.log_theta.copy()
             np.fill_diagonal(theta, 0)
+            im_brs = ax_brs.imshow(
+                base_rates,
+                cmap=cmap_brs)
             im_thetas = ax_theta.imshow(
                 theta,
                 cmap=cmap_thetas,
                 vmin=-_max_th, vmax=_max_th)
-            im_brs = ax_brs.imshow(
-                base_rates,
-                cmap=cmap_brs)
         else:
-            # FIXME remove diag from max calculation
-            _max_th = np.exp(np.abs(self.log_theta).max())
-            # FIXME adapt to diag
-            _max_br = np.exp(np.abs(self.log_theta).max())
+            _max_th = np.exp(
+                np.abs(self.log_theta - np.diag(self.log_theta)).max())
+            _max_br = np.exp(np.abs(np.diag(self.log_theta)).max())
             theta = np.exp(self.log_theta)
-            np.fill_diagonal(theta, 0)
-            im_thetas = ax_theta.imshow(
-                theta,
-                norm=colors.LogNorm(vmin=1 / _max_th, vmax=_max_th),
-                cmap=cmap_thetas)
+            np.fill_diagonal(theta, 1)
             im_brs = ax_brs.imshow(
                 base_rates,
                 norm=colors.LogNorm(vmin=1 / _max_br, vmax=_max_br),
                 cmap=cmap_brs)
+            im_thetas = ax_theta.imshow(
+                theta,
+                norm=colors.LogNorm(vmin=1 / _max_th, vmax=_max_th),
+                cmap=cmap_thetas)
 
         # style the plot ticks
-        ax_theta.tick_params(length=0)
-        ax_theta.set_yticks(
-            np.arange(0, self.log_theta.shape[0], 1),
-            (self.events or list(range(self.log_theta.shape[1]))) +
-            (["Observation"] if
-             self.log_theta.shape[0] == self.log_theta.shape[1] + 1
-             else []))
-        ax_theta.set_xticks(
-            np.arange(0, self.log_theta.shape[1], 1),
-            self.events)
-        ax_theta.tick_params(axis="x", rotation=90)
-
         ax_brs.tick_params(length=0)
         ax_brs.set_yticks(
-            np.arange(0, self.log_theta.shape[0], 1),
-            (self.events or list(range(self.log_theta.shape[1]))) +
+            np.arange(0, dim_theta_0, 1),
+            (self.events or list(range(dim_theta_1))) +
             (["Observation"] if
-             self.log_theta.shape[0] == self.log_theta.shape[1] + 1
+             dim_theta_0 == dim_theta_1 + 1
              else []))
         ax_brs.set_xticks([0], ["Base Rate"])
         ax_brs.tick_params(axis="x", rotation=90)
 
-        ax_theta.set_ylim((self.log_theta.shape[1] + 0.5, -0.5))
+        ax_theta.tick_params(length=0)
+        ax_theta.set_yticks(
+            np.arange(0, dim_theta_0, 1),
+            (self.events or list(range(dim_theta_1))) +
+            (["Observation"] if
+             dim_theta_0 == dim_theta_1 + 1
+             else []))
+        ax_theta.set_xticks(
+            np.arange(0, dim_theta_1, 1),
+            self.events)
+        ax_theta.tick_params(axis="x", rotation=90)
+
+        ax_theta.set_ylim((dim_theta_1 + 0.5, -0.5))
 
         # add annotations
-        # FIXME annot scales logarithmically!
         if annot:
-            for i in range(self.log_theta.shape[1]):
+            for i in range(dim_theta_1):
                 _ = ax_brs.text(
                     0, i, np.around(base_rates[i, 0], decimals=2),
                     ha="center", va="center", fontsize=8)
-            for i in range(self.log_theta.shape[0]):
-                for j in range(self.log_theta.shape[1]):
+            for i in range(dim_theta_0):
+                for j in range(dim_theta_1):
                     if not i == j and \
                             (annot is True
                              or np.abs(self.log_theta[i, j]) >= annot):
