@@ -481,16 +481,16 @@ class cMHN:
                 layout="tight")
         else:
             # check if ax is n_col dimensional
-            if not isinstance(ax, np.ndarray) or ax.shape != (1, 2):
+            if not isinstance(ax, np.ndarray) or ax.shape != (n_col,):
                 # warn and create new axes object
                 warnings.warn(
                     f"Provided axes object is not {n_col}-dimensional, creating new axes object")
-            _, ax = plt.subplots(
-                1, n_col,
-                figsize=figsize,
-                width_ratios=width_ratios,
-                sharey=True,
-                layout="tight")
+                _, ax = plt.subplots(
+                    1, n_col,
+                    figsize=figsize,
+                    width_ratios=width_ratios,
+                    sharey=True,
+                    layout="tight")
 
         # name axes
         ax_brs, ax_theta = ax[:2]
@@ -550,7 +550,7 @@ class cMHN:
             self.events)
         ax_theta.tick_params(axis="x", rotation=90)
 
-        ax_theta.set_ylim((dim_theta_1 + 0.5, -0.5))
+        ax_theta.set_ylim((dim_theta_0 - 0.5, -0.5))
 
         # add annotations
         if annot:
