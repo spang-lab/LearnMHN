@@ -16,6 +16,7 @@ from typing import Union, Optional
 import matplotlib
 import matplotlib.axes
 import matplotlib.colors as colors
+import warnings
 
 from . import utilities
 from .training import likelihood_cmhn
