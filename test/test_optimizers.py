@@ -68,7 +68,7 @@ class TestcMHNOptimizer(BaseOptimizerTestClass.TestOptimizer):
 
     def setUp(self) -> None:
         super().setUp()
-        dummy_data = np.random.choice([0, 1], (20, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
+        dummy_data = np.random.choice([0, 1], (200, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
         self.opt = cMHNOptimizer()
         self.opt.load_data_matrix(dummy_data)
 
@@ -83,13 +83,13 @@ class TestcMHNOptimizer(BaseOptimizerTestClass.TestOptimizer):
         self.opt.load_data_matrix(random_data)
         self.opt.train()
 
-    def test_find_lambda(self):
+    def test_lambda_from_cv(self):
         """
         Tests if cross-validation works with no errors.
         """
         nfolds = 2
-        steps = 3
-        lambda_min = 0.05
+        steps = 8
+        lambda_min = 0.001
         lambda_max = 0.5
         lambda_vector = np.array([0.09, 0.1])
 
