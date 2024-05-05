@@ -428,6 +428,10 @@ class cMHNOptimizer(_Optimizer):
         standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
         threshold = np.max(score_means) - standard_error
         chosen_lambda_idx = np.max(np.argwhere(score_means > threshold))
+        chosen_lambda = lambda_path[chosen_lambda_idx].item()
+
+        if not lambda_path.min() < chosen_lambda < lambda_path.max():
+            warnings.warn("Optimal lambda is at a limit (min/max) of the given search range. Consider re-running with adjusted search range.")
 
         if return_lambda_scores:
             score_dataframe = pd.DataFrame.from_dict({
@@ -435,9 +439,9 @@ class cMHNOptimizer(_Optimizer):
                 "Mean Score": score_means,
                 "Standard Error": np.std(scores, axis=0) / np.sqrt(nfolds)
             })
-            return lambda_path[chosen_lambda_idx].item(), score_dataframe
+            return chosen_lambda, score_dataframe
 
-        return lambda_path[chosen_lambda_idx].item()
+        return chosen_lambda
 
     def set_device(self, device: "cMHNOptimizer.Device"):
         """
