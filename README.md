@@ -1,12 +1,10 @@
-# *mhn*: A Python package to efficiently compute Mutual Hazard Networks
+# *mhn*: A Python Package to Efficiently Compute Mutual Hazard Networks
 
 Mutual Hazard Networks (MHN) were first introduced by [Schill et al. (2019)](https://academic.oup.com/bioinformatics/article/36/1/241/5524604)
 and are used to model cancer progression.  
 This Python package can be used to work with MHNs. It includes functions that were part of the
 original R implementation as well as functions that make use of state-space restriction 
-to make learning a new MHN from cancer data faster and more efficient. Furthermore, it
-also contains functions to work with data for which the samples' ages are known and can
-therefore be considered while learning an MHN (see [Rupp et al. (2021)](https://arxiv.org/abs/2112.10971)).  
+to make learning a new MHN from cancer data faster and more efficient.   
 There are optimizer classes for data with known sample ages as well as for data without, which make learning a new MHN possible with
 only a few lines of code.  
 
@@ -14,7 +12,7 @@ only a few lines of code.
 
 A detailed documentation of the *mhn* package is available [here](https://learnmhn.readthedocs.io/en/latest/index.html).
 
-## Install the mhn package
+## Install the mhn Package
 
 You can install the mhn package using pip:
 
@@ -32,24 +30,32 @@ If a new version of the mhn package is available, you can upgrade your installat
 pip install --upgrade mhn
 ```
 
-## A quick overview
+## A Quick Overview
 
 The package contains the original MHN functions implemented in Python. You import them from ``mhn.original``:
 
 ```python
-from mhn.original import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
+from mhn.full_state_space import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
 ```
 You can train an MHN using state-space restriction. The corresponding functions
 can be imported with
-```python
-from mhn.ssr import state_space_restriction, state_containers
-```
-The functions that make use of the known ages of samples can be imported via
-```python
-from mhn.ssr import matrix_exponential
-```
 
-## Using the CUDA implementation to accelerate score computations
+```python
+from mhn.training import likelihood_cmhn, state_containers
+```
+Training a new MHN can be as simple as writing the following few lines of code:
+
+```python
+from mhn.optimizers import cMHNOptimizer
+
+opt = cMHNOptimizer()
+opt = opt.load_data_from_csv("path/to/training_data")
+new_mhn = opt.train()
+new_mhn.save("path/to/saving/location")
+```
+We will look at the methods of the Optimizer class in more detail below.
+
+## Using the CUDA Implementation to Accelerate Score Computations
 If your device has an Nvidia GPU, you can accelerate the computation of the log-likelihood score and its gradient for
 both the full and the restricted state-space with CUDA. 
 For that you have to have CUDA and the CUDA compiler
@@ -100,7 +106,7 @@ pip install mhn
 If you installed ``nvcc`` after installing the ``mhn`` package, you have to
 reinstall this package to gain access to the CUDA functions.
 
-### Reinstalling the package for CUDA-related reasons
+### Reinstalling the Package for CUDA-Related Reasons
 
 If you want to reinstall the package because you want to either 
 enable or disable CUDA support, you should add the ```--no-cache-dir``` flag during 
@@ -112,13 +118,15 @@ pip uninstall mhn
 pip install mhn --no-cache-dir
 ```
 
-## How to train a new MHN
+## How to Train a New MHN
 
 The simplest way to train a new MHN is to import the ```optimizers``` module and
-use the ```StateSpaceOptimizer``` class.
+use the ```cMHNOptimizer``` class.
+
 ```python
-from mhn.optimizers import StateSpaceOptimizer
-opt = StateSpaceOptimizer()
+from mhn.optimizers import cMHNOptimizer
+
+opt = cMHNOptimizer()
 ```
 We can specify the data that we want our MHN to be trained on:
 ```python
@@ -144,11 +152,11 @@ If you work with a CUDA-capable device, you can choose which device you want to 
 train a new MHN:
 ```python
 # uses both CPU and GPU depending on the number of mutations in the individual sample
-opt.set_device(StateSpaceOptimizer.Device.AUTO)
+opt.set_device(cMHNOptimizer.Device.AUTO)
 # use the CPU to compute log-likelihood score and gradient
-opt.set_device(StateSpaceOptimizer.Device.CPU)
+opt.set_device(cMHNOptimizer.Device.CPU)
 # use the GPU to compute log-likelihood score and gradient
-opt.set_device(StateSpaceOptimizer.Device.GPU)
+opt.set_device(cMHNOptimizer.Device.GPU)
 # you can also access the Device enum directly with an Optimizer object
 opt.set_device(opt.Device.AUTO)
 ```
@@ -176,9 +184,11 @@ opt.set_callback_func(some_callback_function)
 ```
 
 Finally, you can train a new MHN with
+
 ```python
-from mhn.optimizers import StateSpaceOptimizer
-opt = StateSpaceOptimizer()
+from mhn.optimizers import cMHNOptimizer
+
+opt = cMHNOptimizer()
 opt = opt.load_data_from_csv(filename, delimiter)
 opt.train()
 ```

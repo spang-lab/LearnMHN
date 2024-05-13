@@ -6,8 +6,9 @@ This file contains unit tests for the full state-space functions of the mhn pack
 import unittest
 import numpy as np
 
-from mhn.ssr import state_space_restriction
-from mhn.original import Likelihood, ModelConstruction, PerformanceCriticalCode
+import mhn
+from mhn.training import likelihood_cmhn
+from mhn.full_state_space import Likelihood, ModelConstruction, PerformanceCriticalCode
 
 
 class TestCudaGradient(unittest.TestCase):
@@ -19,7 +20,7 @@ class TestCudaGradient(unittest.TestCase):
         Preparation for each test
         """
         np.random.seed(0)  # set random seed for reproducibility
-        if state_space_restriction.cuda_available() != state_space_restriction.CUDA_AVAILABLE:
+        if mhn.cuda_available() != mhn.CUDA_AVAILABLE:
             self.skipTest("CUDA not available for testing")
 
     def test_compare_with_cython(self):
@@ -54,3 +55,7 @@ class TestCudaGradient(unittest.TestCase):
 
         print(res1)
         print(res2)
+
+
+if __name__ == '__main__':
+    unittest.main()

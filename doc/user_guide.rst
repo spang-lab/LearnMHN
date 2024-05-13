@@ -14,12 +14,12 @@ Learn an MHN from data with no age information
 ----------------------------------------------
 
 You can learn a new MHN from data with no age information for the individual samples
-with the :code:`StateSpaceOptimizer` class.
+with the :code:`cMHNOptimizer` class.
 
 .. code-block:: python
 
-    from mhn.optimizers import StateSpaceOptimizer
-    opt = StateSpaceOptimizer()
+    from mhn.optimizers import cMHNOptimizer
+    opt = cMHNOptimizer()
 
 
 We can specify the data that we want our MHN to be trained on:
@@ -61,13 +61,13 @@ If you work with a CUDA-capable device, you can choose which device you want to 
 .. code-block:: python
 
     # uses both CPU and GPU depending on the number of mutations in the individual sample (default)
-    opt.set_device(StateSpaceOptimizer.Device.AUTO)
+    opt.set_device(cMHNOptimizer.Device.AUTO)
 
     # use the CPU to compute log-likelihood score and gradient
-    opt.set_device(StateSpaceOptimizer.Device.CPU)
+    opt.set_device(cMHNOptimizer.Device.CPU)
 
     # use the GPU to compute log-likelihood score and gradient
-    opt.set_device(StateSpaceOptimizer.Device.GPU)
+    opt.set_device(cMHNOptimizer.Device.GPU)
 
     # you can also access the Device enum directly with an Optimizer object
     opt.set_device(opt.Device.AUTO)
@@ -122,7 +122,7 @@ You can also access the learned model via the :code:`result` property:
 
     learned_mhn = opt.result
 
-The documentation of the :code:`StateSpaceOptimizer` can be found :ref:`here <Available Optimizers in the *optimizers* module>`.
+The documentation of the :code:`cMHNOptimizer` can be found :ref:`here <Available Optimizers in the *optimizers* module>`.
 
 
 Learn an MHN from data with age information
