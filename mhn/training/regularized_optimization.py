@@ -3,10 +3,10 @@ This submodule contains functions to learn an MHN.
 """
 # author(s): Stefan Vocht, Y. Linda Hu
 
-import numpy as np
-from scipy.optimize import minimize, OptimizeResult
-
 from typing import Callable
+
+import numpy as np
+from scipy.optimize import OptimizeResult, minimize
 
 from .state_containers import StateContainer, create_indep_model
 

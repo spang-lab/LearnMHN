@@ -5,26 +5,21 @@ This submodule contains Optimizer classes to learn an MHN from mutation data.
 
 from __future__ import annotations
 
+import abc
 import warnings
 from enum import Enum
-import abc
 
-from tqdm.auto import trange
 import numpy as np
 import pandas as pd
+from tqdm.auto import trange
+
+from mhn.training import (likelihood_cmhn, likelihood_omhn, penalties_cmhn,
+                          penalties_omhn)
+from mhn.training import regularized_optimization as reg_optim
 
 from . import model
-
-from mhn.training import regularized_optimization as reg_optim
-from .training.state_containers import StateContainer
-from .training.state_containers import create_indep_model
-from .training.likelihood_cmhn import CUDAError, cuda_available, CUDA_AVAILABLE
-
-from mhn.training import likelihood_cmhn
-from mhn.training import penalties_cmhn
-
-from mhn.training import likelihood_omhn
-from mhn.training import penalties_omhn
+from .training.likelihood_cmhn import CUDA_AVAILABLE, CUDAError, cuda_available
+from .training.state_containers import StateContainer, create_indep_model
 
 
 class _Optimizer(abc.ABC):

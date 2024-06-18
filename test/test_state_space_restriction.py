@@ -4,11 +4,13 @@
 #
 
 import unittest
+
 import numpy as np
-from mhn.training import likelihood_cmhn
+
+from mhn.full_state_space import (Likelihood, ModelConstruction,
+                                  UtilityFunctions)
+from mhn.training import likelihood_cmhn, likelihood_omhn
 from mhn.training.state_containers import StateContainer
-from mhn.training import likelihood_omhn
-from mhn.full_state_space import Likelihood, UtilityFunctions, ModelConstruction
 
 
 class TestCythonGradient(unittest.TestCase):

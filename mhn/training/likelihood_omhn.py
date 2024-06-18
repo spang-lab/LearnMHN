@@ -3,8 +3,9 @@ This submodule contains functions that can be used to compute the scores and gra
 """
 # author(s): Stefan Vocht
 
-import numpy as np
 from typing import Callable
+
+import numpy as np
 
 from . import likelihood_cmhn
 from .state_containers import StateContainer

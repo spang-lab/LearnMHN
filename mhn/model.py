@@ -5,25 +5,19 @@ This submodule contains classes to represent Mutual Hazard Networks
 
 from __future__ import annotations
 
-from numpy.core.multiarray import array as array
-
-import numpy as np
-import pandas as pd
 import json
-import matplotlib.pyplot as plt
-from typing import Union, Optional
+import warnings
+from math import factorial
+from typing import Iterator, Optional, Union
+
 import matplotlib
 import matplotlib.axes
 import matplotlib.colors as colors
-import warnings
-
-from . import utilities
-from .training import likelihood_cmhn
-import warnings
-
-from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
-import json
-from math import factorial
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from numpy.core.multiarray import array as array
+from scipy.linalg.blas import daxpy, dcopy, dscal
 
 from . import utilities
 from .training import likelihood_cmhn
@@ -61,7 +55,8 @@ class cMHN:
     This class represents a classical Mutual Hazard Network.
     """
 
-    def __init__(self, log_theta: np.array, events: list[str] = None, meta: dict = None):
+    def __init__(self, log_theta: np.array,
+                 events: list[str] = None, meta: dict = None):
         """
         :param log_theta: logarithmic values of the theta matrix representing the cMHN
         :param events: (optional) list of strings containing the names of the events considered by the cMHN
@@ -75,7 +70,8 @@ class cMHN:
         self.events = events
         self.meta = meta
 
-    def sample_artificial_data(self, sample_num: int, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
+    def sample_artificial_data(
+            self, sample_num: int, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
         """
         Returns artificial data sampled from this cMHN. Random values are generated with numpy, use np.random.seed()
         to make results reproducible.
@@ -237,7 +233,7 @@ class cMHN:
         """Marginal likelihood of an order of events.
 
         Args:
-            sigma (tuple[int]): Tuple of integers where the integers represent the events. 
+            sigma (tuple[int]): Tuple of integers where the integers represent the events.
 
         Returns:
             float: Marginal likelihood of observing sigma.
@@ -250,7 +246,8 @@ class cMHN:
         return np.exp(sum((self.log_theta[x_i, sigma[:n_i]].sum() + self.log_theta[x_i, x_i]) for n_i, x_i in enumerate(sigma))) \
             / np.prod([1 - restr_diag[(1 << pos)[:i].sum()] for i in range(len(sigma) + 1)])
 
-    def likeliest_order(self, state: np.array, normalize: bool = False) -> tuple[float, np.array]:
+    def likeliest_order(self, state: np.array,
+                        normalize: bool = False) -> tuple[float, np.array]:
         """Returns the likeliest order in which a given state accumulated according to the MHN.
 
         Args:
@@ -260,17 +257,17 @@ class cMHN:
             Defaults to False.
 
         Returns:
-            tuple[float, np.array]: Likelihood of the likeliest accumulation order and the order itself.  
+            tuple[float, np.array]: Likelihood of the likeliest accumulation order and the order itself.
         """
         restr_diag = self.get_restr_diag(state=state)
         log_theta = self.log_theta[state.astype(bool)][:, state.astype(bool)]
 
         k = state.sum()
         # {state: highest path probability to this state}
-        A = {0: 1/(1-restr_diag[0])}
+        A = {0: 1 / (1 - restr_diag[0])}
         # {state: path with highest probability to this state}
         B = {0: []}
-        for i in range(1, k+1):         # i is the number of events
+        for i in range(1, k + 1):         # i is the number of events
             A_new = dict()
             B_new = dict()
             for st in bits_fixed_n(n=i, k=k):
@@ -285,15 +282,17 @@ class cMHN:
                         A_new[st] = A[pre_st] * num
                         B_new[st] = B[pre_st].copy()
                         B_new[st].append(e)
-                A_new[st] /= (1-restr_diag[st])
+                A_new[st] /= (1 - restr_diag[st])
             A = A_new
             B = B_new
         i = (1 << k) - 1
         if normalize:
             A[i] /= self.compute_marginal_likelihood(state=state)
-        return (A[i], np.arange(self.log_theta.shape[0])[state.astype(bool)][B[i]])
+        return (A[i], np.arange(self.log_theta.shape[0])
+                [state.astype(bool)][B[i]])
 
-    def m_likeliest_orders(self, state: np.array, m: int, normalize: bool = False) -> tuple[np.array, np.array]:
+    def m_likeliest_orders(self, state: np.array, m: int,
+                           normalize: bool = False) -> tuple[np.array, np.array]:
         """Returns the m likeliest orders in which a given state accumulated according to the MHN.
 
         Args:
@@ -312,10 +311,11 @@ class cMHN:
 
         k = state.sum()
         # {state: highest path probability to this state}
-        A = {0: np.array(1/(1-restr_diag[0]))}
+        A = {0: np.array(1 / (1 - restr_diag[0]))}
         # {state: path with highest probability to this state}
         B = {0: np.empty(0, dtype=int)}
-        for i in range(1, k+1):                     # i is the number of events
+        for i in range(
+                1, k + 1):                     # i is the number of events
             _m = min(factorial(i - 1), m)
             A_new = dict()
             B_new = dict()
@@ -334,13 +334,14 @@ class cMHN:
                 sorting = A_new[st].argsort()[::-1][:m]
                 A_new[st] = A_new[st][sorting]
                 B_new[st] = B_new[st][sorting]
-                A_new[st] /= (1-restr_diag[st])
+                A_new[st] /= (1 - restr_diag[st])
             A = A_new
             B = B_new
         i = (1 << k) - 1
         if normalize:
             A[i] /= self.compute_marginal_likelihood(state=state)
-        return (A[i], (np.arange(self.log_theta.shape[0])[state.astype(bool)])[B[i].flatten()].reshape(-1, k))
+        return (A[i], (np.arange(self.log_theta.shape[0])[
+                state.astype(bool)])[B[i].flatten()].reshape(-1, k))
 
     def save(self, filename: str):
         """
@@ -352,7 +353,8 @@ class cMHN:
                      index=self.events).to_csv(f"{filename}")
         if self.meta is not None:
             json_serializable_meta = {}
-            # check if objects in self.meta are JSON serializable, if not, convert them to a string
+            # check if objects in self.meta are JSON serializable, if not,
+            # convert them to a string
             for meta_key, meta_value in self.meta.items():
                 try:
                     json.dumps(meta_value)
@@ -373,7 +375,8 @@ class cMHN:
         :returns: cMHN object
         """
         df = pd.read_csv(f"{filename}", index_col=0)
-        if events is None and (df.columns != pd.Index([str(x) for x in range(len(df.columns))])).any():
+        if events is None and (df.columns != pd.Index(
+                [str(x) for x in range(len(df.columns))])).any():
             events = df.columns.to_list()
         try:
             with open(f"{filename[:-4]}_meta.json", "r") as file:
@@ -605,7 +608,8 @@ class oMHN(cMHN):
     This class represents an oMHN.
     """
 
-    def sample_artificial_data(self, sample_num: int, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
+    def sample_artificial_data(
+            self, sample_num: int, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
         """
         Returns artificial data sampled from this oMHN. Random values are generated with numpy, use np.random.seed()
         to make results reproducible.
@@ -615,7 +619,8 @@ class oMHN(cMHN):
 
         :returns: array or DataFrame with samples as rows and events as columns
         """
-        return self.get_equivalent_classical_mhn().sample_artificial_data(sample_num, as_dataframe)
+        return self.get_equivalent_classical_mhn(
+        ).sample_artificial_data(sample_num, as_dataframe)
 
     def compute_marginal_likelihood(self, state: np.ndarray) -> float:
         """
@@ -658,7 +663,8 @@ class oMHN(cMHN):
                      index=events_and_observation_labels).to_csv(f"{filename}")
         if self.meta is not None:
             json_serializable_meta = {}
-            # check if objects in self.meta are JSON serializable, if not, convert them to a string
+            # check if objects in self.meta are JSON serializable, if not,
+            # convert them to a string
             for meta_key, meta_value in self.meta.items():
                 try:
                     json.dumps(meta_value)
@@ -672,14 +678,15 @@ class oMHN(cMHN):
         """Marginal likelihood of an order of events.
 
         Args:
-            sigma (tuple[int]): Tuple of integers where the integers represent the events. 
+            sigma (tuple[int]): Tuple of integers where the integers represent the events.
 
         Returns:
             float: Marginal likelihood of observing sigma.
         """
         return self.get_equivalent_classical_mhn().order_likelihood(sigma)
 
-    def likeliest_order(self, state: np.array, normalize: bool = False) -> tuple[float, np.array]:
+    def likeliest_order(self, state: np.array,
+                        normalize: bool = False) -> tuple[float, np.array]:
         """Returns the likeliest order in which a given state accumulated according to the MHN.
 
         Args:
@@ -689,11 +696,12 @@ class oMHN(cMHN):
             Defaults to False.
 
         Returns:
-            tuple[float, Any]: Likelihood of the likeliest accumulation order and the order itself.  
+            tuple[float, Any]: Likelihood of the likeliest accumulation order and the order itself.
         """
         return self.get_equivalent_classical_mhn().likeliest_order(state, normalize)
 
-    def m_likeliest_orders(self, state: np.array, m: int, normalize: bool = False) -> tuple[np.array, np.array]:
+    def m_likeliest_orders(self, state: np.array, m: int,
+                           normalize: bool = False) -> tuple[np.array, np.array]:
         """Returns the m likeliest orders in which a given state accumulated according to the MHN.
 
         Args:
