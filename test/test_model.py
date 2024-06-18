@@ -1,9 +1,16 @@
+"""This file contains unittests for model.py
+
+author(s): Stefan Vocht, Y. Linda Hu"""
+
+
 import unittest
 
 import numpy as np
 
 from mhn import model
 from mhn.full_state_space import ModelConstruction, UtilityFunctions, Likelihood
+from numpy.testing import assert_almost_equal as np_assert_almost_equal
+from itertools import permutations
 
 
 class TestMHN(unittest.TestCase):
@@ -62,9 +69,11 @@ class TestMHN(unittest.TestCase):
         initial_event_state = ["A" * i for i in range(initial_event_num)]
 
         np.random.seed(0)
-        trajectories_1, obs_times_1 = mhn_object.sample_trajectories(100, initial_state=initial_bin_state)
+        trajectories_1, obs_times_1 = mhn_object.sample_trajectories(
+            100, initial_state=initial_bin_state)
         np.random.seed(0)
-        trajectories_2, obs_times_2 = mhn_object.sample_trajectories(100, initial_state=initial_event_state)
+        trajectories_2, obs_times_2 = mhn_object.sample_trajectories(
+            100, initial_state=initial_event_state)
 
         np.testing.assert_array_equal(obs_times_1, obs_times_2)
         self.assertListEqual(trajectories_1, trajectories_2)
@@ -79,9 +88,11 @@ class TestMHN(unittest.TestCase):
 
         p_th = Likelihood.generate_pTh(theta)
 
-        # code from https://stackoverflow.com/questions/22227595/convert-integer-to-binary-array-with-suitable-padding
+        # code from
+        # https://stackoverflow.com/questions/22227595/convert-integer-to-binary-array-with-suitable-padding
         d = np.arange(2**n)
-        all_possible_states = ((d[:, None] & (1 << np.arange(n))) > 0).astype(np.int32)
+        all_possible_states = (
+            (d[:, None] & (1 << np.arange(n))) > 0).astype(np.int32)
 
         for i in range(2**n):
             p = mhn_object.compute_marginal_likelihood(all_possible_states[i])
@@ -98,13 +109,53 @@ class TestMHN(unittest.TestCase):
         state = np.zeros(n, dtype=np.int32)
         state[0] = 1
 
-        # Here the probabilities should not sum up to 1 as the observation event is possible
+        # Here the probabilities should not sum up to 1 as the observation
+        # event is possible
         probs_df = mhn_object.compute_next_event_probs(state, True, True)
         self.assertNotAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
 
-        # Here the probabilities should sum up to 1 as there is no observation event
+        # Here the probabilities should sum up to 1 as there is no observation
+        # event
         probs_df = mhn_object.compute_next_event_probs(state, True, False)
         self.assertAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
+
+    def test_order_likelihood(self):
+        """Tests if the order likelihood is computed correctly.
+        """
+        n = 5
+        theta = ModelConstruction.random_theta(n)
+        mhn_object = model.cMHN(theta)
+        diag = mhn_object.get_restr_diag(state=np.ones(n, dtype=np.int32))
+
+        order = [4, 3, 0]
+        p = np.exp(theta[4, 4]) /\
+            (1 - diag[0]) * \
+            np.exp(theta[3, [3, 4]].sum()) /\
+            (1 - diag[2 ** 4]) * \
+            np.exp(theta[0, [0, 3, 4]].sum()) /\
+            (1 - diag[2 ** 3 + 2 ** 4]) / \
+            (1 - diag[2 ** 3 + 2 ** 4 + 2 ** 0])
+        np_assert_almost_equal(mhn_object.order_likelihood(order), p)
+
+    def test_likeliest_order_computation(self):
+        """Tests if the likeliest order is computed correctly.
+        """
+        n = 5
+        theta = ModelConstruction.random_theta(n)
+        mhn_object = model.cMHN(theta)
+        state = np.zeros(n, dtype=np.int32)
+        state[[0, 3, 4]] = 1
+
+        prob, order = mhn_object.likeliest_order(state)
+        self.assertAlmostEqual(prob, mhn_object.order_likelihood(order))
+
+        order = tuple(order)
+
+        for other_order in permutations(order):
+            if other_order == order:
+                continue
+            other_prob = mhn_object.order_likelihood(other_order)
+            self.assertGreaterEqual(prob, other_prob)
 
 
 class TestOmegaMHN(unittest.TestCase):
@@ -126,7 +177,8 @@ class TestOmegaMHN(unittest.TestCase):
         theta = ModelConstruction.random_theta(n)
         theta = np.vstack((theta, np.random.random(n)))
         mhn_object = model.oMHN(theta)
-        p_th = Likelihood.generate_pTh(mhn_object.get_equivalent_classical_mhn().log_theta)
+        p_th = Likelihood.generate_pTh(
+            mhn_object.get_equivalent_classical_mhn().log_theta)
 
         trajectories, obs_times = mhn_object.sample_trajectories(500_000, [])
         cross_sec_data = list(map(
@@ -149,11 +201,13 @@ class TestOmegaMHN(unittest.TestCase):
         state = np.zeros(n, dtype=np.int32)
         state[0] = 1
 
-        # Here the probabilities should not sum up to 1 as the observation event is possible
+        # Here the probabilities should not sum up to 1 as the observation
+        # event is possible
         probs_df = mhn_object.compute_next_event_probs(state, True, True)
         self.assertNotAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
 
-        # Here the probabilities should sum up to 1 as there is no observation event
+        # Here the probabilities should sum up to 1 as there is no observation
+        # event
         probs_df = mhn_object.compute_next_event_probs(state, True, False)
         self.assertAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
 
