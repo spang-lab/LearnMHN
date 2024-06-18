@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from numpy.core.multiarray import array as array
 
-from cmath import log
 import numpy as np
 import pandas as pd
 import json
@@ -26,36 +25,9 @@ from scipy.linalg.blas import dcopy, dscal, daxpy, ddot
 import json
 from math import factorial
 
-
-def Q_from_log_theta(log_theta: np.typing.ArrayLike, diag: bool = True):
-    """This function returns the rate matrix Q_Theta of an MHN.
-
-    Args:
-        log_theta (np.typing.ArrayLike): Logarithmic Theta Matrix parametrizing the rate matrix.
-        diag (bool, optional): Whether to include the diagonal of the matrix. Defaults to True.
-
-    Returns:
-        np.array: Q_Theta
-    """
-    n = log_theta.shape[0]
-
-    def bi(x: int):
-        bi = np.array(list(np.binary_repr(x)), dtype=int)
-        ze = np.zeros(n)
-        ze[-len(bi):] = bi
-        return ze
-
-    Q = np.zeros((1 << n, 1 << n))
-    for i in range(1 << n):
-        for y, b_y in enumerate(reversed(bi(i))):
-            if b_y == 0:
-                Q[i + (1 << y)][i] = np.exp(log_theta[y][y] + sum(log_theta[y][x]
-                                                                  for x in np.nonzero(bi(i))[0]))
-    if diag:
-        Q = Q - np.diag(Q.sum(axis=0))
-
-    return Q
-
+from . import utilities
+from .training import likelihood_cmhn
+import warnings
 
 class bits_fixed_n:
     """
@@ -82,7 +54,6 @@ class bits_fixed_n:
         w = t | ((((t & -t)) // (self.v & (-self.v)) >> 1) - 1)
         self.v, w = w, self.v
         return w
-
 
 class cMHN:
     """
@@ -409,6 +380,161 @@ class cMHN:
         except FileNotFoundError:
             meta = None
         return cls(np.array(df), events=events, meta=meta)
+
+    def get_restr_diag(self, state: np.array) -> np.array:
+        """Get the diagonal of the state-space-restricted Q_Theta matrix.
+
+        Args:
+            state (np.array): State (binary, dtype int32) which should be considered for the
+            state space restriction. Shape (n,) with n the number of total events.
+
+        Returns:
+            np.array: Diagonal of the state-space-restricted Q_Theta matrix. Shape (2^k,) with
+            k the number of 1s in state
+        """
+        k = state.sum()
+        nx = 1 << k
+        n = self.log_theta.shape[0]
+        diag = np.zeros(nx)
+        subdiag = np.zeros(nx)
+
+        for i in range(n):
+
+            current_length = 1
+            subdiag[0] = 1
+            # compute the ith subdiagonal of Q
+            for j in range(n):
+                if state[j]:
+                    exp_theta = np.exp(self.log_theta[i, j])
+                    if i == j:
+                        exp_theta *= -1
+                        dscal(n=current_length, a=exp_theta, x=subdiag, incx=1)
+                        dscal(n=current_length, a=0,
+                              x=subdiag[current_length:], incx=1)
+                    else:
+                        dcopy(n=current_length, x=subdiag, incx=1,
+                              y=subdiag[current_length:], incy=1)
+                        dscal(n=current_length, a=exp_theta,
+                              x=subdiag[current_length:], incx=1)
+
+                    current_length *= 2
+
+                elif i == j:
+                    exp_theta = - np.exp(self.log_theta[i, j])
+                    dscal(n=current_length, a=exp_theta, x=subdiag, incx=1)
+
+            # add the subdiagonal to dg
+            daxpy(n=nx, a=1, x=subdiag, incx=1, y=diag, incy=1)
+        return diag
+
+    def order_likelihood(self, sigma: tuple[int]) -> float:
+        """Marginal likelihood of an order of events.
+
+        Args:
+            sigma (tuple[int]): Tuple of integers where the integers represent the events. 
+
+        Returns:
+            float: Marginal likelihood of observing sigma.
+        """
+        events = np.zeros(self.log_theta.shape[0], dtype=np.int32)
+        events[sigma] = 1
+        sigma = np.array(sigma)
+        pos = np.argsort(np.argsort(sigma))
+        restr_diag = self.get_restr_diag(state=events)
+        return np.exp(sum((self.log_theta[x_i, sigma[:n_i]].sum() + self.log_theta[x_i, x_i]) for n_i, x_i in enumerate(sigma))) \
+            / np.prod([1 - restr_diag[(1 << pos)[:i].sum()] for i in range(len(sigma) + 1)])
+
+    def likeliest_order(self, state: np.array, normalize: bool = False) -> tuple[float, np.array]:
+        """Returns the likeliest order in which a given state accumulated according to the MHN.
+
+        Args:
+            state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
+            events.
+            normalize (bool, optional): Whether to normalize among all possible accumulation orders.
+            Defaults to False.
+
+        Returns:
+            tuple[float, np.array]: Likelihood of the likeliest accumulation order and the order itself.  
+        """
+        restr_diag = self.get_restr_diag(state=state)
+        log_theta = self.log_theta[state.astype(bool)][:, state.astype(bool)]
+
+        k = state.sum()
+        # {state: highest path probability to this state}
+        A = {0: 1/(1-restr_diag[0])}
+        # {state: path with highest probability to this state}
+        B = {0: []}
+        for i in range(1, k+1):         # i is the number of events
+            A_new = dict()
+            B_new = dict()
+            for st in bits_fixed_n(n=i, k=k):
+                A_new[st] = -1
+                state_events = np.array(
+                    [i for i in range(k) if (1 << i) | st == st])  # events in state
+                for e in state_events:
+                    # numerator in Gotovos formula
+                    num = np.exp(log_theta[e, state_events].sum())
+                    pre_st = st - (1 << e)
+                    if A[pre_st] * num > A_new[st]:
+                        A_new[st] = A[pre_st] * num
+                        B_new[st] = B[pre_st].copy()
+                        B_new[st].append(e)
+                A_new[st] /= (1-restr_diag[st])
+            A = A_new
+            B = B_new
+        i = (1 << k) - 1
+        if normalize:
+            A[i] /= self.compute_marginal_likelihood(state=state)
+        return (A[i], np.arange(self.log_theta.shape[0])[state.astype(bool)][B[i]])
+
+    def m_likeliest_orders(self, state: np.array, m: int, normalize: bool = False) -> tuple[np.array, np.array]:
+        """Returns the m likeliest orders in which a given state accumulated according to the MHN.
+
+        Args:
+            state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
+            events.
+            m (int): Number of likeliest orders to compute.
+            normalize (bool, optional): Whether to normalize among all possible accumulation orders.
+            Defaults to False.
+
+        Returns:
+            tuple[np.array, np.array]: Array of likelihoods of the likeliest accumulation order and
+            array of the order itself.
+        """
+        restr_diag = self.get_restr_diag(state=state)
+        log_theta = self.log_theta[state.astype(bool)][:, state.astype(bool)]
+
+        k = state.sum()
+        # {state: highest path probability to this state}
+        A = {0: np.array(1/(1-restr_diag[0]))}
+        # {state: path with highest probability to this state}
+        B = {0: np.empty(0, dtype=int)}
+        for i in range(1, k+1):                     # i is the number of events
+            _m = min(factorial(i - 1), m)
+            A_new = dict()
+            B_new = dict()
+            for st in bits_fixed_n(n=i, k=k):
+                A_new[st] = np.zeros(i * _m)
+                B_new[st] = np.zeros((i * _m, i), dtype=int)
+                state_events = np.array(
+                    [i for i in range(k) if 1 << i | st == st])  # events in state
+                for j, e in enumerate(state_events):
+                    # numerator in Gotovos formula
+                    num = np.exp(log_theta[e, state_events].sum())
+                    pre_st = st - (1 << e)
+                    A_new[st][j * _m: (j + 1) * _m] = num * A[pre_st]
+                    B_new[st][j * _m: (j + 1) * _m, :-1] = B[pre_st]
+                    B_new[st][j * _m: (j + 1) * _m, -1] = e
+                sorting = A_new[st].argsort()[::-1][:m]
+                A_new[st] = A_new[st][sorting]
+                B_new[st] = B_new[st][sorting]
+                A_new[st] /= (1-restr_diag[st])
+            A = A_new
+            B = B_new
+        i = (1 << k) - 1
+        if normalize:
+            A[i] /= self.compute_marginal_likelihood(state=state)
+        return (A[i], (np.arange(self.log_theta.shape[0])[state.astype(bool)])[B[i].flatten()].reshape(-1, k))
 
     def __str__(self):
         if isinstance(self.meta, dict):
