@@ -10,12 +10,6 @@ from enum import Enum
 import abc
 
 from tqdm.auto import trange
-
-
-from .ssr.learn_MHN import learn_MHN, reg_state_space_restriction_score, reg_state_space_restriction_gradient
-from .ssr.learn_MHN import reg_approximate_score, reg_approximate_gradient
-
-
 import numpy as np
 import pandas as pd
 
@@ -38,7 +32,6 @@ class _Optimizer(abc.ABC):
     This abstract Optimizer class is the base class for the other Optimizer classes and cannot be instantiated alone.
     """
 
-
     def __init__(self):
         self._data = None
         self._bin_datamatrix = None
@@ -55,9 +48,11 @@ class _Optimizer(abc.ABC):
 
         self._gradient_and_score_func = None
         self._regularized_score_func_builder = lambda grad_score_func: \
-            penalties_cmhn.build_regularized_score_func(grad_score_func, penalties_cmhn.l1)
+            penalties_cmhn.build_regularized_score_func(
+                grad_score_func, penalties_cmhn.l1)
         self._regularized_gradient_func_builder = lambda grad_score_func: \
-            penalties_cmhn.build_regularized_gradient_func(grad_score_func, penalties_cmhn.l1_)
+            penalties_cmhn.build_regularized_gradient_func(
+                grad_score_func, penalties_cmhn.l1_)
 
         self._OutputMHNClass = model.cMHN
 
@@ -82,7 +77,8 @@ class _Optimizer(abc.ABC):
             return {}
 
         total_event_occurrence = np.sum(self._bin_datamatrix, axis=0)
-        event_frequencies = total_event_occurrence / self._bin_datamatrix.shape[0]
+        event_frequencies = total_event_occurrence / \
+            self._bin_datamatrix.shape[0]
         event_dataframe = pd.DataFrame.from_dict({
             "Total": total_event_occurrence,
             "Frequency": event_frequencies
@@ -111,24 +107,6 @@ class _Optimizer(abc.ABC):
         if callback is not None and not hasattr(callback, '__call__'):
             raise ValueError("callback has to be a function!")
         self.__custom_callback = callback
-        return self
-
-    def set_score_and_gradient_function(self, score_func, gradient_func):
-        if not hasattr(score_func, '__call__') or not hasattr(gradient_func, '__call__'):
-            raise ValueError(
-                "score_func and gradient_func have to be functions!")
-        self.__score_func = score_func
-        self.__grad_func = gradient_func
-        return self
-
-    def use_state_space_restriction(self):
-        self.__score_func = reg_state_space_restriction_score
-        self.__grad_func = reg_state_space_restriction_gradient
-        return self
-
-    def use_approximate_gradient(self):
-        self.__score_func = reg_approximate_score
-        self.__grad_func = reg_approximate_gradient
         return self
 
     def save_progress(self, steps: int = -1, always_new_file: bool = False, filename: str = 'theta_backup.npy'):
@@ -193,8 +171,10 @@ class _Optimizer(abc.ABC):
         else:
             callback_func = self.__total_callback_func
 
-        score_func = self._regularized_score_func_builder(self._gradient_and_score_func)
-        gradient_func = self._regularized_gradient_func_builder(self._gradient_and_score_func)
+        score_func = self._regularized_score_func_builder(
+            self._gradient_and_score_func)
+        gradient_func = self._regularized_gradient_func_builder(
+            self._gradient_and_score_func)
 
         result = reg_optim.learn_mhn(self._data, score_func, gradient_func, self._init_theta, lam, maxit, trace, reltol,
                                      round_result, callback_func)
@@ -251,7 +231,8 @@ class _Optimizer(abc.ABC):
         # StateContainer only accepts numpy arrays with dtype=np.int32
         if data_matrix.dtype != np.int32:
             data_matrix = data_matrix.astype(dtype=np.int32)
-            warnings.warn("The dtype of the given data matrix is changed to np.int32")
+            warnings.warn(
+                "The dtype of the given data matrix is changed to np.int32")
         if not set(data_matrix.flatten()).issubset({0, 1}):
             raise ValueError("The data matrix must only contain 0s and 1s")
 
@@ -270,7 +251,8 @@ class _Optimizer(abc.ABC):
         The Device enum is part of this optimizer class.
         """
         if not isinstance(device, _Optimizer.Device):
-            raise ValueError(f"The given device is not an instance of {_Optimizer.Device}")
+            raise ValueError(
+                f"The given device is not an instance of {_Optimizer.Device}")
 
         return self
 
@@ -285,15 +267,19 @@ class _Optimizer(abc.ABC):
         The Penalty enum is part of this optimizer class.
         """
         if not isinstance(penalty, _Optimizer.Penalty):
-            raise ValueError(f"The given penalty is not an instance of {_Optimizer.Penalty}")
+            raise ValueError(
+                f"The given penalty is not an instance of {_Optimizer.Penalty}")
         penalty_score, penalty_gradient = {
             _Optimizer.Penalty.L1: (penalties_cmhn.l1, penalties_cmhn.l1_),
-            _Optimizer.Penalty.SYM_SPARSE: (penalties_cmhn.sym_sparse, penalties_cmhn.sym_sparse_deriv)
+            _Optimizer.Penalty.SYM_SPARSE: (
+                penalties_cmhn.sym_sparse, penalties_cmhn.sym_sparse_deriv)
         }[penalty]
         self._regularized_score_func_builder = lambda grad_score_func: \
-            penalties_cmhn.build_regularized_score_func(grad_score_func, penalty_score)
+            penalties_cmhn.build_regularized_score_func(
+                grad_score_func, penalty_score)
         self._regularized_gradient_func_builder = lambda grad_score_func: \
-            penalties_cmhn.build_regularized_gradient_func(grad_score_func, penalty_gradient)
+            penalties_cmhn.build_regularized_gradient_func(
+                grad_score_func, penalty_gradient)
         return self
 
     class Device(Enum):
@@ -380,12 +366,14 @@ class cMHNOptimizer(_Optimizer):
         score of each lambda value tested in cross-validation.
         """
         if self._bin_datamatrix is None:
-            raise ValueError("You have to load data before you start cross-validation")
+            raise ValueError(
+                "You have to load data before you start cross-validation")
 
         if lambda_vector is None:
             # create a range of possible lambdas with logarithmic grid-spacing
             # e.g. (0.0001,0.0010,0.0100,0.1000) for 4 steps
-            lambda_path: np.ndarray = np.exp(np.linspace(np.log(lambda_min + 1e-10), np.log(lambda_max + 1e-10), steps))
+            lambda_path: np.ndarray = np.exp(np.linspace(
+                np.log(lambda_min + 1e-10), np.log(lambda_max + 1e-10), steps))
         else:
             lambda_path = lambda_vector
             steps = lambda_vector.size
@@ -418,7 +406,8 @@ class cMHNOptimizer(_Optimizer):
             for i in trange(steps, desc="Lambda Evaluation", position=1, leave=False, disable=disable_progressbar):
                 opt.train(lam=lambda_path[i].item())
                 theta = opt.result.log_theta
-                scores[j, i] = self._gradient_and_score_func(theta, test_data_container)[1]
+                scores[j, i] = self._gradient_and_score_func(
+                    theta, test_data_container)[1]
 
         # find the best performing lambda with the highest average score over folds
         score_means = np.sum(scores, axis=0) / nfolds
@@ -431,7 +420,8 @@ class cMHNOptimizer(_Optimizer):
         chosen_lambda = lambda_path[chosen_lambda_idx].item()
 
         if not lambda_path.min() < chosen_lambda < lambda_path.max():
-            warnings.warn("Optimal lambda is at a limit (min/max) of the given search range. Consider re-running with adjusted search range.")
+            warnings.warn(
+                "Optimal lambda is at a limit (min/max) of the given search range. Consider re-running with adjusted search range.")
 
         if return_lambda_scores:
             score_dataframe = pd.DataFrame.from_dict({
@@ -484,9 +474,11 @@ class oMHNOptimizer(cMHNOptimizer):
         super().__init__()
         self._gradient_and_score_func = likelihood_omhn.gradient_and_score
         self._regularized_score_func_builder = lambda grad_score_func: \
-            penalties_omhn.build_regularized_score_func(grad_score_func, penalties_omhn.l1)
+            penalties_omhn.build_regularized_score_func(
+                grad_score_func, penalties_omhn.l1)
         self._regularized_gradient_func_builder = lambda grad_score_func: \
-            penalties_omhn.build_regularized_gradient_func(grad_score_func, penalties_omhn.l1_)
+            penalties_omhn.build_regularized_gradient_func(
+                grad_score_func, penalties_omhn.l1_)
         self._OutputMHNClass = model.oMHN
 
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
@@ -564,13 +556,17 @@ class oMHNOptimizer(cMHNOptimizer):
         The Penalty enum is part of this optimizer class.
         """
         if not isinstance(penalty, oMHNOptimizer.Penalty):
-            raise ValueError(f"The given penalty is not an instance of {oMHNOptimizer.Penalty}")
+            raise ValueError(
+                f"The given penalty is not an instance of {oMHNOptimizer.Penalty}")
         penalty_score, penalty_gradient = {
             oMHNOptimizer.Penalty.L1: (penalties_omhn.l1, penalties_omhn.l1_),
-            oMHNOptimizer.Penalty.SYM_SPARSE: (penalties_omhn.sym_sparse, penalties_omhn.sym_sparse_deriv)
+            oMHNOptimizer.Penalty.SYM_SPARSE: (
+                penalties_omhn.sym_sparse, penalties_omhn.sym_sparse_deriv)
         }[penalty]
         self._regularized_score_func_builder = lambda grad_score_func: \
-            penalties_omhn.build_regularized_score_func(grad_score_func, penalty_score)
+            penalties_omhn.build_regularized_score_func(
+                grad_score_func, penalty_score)
         self._regularized_gradient_func_builder = lambda grad_score_func: \
-            penalties_omhn.build_regularized_gradient_func(grad_score_func, penalty_gradient)
+            penalties_omhn.build_regularized_gradient_func(
+                grad_score_func, penalty_gradient)
         return self
