@@ -99,7 +99,7 @@ class _Optimizer(abc.ABC):
         Use this method to set a callback function called after each iteration in the BFGS algorithm.
         The given function must take exactly one argument, namely the theta matrix computed in the last iteration.
         """
-        if callback is not None and not hasattr(callback, '__call__'):
+        if callback is not None and not callable(callback):
             raise ValueError("callback has to be a function!")
         self.__custom_callback = callback
         return self
@@ -332,7 +332,7 @@ class cMHNOptimizer(_Optimizer):
         self.load_data_matrix(df)
         return self
 
-    def lambda_from_cv(self, lambda_min: float = 0.0001, lambda_max: float = 0.1,
+    def lambda_from_cv(self, lambda_min: float | None = None, lambda_max: float | None = None,
                        steps: int = 9, nfolds: int = 5, lambda_vector: np.ndarray | None = None,
                        show_progressbar: bool = False, return_lambda_scores: bool = False
                        ) -> float | tuple[float, pd.DataFrame]:
@@ -345,6 +345,9 @@ class cMHNOptimizer(_Optimizer):
         Alternatively, you can specify the minimum, maximum and step size for potential lambda values. This method
         will then create a range of possible lambdas with logarithmic grid-spacing, e.g. (0.0001, 0.0010, 0.0100, 0.1000)
         for lambda_min=0.0001, lambda_max=0.1 and steps=4.
+
+        If you set neither lambda_vector nor lambda_min and lambda_max, the default range (0.1/#datasamples, 10/#datasamples)
+        will be used.
 
         Use np.random.seed() to make results reproducible.
 
@@ -363,6 +366,15 @@ class cMHNOptimizer(_Optimizer):
         if self._bin_datamatrix is None:
             raise ValueError(
                 "You have to load data before you start cross-validation")
+
+        if lambda_min is None and lambda_max is not None or lambda_min is not None and lambda_max is None:
+            raise ValueError("You have to set both lambda_min and lambda_max, if you want to use them.")
+
+        if lambda_min is None and lambda_max is None:
+            # the default lambda value used in train() if lambda is not set
+            default_lambda = 1 / self._data.get_data_shape()[0]
+            lambda_min = 0.1 * default_lambda
+            lambda_max = 10 * default_lambda
 
         if lambda_vector is None:
             # create a range of possible lambdas with logarithmic grid-spacing
