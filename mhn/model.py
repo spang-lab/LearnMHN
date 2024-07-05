@@ -159,7 +159,7 @@ class cMHN:
 
         :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
         :param as_dataframe: if True, the result is returned as a pandas DataFrame, else as a numpy array
-        :param allow_observation: if True, the observation event can happen before any other event -> the probabilities of the remaining events will not add up to 100%
+        :param allow_observation: if True, the observation event can happen before any other event -> observation probability included in the output
 
         :returns: array or DataFrame that contains the probability for each event that it will be the next one to occur
 
@@ -175,12 +175,14 @@ class cMHN:
             observation_rate = 0
         result = utilities.compute_next_event_probs(
             self.log_theta, state, observation_rate)
+        if allow_observation:
+            result = np.concatenate((result, [1 - result.sum()]))
         if not as_dataframe:
             return result
         df = pd.DataFrame(result)
         df.columns = ["PROBS"]
         if self.events is not None:
-            df.index = self.events
+            df.index = self.events + (["Observation"] if allow_observation else [])
         return df
 
     def _get_observation_rate(self, state: np.ndarray) -> float:
