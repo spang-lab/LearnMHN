@@ -104,20 +104,21 @@ class TestMHN(unittest.TestCase):
         """
         n = 5
         theta = ModelConstruction.random_theta(n)
-        mhn_object = model.cMHN(theta)
+        mhn_object = model.cMHN(theta, events=["A"*(i+1) for i in range(n)])
 
         state = np.zeros(n, dtype=np.int32)
         state[0] = 1
 
-        # Here the probabilities should not sum up to 1 as the observation
-        # event is possible
+        # Here the probabilities should sum up to 1, but an additional entry for the observation probability exists
         probs_df = mhn_object.compute_next_event_probs(state, True, True)
-        self.assertNotAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
+        print(probs_df)
+        self.assertAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
+        self.assertEqual(len(probs_df), n + 1)
 
-        # Here the probabilities should sum up to 1 as there is no observation
-        # event
+        # Here the probabilities should sum up to 1 as there is no observation event
         probs_df = mhn_object.compute_next_event_probs(state, True, False)
         self.assertAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
+        self.assertEqual(len(probs_df), n)
 
     def test_order_likelihood(self):
         """Tests if the order likelihood is computed correctly.
@@ -201,13 +202,12 @@ class TestOmegaMHN(unittest.TestCase):
         state = np.zeros(n, dtype=np.int32)
         state[0] = 1
 
-        # Here the probabilities should not sum up to 1 as the observation
-        # event is possible
+        # Here the probabilities should sum up to 1, but an additional entry for the observation probability exists
         probs_df = mhn_object.compute_next_event_probs(state, True, True)
-        self.assertNotAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
+        self.assertAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
+        self.assertEqual(len(probs_df), n + 1)
 
-        # Here the probabilities should sum up to 1 as there is no observation
-        # event
+        # Here the probabilities should sum up to 1 as there is no observation event
         probs_df = mhn_object.compute_next_event_probs(state, True, False)
         self.assertAlmostEqual(probs_df["PROBS"].sum(), 1., 10)
 

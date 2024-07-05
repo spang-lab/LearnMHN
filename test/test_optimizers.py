@@ -88,7 +88,7 @@ class TestcMHNOptimizer(BaseOptimizerTestClass.TestOptimizer):
         Tests if cross-validation works with no errors.
         """
         nfolds = 2
-        steps = 8
+        steps = 9
         lambda_min = 0.001
         lambda_max = 0.5
         lambda_vector = np.array([0.09, 0.1])
@@ -100,6 +100,14 @@ class TestcMHNOptimizer(BaseOptimizerTestClass.TestOptimizer):
         best_lambda2, df = self.opt.lambda_from_cv(lambda_min, lambda_max, steps, nfolds, return_lambda_scores=True)
         # test reproducibility
         self.assertEqual(best_lambda, best_lambda2)
+
+        with self.assertRaises(ValueError):
+            best_lambda = self.opt.lambda_from_cv(None, lambda_max, steps, nfolds)
+            best_lambda = self.opt.lambda_from_cv(lambda_min, None, steps, nfolds)
+
+        # without min or max, default values are used
+        best_lambda2, df = self.opt.lambda_from_cv(None, None, steps, nfolds, return_lambda_scores=True)
+        print(df)
 
         # test with lambda_vector, also test that steps parameter is ignored
         np.random.seed(0)
