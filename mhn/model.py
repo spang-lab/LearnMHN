@@ -182,47 +182,12 @@ class cMHN:
         df = pd.DataFrame(result)
         df.columns = ["PROBS"]
         if self.events is not None:
-            df.index = self.events + (["Observation"] if allow_observation else [])
+            df.index = self.events + \
+                (["Observation"] if allow_observation else [])
         return df
 
     def _get_observation_rate(self, state: np.ndarray) -> float:
         return 1.
-
-    def get_restr_diag(self, state: np.array):
-        k = state.sum()
-        nx = 1 << k
-        n = self.log_theta.shape[0]
-        diag = np.zeros(nx)
-        subdiag = np.zeros(nx)
-
-        for i in range(n):
-
-            current_length = 1
-            subdiag[0] = 1
-            # compute the ith subdiagonal of Q
-            for j in range(n):
-                if state[j]:
-                    exp_theta = np.exp(self.log_theta[i, j])
-                    if i == j:
-                        exp_theta *= -1
-                        dscal(n=current_length, a=exp_theta, x=subdiag, incx=1)
-                        dscal(n=current_length, a=0,
-                              x=subdiag[current_length:], incx=1)
-                    else:
-                        dcopy(n=current_length, x=subdiag, incx=1,
-                              y=subdiag[current_length:], incy=1)
-                        dscal(n=current_length, a=exp_theta,
-                              x=subdiag[current_length:], incx=1)
-
-                    current_length *= 2
-
-                elif i == j:
-                    exp_theta = - np.exp(self.log_theta[i, j])
-                    dscal(n=current_length, a=exp_theta, x=subdiag, incx=1)
-
-            # add the subdiagonal to dg
-            daxpy(n=nx, a=1, x=subdiag, incx=1, y=diag, incy=1)
-        return diag
 
     def order_likelihood(self, sigma: tuple[int]) -> float:
         """Marginal likelihood of an order of events.
