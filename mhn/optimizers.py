@@ -51,7 +51,7 @@ class _Optimizer(abc.ABC):
 
         self._OutputMHNClass = model.cMHN
 
-    def set_init_theta(self, init: np.ndarray):
+    def set_init_theta(self, init: np.ndarray | None):
         """
         Use this method to set a theta as starting point for learning a new MHN. The theta must be in logarithmic form.
 
@@ -516,6 +516,7 @@ class oMHNOptimizer(cMHNOptimizer):
 
         if undo_init_theta:
             self._init_theta = None
+            self._result.meta["init"] = None
 
         return self.result
 
