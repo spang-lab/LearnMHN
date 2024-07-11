@@ -87,7 +87,8 @@ class cMHN:
     def sample_trajectories(self, trajectory_num: int, initial_state: np.ndarray | list[str],
                             output_event_names: bool = False) -> tuple[list[list[int | str]], np.ndarray]:
         """
-        Simulates event accumulation using the Gillespie algorithm.
+        Simulates event accumulation using the Gillespie algorithm. Random values are generated with numpy, use np.random.seed()
+        to make results reproducible.
 
         :param trajectory_num: Number of trajectories sampled by the Gillespie algorithm
         :param initial_state: Initial state from which the trajectories start. Can be either a numpy array containing 0s and 1s, where each entry represents an event being present (1) or not (0),
