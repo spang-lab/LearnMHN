@@ -176,7 +176,7 @@ setup(
     include_dirs=[numpy.get_include()],
     include_package_data=True,
     install_requires=[
-        'numpy>=1.23.0',
+        'numpy>=1.23.0,<2.0.0',
         'scipy>=1.10.0',
         'pandas>=1.5.3',
         'tqdm>=4.65.0',
