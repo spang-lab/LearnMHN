@@ -39,7 +39,7 @@ The *full_state_space* subpackage
     View documentation of full_state_space <full_state_space/mhn.full_state_space>
 
 The *training* subpackage
---------------------
+-------------------------
 
 .. automodule:: mhn.training
     :noindex:
@@ -48,17 +48,6 @@ The *training* subpackage
     :maxdepth: 1
 
     View documentation of training <training/mhn.training>
-
-The *omega_mhn* subpackage
---------------------------
-
-.. automodule:: mhn.omega_mhn
-    :noindex:
-
-.. toctree::
-    :maxdepth: 1
-
-    View documentation of omega_mhn <omega_mhn/mhn.omega_mhn>
 
 The *optimizers* submodule
 --------------------------
@@ -81,4 +70,15 @@ The *model* submodule
     :maxdepth: 1
 
     View documentation of model <model>
+
+The *utilities* submodule
+-------------------------
+
+.. automodule:: mhn.utilities
+    :noindex:
+
+.. toctree::
+    :maxdepth: 1
+
+    View documentation of utilities <utilities>
 
