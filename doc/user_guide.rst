@@ -7,19 +7,23 @@ How to train your MHN
 =====================
 
 If you want to learn a new MHN from some mutation data, *mhn*'s :code:`optimizers` submodule
-is probably the place you are looking for. It contains *Optimizer* classes for data
-with and without age information for the individual samples.
+is probably the place you are looking for. It contains *Optimizer* classes for training
+a *classical* MHN (cMHN) (see `Schill et al. (2019) <https://academic.oup.com/bioinformatics/article/36/1/241/5524604>`_)
+or an *observation* MHN (oMHN) (see `Schill et al. (2024) <https://link.springer.com/chapter/10.1007/978-1-0716-3989-4_14>`_).
 
-Learn an MHN from data with no age information
-----------------------------------------------
+Configure the Optimizer
+-----------------------
 
-You can learn a new MHN from data with no age information for the individual samples
-with the :code:`cMHNOptimizer` class.
+You can learn a new MHN from cross-sectional data
+with either the :code:`cMHNOptimizer` or the :code:`oMHNOptimizer` class. As the name suggests,
+one is used to learn cMHNs and the other to train oMHNs. Both optimizer classes
+have the same methods. For the sake of simplicity, we will only use the
+:code:`oMHNOptimizer`  in the following example:
 
 .. code-block:: python
 
-    from mhn.optimizers import cMHNOptimizer
-    opt = cMHNOptimizer()
+    from mhn.optimizers import oMHNOptimizer
+    opt = oMHNOptimizer()
 
 
 We can specify the data that we want our MHN to be trained on:
@@ -105,12 +109,46 @@ You can also specify a callback function that is called after each training step
 
     opt.set_callback_func(our_callback_function)
 
+During training, a regularization penalty is applied to prevent overfitting. The
+optimizer classes currently support two types: the L1-penalty (used by default) and
+a custom symmetrical penalty that is further discussed in `Schill et al. (2024) <https://link.springer.com/chapter/10.1007/978-1-0716-3989-4_14>`_. |br|
+The following code snippet shows how to set a penalty:
+
+.. code-block:: python
+
+     # for the L1-penalty, we set
+     opt.set_penalty(opt.Penalty.L1)
+     # for the symmetrical penalty, we set
+     opt.set_penalty(opt.Penalty.SYM_SPARSE)
+
+Train a new MHN model
+---------------------
+
+Once your optimizer is configured, you can call the :code:`lambda_from_cv()` method
+to find the best penalty strength ("lambda") for training by doing cross-validation. |br|
+The :code:`lambda_from_cv()` method takes either a sequence of lambdas that should be tested or
+the minimum, maximum and step size for potential lambda values. In the latter case,
+the method will create a range of possible lambdas with logarithmic grid-spacing,
+e.g. :code:`(0.0001, 0.0010, 0.0100, 0.1000)` for :code:`lambda_min=0.0001`,
+:code:`lambda_max=0.1` and :code:`steps=4`. |br|
+In this example, we opted for the latter option:
+
+.. code-block:: python
+
+    cv_lambda = opt.lambda_from_cv(
+        lambda_min=1e-4,       # the smallest lambda value evaluated
+        lambda_max=1e-1,       # the largest lambda value evaluated
+        steps=4,               # total number of lambda values evaluated
+        nfolds=5,              # number of cross-validation folds
+        show_progressbar=True  # show a progressbar during cross-validation
+    )
+
 Finally, you can train a new MHN with
 
 .. code-block:: python
 
     opt.train(
-        lam=1/500,          # the lambda value used for L1 regularization
+        lam=cv_lambda,      # the lambda value used for regularization
         maxit=5000,         # the maximum number of training iterations
         round_result=True,  # round the resulting theta matrix to two decimal places
     )
@@ -122,27 +160,4 @@ You can also access the learned model via the :code:`result` property:
 
     learned_mhn = opt.result
 
-The documentation of the :code:`cMHNOptimizer` can be found :ref:`here <Available Optimizers in the *optimizers* module>`.
-
-
-Learn an MHN from data with age information
--------------------------------------------
-
-You can learn a new MHN from data with age information with the :code:`DUAOptimizer` class.
-
-.. code-block:: python
-
-    from mhn.optimizers import DUAOptimizer
-    opt = DUAOptimizer()
-
-We can specify the data that we want our MHN to be trained on:
-
-.. code-block:: python
-
-    opt.load_data(data_matrix, age_array)
-
-Here, :code:`data_matrix` *has* to be a *numpy* matrix, which should have :code:`dtype=np.int32` and :code:`age_array`
-has to be a *numpy* array with :code:`dtype=np.double`. |br|
-Except for methods that load data like :code:`load_data_from_csv()`, the :code:`DUAOptimizer` class supports all methods
-described in the :ref:`previous section <Learn an MHN from data with no age information>`. |br|
-The documentation of the :code:`DUAOptimizer` can also be found :ref:`here <Available Optimizers in the *optimizers* module>`.
+The documentation of both the :code:`oMHNOptimizer` and the :code:`cMHNOptimizer` can be found :ref:`here <Available Optimizers in the *optimizers* module>`.

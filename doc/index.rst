@@ -12,7 +12,7 @@ and are used to model cancer progression.
 This Python package can be used to work with MHNs. It includes functions that were part of the
 original R implementation as well as functions that make use of state-space restriction
 to make learning a new MHN from cancer data faster and more efficient.
-There are :ref:`optimizer classes<Available Optimizers in the *optimizers* module>` for data with known sample ages as well as for data without, which make learning a new MHN possible with
+The package contains :ref:`optimizer classes<Available Optimizers in the *optimizers* module>`, which make learning a new MHN possible with
 only a few lines of code.
 
 .. toctree::
