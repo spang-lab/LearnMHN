@@ -4,9 +4,7 @@ Mutual Hazard Networks (MHN) were first introduced by [Schill et al. (2019)](htt
 and are used to model cancer progression.  
 This Python package can be used to work with MHNs. It includes functions that were part of the
 original R implementation as well as functions that make use of state-space restriction 
-to make learning a new MHN from cancer data faster and more efficient. Furthermore, it
-also contains functions to work with data for which the samples' ages are known and can
-therefore be considered while learning an MHN (see [Rupp et al. (2021)](https://arxiv.org/abs/2112.10971)).  
+to make learning a new MHN from cancer data faster and more efficient.   
 There are optimizer classes for data with known sample ages as well as for data without, which make learning a new MHN possible with
 only a few lines of code.  
 
@@ -37,21 +35,20 @@ pip install --upgrade mhn
 The package contains the original MHN functions implemented in Python. You import them from ``mhn.original``:
 
 ```python
-from mhn.original import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
+from mhn.full_state_space import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
 ```
 You can train an MHN using state-space restriction. The corresponding functions
 can be imported with
+
 ```python
-from mhn.ssr import state_space_restriction, state_containers
-```
-The functions that make use of the known ages of samples can be imported via
-```python
-from mhn.ssr import matrix_exponential
+from mhn.training import likelihood_cmhn, state_containers
 ```
 Training a new MHN can be as simple as writing the following few lines of code:
+
 ```python
-from mhn.optimizers import StateSpaceOptimizer
-opt = StateSpaceOptimizer()
+from mhn.optimizers import cMHNOptimizer
+
+opt = cMHNOptimizer()
 opt = opt.load_data_from_csv("path/to/training_data")
 new_mhn = opt.train()
 new_mhn.save("path/to/saving/location")
@@ -124,10 +121,12 @@ pip install mhn --no-cache-dir
 ## How to Train a New MHN
 
 The simplest way to train a new MHN is to import the ```optimizers``` module and
-use the ```StateSpaceOptimizer``` class.
+use the ```cMHNOptimizer``` class.
+
 ```python
-from mhn.optimizers import StateSpaceOptimizer
-opt = StateSpaceOptimizer()
+from mhn.optimizers import cMHNOptimizer
+
+opt = cMHNOptimizer()
 ```
 We can specify the data that we want our MHN to be trained on:
 ```python
@@ -153,11 +152,11 @@ If you work with a CUDA-capable device, you can choose which device you want to 
 train a new MHN:
 ```python
 # uses both CPU and GPU depending on the number of mutations in the individual sample
-opt.set_device(StateSpaceOptimizer.Device.AUTO)
+opt.set_device(cMHNOptimizer.Device.AUTO)
 # use the CPU to compute log-likelihood score and gradient
-opt.set_device(StateSpaceOptimizer.Device.CPU)
+opt.set_device(cMHNOptimizer.Device.CPU)
 # use the GPU to compute log-likelihood score and gradient
-opt.set_device(StateSpaceOptimizer.Device.GPU)
+opt.set_device(cMHNOptimizer.Device.GPU)
 # you can also access the Device enum directly with an Optimizer object
 opt.set_device(opt.Device.AUTO)
 ```
@@ -185,9 +184,11 @@ opt.set_callback_func(some_callback_function)
 ```
 
 Finally, you can train a new MHN with
+
 ```python
-from mhn.optimizers import StateSpaceOptimizer
-opt = StateSpaceOptimizer()
+from mhn.optimizers import cMHNOptimizer
+
+opt = cMHNOptimizer()
 opt = opt.load_data_from_csv(filename, delimiter)
 opt.train()
 ```

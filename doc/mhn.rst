@@ -27,38 +27,27 @@ Directly callable functions and constants
    <br>
    <hr>
 
-The *original* subpackage
+The *full_state_space* subpackage
+---------------------------------
+
+.. automodule:: mhn.full_state_space
+    :noindex:
+
+.. toctree::
+    :maxdepth: 1
+
+    View documentation of full_state_space <full_state_space/mhn.full_state_space>
+
+The *training* subpackage
 -------------------------
 
-.. automodule:: mhn.original
+.. automodule:: mhn.training
     :noindex:
 
 .. toctree::
     :maxdepth: 1
 
-    View documentation of original <original/mhn.original>
-
-The *ssr* subpackage
---------------------
-
-.. automodule:: mhn.ssr
-    :noindex:
-
-.. toctree::
-    :maxdepth: 1
-
-    View documentation of ssr <ssr/mhn.ssr>
-
-The *omega_mhn* subpackage
---------------------------
-
-.. automodule:: mhn.omega_mhn
-    :noindex:
-
-.. toctree::
-    :maxdepth: 1
-
-    View documentation of omega_mhn <omega_mhn/mhn.omega_mhn>
+    View documentation of training <training/mhn.training>
 
 The *optimizers* submodule
 --------------------------
@@ -81,4 +70,15 @@ The *model* submodule
     :maxdepth: 1
 
     View documentation of model <model>
+
+The *utilities* submodule
+-------------------------
+
+.. automodule:: mhn.utilities
+    :noindex:
+
+.. toctree::
+    :maxdepth: 1
+
+    View documentation of utilities <utilities>
 

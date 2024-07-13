@@ -3,8 +3,8 @@ from __future__ import annotations
 import unittest
 import numpy as np
 import mhn
-from mhn.optimizers import _Optimizer, StateSpaceOptimizer, DUAOptimizer, OmegaOptimizer
-from mhn.original import ModelConstruction, Likelihood, UtilityFunctions
+from mhn.optimizers import _Optimizer, cMHNOptimizer, oMHNOptimizer
+from mhn.full_state_space import ModelConstruction, Likelihood, UtilityFunctions
 
 
 class BaseOptimizerTestClass:
@@ -64,12 +64,12 @@ class BaseOptimizerTestClass:
             self.assertRaises(ValueError, lambda: self.opt.set_penalty("L1"))
 
 
-class TestStateSpaceOptimizer(BaseOptimizerTestClass.TestOptimizer):
+class TestcMHNOptimizer(BaseOptimizerTestClass.TestOptimizer):
 
     def setUp(self) -> None:
         super().setUp()
-        dummy_data = np.random.choice([0, 1], (20, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
-        self.opt = StateSpaceOptimizer()
+        dummy_data = np.random.choice([0, 1], (200, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
+        self.opt = cMHNOptimizer()
         self.opt.load_data_matrix(dummy_data)
 
     def test_learn_model(self):
@@ -83,47 +83,55 @@ class TestStateSpaceOptimizer(BaseOptimizerTestClass.TestOptimizer):
         self.opt.load_data_matrix(random_data)
         self.opt.train()
 
-    def test_find_lambda(self):
+    def test_lambda_from_cv(self):
         """
         Tests if cross-validation works with no errors.
         """
         nfolds = 2
-        steps = 3
-        lambda_min = 0.05
+        steps = 9
+        lambda_min = 0.001
         lambda_max = 0.5
         lambda_vector = np.array([0.09, 0.1])
 
         # test with lambda_min/max
         np.random.seed(0)
-        best_lambda = self.opt.find_lambda(lambda_min, lambda_max, steps, nfolds)
+        best_lambda = self.opt.lambda_from_cv(lambda_min, lambda_max, steps, nfolds)
         np.random.seed(0)
-        best_lambda2, df = self.opt.find_lambda(lambda_min, lambda_max, steps, nfolds, return_lambda_scores=True)
+        best_lambda2, df = self.opt.lambda_from_cv(lambda_min, lambda_max, steps, nfolds, return_lambda_scores=True)
         # test reproducibility
         self.assertEqual(best_lambda, best_lambda2)
 
+        with self.assertRaises(ValueError):
+            best_lambda = self.opt.lambda_from_cv(None, lambda_max, steps, nfolds)
+            best_lambda = self.opt.lambda_from_cv(lambda_min, None, steps, nfolds)
+
+        # without min or max, default values are used
+        best_lambda2, df = self.opt.lambda_from_cv(None, None, steps, nfolds, return_lambda_scores=True)
+        print(df)
+
         # test with lambda_vector, also test that steps parameter is ignored
         np.random.seed(0)
-        best_lambda = self.opt.find_lambda(lambda_vector=lambda_vector, steps=1, nfolds=nfolds)
+        best_lambda = self.opt.lambda_from_cv(lambda_vector=lambda_vector, steps=1, nfolds=nfolds)
         np.random.seed(0)
-        best_lambda2, df = self.opt.find_lambda(lambda_vector=lambda_vector, steps=1, nfolds=nfolds,
-                                                return_lambda_scores=True)
+        best_lambda2, df = self.opt.lambda_from_cv(lambda_vector=lambda_vector, steps=1, nfolds=nfolds,
+                                                   return_lambda_scores=True)
         # test reproducibility
         self.assertEqual(best_lambda, best_lambda2)
 
     @staticmethod
     def _get_random_model(event_num: int) -> np.ndarray:
         """
-        Helper method to create a random MHN.
+        Helper method to create a random cMHN.
         """
         return ModelConstruction.random_theta(event_num, sparsity=0.3)
 
 
-class TestOmegaOptimizer(TestStateSpaceOptimizer):
+class TestoMHNOptimizer(TestcMHNOptimizer):
 
     def setUp(self) -> None:
         super().setUp()
         dummy_data = np.random.choice([0, 1], (20, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
-        self.opt = OmegaOptimizer()
+        self.opt = oMHNOptimizer()
         self.opt.load_data_matrix(dummy_data)
 
     def test_init_stays_same(self):
@@ -139,9 +147,9 @@ class TestOmegaOptimizer(TestStateSpaceOptimizer):
     @staticmethod
     def _get_random_model(event_num: int) -> np.ndarray:
         """
-        Helper method to create a random MHN.
+        Helper method to create a random cMHN.
         """
-        classical_theta = TestStateSpaceOptimizer._get_random_model(event_num)
+        classical_theta = TestcMHNOptimizer._get_random_model(event_num)
         return np.vstack((classical_theta, np.random.random((1, event_num))))
 
 
