@@ -8,7 +8,7 @@ How to train your MHN
 
 If you want to learn a new MHN from some mutation data, *mhn*'s :code:`optimizers` submodule
 is probably the place you are looking for. It contains *Optimizer* classes for training
-a *classical* MHN (cMHN) (see `Schill et al. (2019) <https://academic.oup.com/bioinformatics/article/36/1/241/5524604>`_)
+a *classical* MHN (cMHN) (see `Schill et al. (2020) <https://academic.oup.com/bioinformatics/article/36/1/241/5524604>`_)
 or an *observation* MHN (oMHN) (see `Schill et al. (2024) <https://link.springer.com/chapter/10.1007/978-1-0716-3989-4_14>`_).
 
 Configure the Optimizer
