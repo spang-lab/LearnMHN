@@ -2,11 +2,11 @@
 
 Mutual Hazard Networks (MHN) were first introduced by [Schill et al. (2019)](https://academic.oup.com/bioinformatics/article/36/1/241/5524604)
 and are used to model cancer progression.  
-This Python package can be used to work with MHNs. It includes functions that were part of the
-original R implementation as well as functions that make use of state-space restriction 
-to make learning a new MHN from cancer data faster and more efficient.   
-There are optimizer classes for data with known sample ages as well as for data without, which make learning a new MHN possible with
-only a few lines of code.  
+This Python package can be used to work with MHNs. It includes optimizer classes that 
+make training an MHN possible with only a few lines of code, as well as utility functions 
+like plotting MHNs or generating artificial tumor histories for a given MHN.  
+This package uses state space restriction, allowing the training of MHNs with well over 100 events, 
+as long as individual samples do not have more than about 25 active events.
 
 ## Documentation
 
