@@ -423,7 +423,7 @@ class cMHNOptimizer(_Optimizer):
         # choose the actual lambda according to the "one standard error rule"
         standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
         threshold = np.max(score_means) - standard_error
-        chosen_lambda_idx = np.max(np.argwhere(score_means > threshold))
+        chosen_lambda_idx = np.max(np.argwhere(score_means >= threshold))
         chosen_lambda = lambda_path[chosen_lambda_idx].item()
 
         if not lambda_path.min() < chosen_lambda < lambda_path.max():
