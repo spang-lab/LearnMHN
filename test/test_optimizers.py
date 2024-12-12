@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 import numpy as np
 import mhn
-from mhn.optimizers import _Optimizer, cMHNOptimizer, oMHNOptimizer
+from mhn.optimizers import _Optimizer, cMHNOptimizer, oMHNOptimizer, Optimizer
 from mhn.full_state_space import ModelConstruction, Likelihood, UtilityFunctions
 
 
@@ -69,7 +69,7 @@ class TestcMHNOptimizer(BaseOptimizerTestClass.TestOptimizer):
     def setUp(self) -> None:
         super().setUp()
         dummy_data = np.random.choice([0, 1], (200, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
-        self.opt = cMHNOptimizer()
+        self.opt = Optimizer(Optimizer.MHNType.cMHN)
         self.opt.load_data_matrix(dummy_data)
 
     def test_learn_model(self):
@@ -131,7 +131,7 @@ class TestoMHNOptimizer(TestcMHNOptimizer):
     def setUp(self) -> None:
         super().setUp()
         dummy_data = np.random.choice([0, 1], (20, BaseOptimizerTestClass.TestOptimizer.DEFAULT_NUMBER_OF_EVENTS))
-        self.opt = oMHNOptimizer()
+        self.opt = Optimizer(Optimizer.MHNType.oMHN)
         self.opt.load_data_matrix(dummy_data)
 
     def test_init_stays_same(self):

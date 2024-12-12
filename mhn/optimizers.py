@@ -578,3 +578,50 @@ class oMHNOptimizer(cMHNOptimizer):
             penalties_omhn.build_regularized_gradient_func(
                 grad_score_func, penalty_gradient)
         return self
+
+
+class MHNType(Enum):
+    """
+    Enum representing the types of MHN models that can be trained.
+
+    Members:
+        cMHN: Classical MHN as proposed by Schill et al. (2019).
+        oMHN: MHN with observation bias correction as proposed by Schill et al. (2024).
+    """
+    cMHN, oMHN = range(2)
+
+
+class Optimizer:
+    """
+    A dynamic wrapper for optimizer classes (e.g., oMHNOptimizer, cMHNOptimizer) that
+    provides access to all methods and attributes of the wrapped optimizer instance.
+
+    This class allows for seamless delegation of method calls and attributes,
+    making it behave as if it were an instance of the wrapped optimizer.
+
+    Args:
+        mhn_type: type of MHN trained by this optimizer class
+    """
+    MHNType = MHNType  # Reference to the external enum (re-export), makes separate import of MHNType unnecessary
+
+    _initialized: bool = False
+    _optimizer: _Optimizer
+
+    def __init__(self, mhn_type: MHNType = MHNType.oMHN):
+        """Initialize with an instance of the specific optimizer (e.g., oMHNOptimizer, cMHN Optimizer, etc.)"""
+        self._optimizer = {
+            MHNType.cMHN: cMHNOptimizer,
+            MHNType.oMHN: oMHNOptimizer
+        }[mhn_type]()
+        self._initialized = True
+
+    def __getattr__(self, name):
+        """Delegate method and attribute access to the wrapped optimizer instance."""
+        return getattr(self._optimizer, name)
+
+    def __setattr__(self, name, value):
+        """Allow setting attributes, but redirect them to the optimizer instance if not internal."""
+        if not self._initialized:  # Allow normal attribute setting before initialization is finished
+            super().__setattr__(name, value)
+        else:
+            setattr(self._optimizer, name, value)
