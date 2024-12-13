@@ -22,10 +22,40 @@ from .training.likelihood_cmhn import CUDA_AVAILABLE, CUDAError, cuda_available
 from .training.state_containers import StateContainer, create_indep_model
 
 
+class Device(Enum):
+    """
+    Enum of device types.
+
+    Members:
+        AUTO: Automatically selects the device based on the number of active events in each sample.
+        CPU: Executes all computations on the CPU.
+        GPU: Executes score and gradient computations on the GPU.
+    """
+
+    AUTO, CPU, GPU = range(3)
+
+
+class Penalty(Enum):
+    """
+    Enumeration of penalty functions.
+
+    Members:
+        L1: Applies L1 regularization during training.
+        L2: Applies L2 regularization during training.
+        SYM_SPARSE: Induces sparsity and soft symmetry (see Schill et al., 2024).
+    """
+
+    L1, L2, SYM_SPARSE = range(3)
+
+
 class _Optimizer(abc.ABC):
     """
     This abstract Optimizer class is the base class for the other Optimizer classes and cannot be instantiated alone.
     """
+
+    # Reference to the external enum (re-export), makes separate import of Enums unnecessary
+    Device = Device
+    Penalty = Penalty
 
     def __init__(self):
         self._data = None
@@ -234,7 +264,7 @@ class _Optimizer(abc.ABC):
         return data_matrix
 
     @abc.abstractmethod
-    def set_device(self, device: "_Optimizer.Device"):
+    def set_device(self, device: Device):
         """
         Set the device that should be used for training.
 
@@ -245,28 +275,30 @@ class _Optimizer(abc.ABC):
 
         The Device enum is part of this optimizer class.
         """
-        if not isinstance(device, _Optimizer.Device):
+        if not isinstance(device, Device):
             raise ValueError(
-                f"The given device is not an instance of {_Optimizer.Device}")
+                f"The given device is not an instance of {Device}")
 
         return self
 
-    def set_penalty(self, penalty: "_Optimizer.Penalty"):
+    def set_penalty(self, penalty: Penalty):
         """
         Set the penalty that should be used for training.
 
-        You have two options:
+        You have three options:
             Penalty.L1:          (default) uses the L1 penalty as regularization
+            Penalty.L2:          uses the L2 penalty as regularization
             Penalty.SYM_SPARSE:  uses a penalty which induces sparsity and soft symmetry
 
         The Penalty enum is part of this optimizer class.
         """
-        if not isinstance(penalty, _Optimizer.Penalty):
+        if not isinstance(penalty, Penalty):
             raise ValueError(
                 f"The given penalty is not an instance of {_Optimizer.Penalty}")
         penalty_score, penalty_gradient = {
-            _Optimizer.Penalty.L1: (penalties_cmhn.l1, penalties_cmhn.l1_),
-            _Optimizer.Penalty.SYM_SPARSE: (
+            Penalty.L1: (penalties_cmhn.l1, penalties_cmhn.l1_),
+            Penalty.L2: (penalties_cmhn.l2, penalties_cmhn.l2_),
+            Penalty.SYM_SPARSE: (
                 penalties_cmhn.sym_sparse, penalties_cmhn.sym_sparse_deriv)
         }[penalty]
         self._regularized_score_func_builder = lambda grad_score_func: \
@@ -276,18 +308,6 @@ class _Optimizer(abc.ABC):
             penalties_cmhn.build_regularized_gradient_func(
                 grad_score_func, penalty_gradient)
         return self
-
-    class Device(Enum):
-        """
-        A small Enum which can represent device types.
-        """
-        AUTO, CPU, GPU = range(3)
-
-    class Penalty(Enum):
-        """
-        Small Enum which represents penalty functions
-        """
-        L1, SYM_SPARSE = range(2)
 
 
 class cMHNOptimizer(_Optimizer):
@@ -440,7 +460,7 @@ class cMHNOptimizer(_Optimizer):
 
         return chosen_lambda
 
-    def set_device(self, device: "cMHNOptimizer.Device"):
+    def set_device(self, device: Device):
         """
         Set the device that should be used for training.
 
@@ -452,15 +472,15 @@ class cMHNOptimizer(_Optimizer):
         The Device enum is part of this optimizer class.
         """
         super().set_device(device)
-        if device == _Optimizer.Device.GPU:
+        if device == Device.GPU:
             if cuda_available() != CUDA_AVAILABLE:
                 raise CUDAError(cuda_available())
 
             self._gradient_and_score_func = likelihood_cmhn.cuda_gradient_and_score
         else:
             self._gradient_and_score_func = {
-                _Optimizer.Device.AUTO: likelihood_cmhn.gradient_and_score,
-                _Optimizer.Device.CPU: likelihood_cmhn.cpu_gradient_and_score
+                Device.AUTO: likelihood_cmhn.gradient_and_score,
+                Device.CPU: likelihood_cmhn.cpu_gradient_and_score
             }[device]
         return self
 
@@ -529,7 +549,7 @@ class oMHNOptimizer(cMHNOptimizer):
         """
         return self._result
 
-    def set_device(self, device: "_Optimizer.Device"):
+    def set_device(self, device: Device):
         """
         Set the device that should be used for training.
 
@@ -541,24 +561,25 @@ class oMHNOptimizer(cMHNOptimizer):
         The Device enum is part of this optimizer class.
         """
         super().set_device(device)
-        if device == _Optimizer.Device.GPU:
+        if device == Device.GPU:
             if cuda_available() != CUDA_AVAILABLE:
                 raise CUDAError(cuda_available())
 
             self._gradient_and_score_func = likelihood_omhn.cuda_gradient_and_score
         else:
             self._gradient_and_score_func = {
-                _Optimizer.Device.AUTO: likelihood_omhn.gradient_and_score,
-                _Optimizer.Device.CPU: likelihood_omhn.cpu_gradient_and_score
+                Device.AUTO: likelihood_omhn.gradient_and_score,
+                Device.CPU: likelihood_omhn.cpu_gradient_and_score
             }[device]
         return self
 
-    def set_penalty(self, penalty: "_Optimizer.Penalty"):
+    def set_penalty(self, penalty: Penalty):
         """
         Set the penalty that should be used for training.
 
         You have two options:
             Penalty.L1:          (default) uses the L1 penalty as regularization
+            Penalty.L2:          uses the L2 penalty as regularization
             Penalty.SYM_SPARSE:  uses a penalty which induces sparsity and soft symmetry
 
         The Penalty enum is part of this optimizer class.
@@ -567,8 +588,9 @@ class oMHNOptimizer(cMHNOptimizer):
             raise ValueError(
                 f"The given penalty is not an instance of {oMHNOptimizer.Penalty}")
         penalty_score, penalty_gradient = {
-            oMHNOptimizer.Penalty.L1: (penalties_omhn.l1, penalties_omhn.l1_),
-            oMHNOptimizer.Penalty.SYM_SPARSE: (
+            Penalty.L1: (penalties_omhn.l1, penalties_omhn.l1_),
+            Penalty.L2: (penalties_omhn.l2, penalties_omhn.l2_),
+            Penalty.SYM_SPARSE: (
                 penalties_omhn.sym_sparse, penalties_omhn.sym_sparse_deriv)
         }[penalty]
         self._regularized_score_func_builder = lambda grad_score_func: \
