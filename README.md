@@ -5,7 +5,7 @@ and are used to model cancer progression.
 This Python package can be used to work with MHNs. It includes optimizer classes that 
 make training an MHN possible with only a few lines of code, as well as utility functions 
 like plotting MHNs or generating artificial tumor histories for a given MHN.  
-This package uses state space restriction, allowing the training of MHNs with well over 100 events, 
+This package uses state-space restriction, allowing the training of MHNs with well over 100 events, 
 as long as individual samples do not have more than about 25 active events.
 
 ## Documentation
@@ -30,26 +30,15 @@ If a new version of the mhn package is available, you can upgrade your installat
 pip install --upgrade mhn
 ```
 
-## A Quick Overview
+## Quickstart: Training a New MHN
 
-The package contains the original MHN functions implemented in Python. You import them from ``mhn.original``:
-
-```python
-from mhn.full_state_space import Likelihood, ModelConstruction, RegularizedOptimization, UtilityFunctions
-```
-You can train an MHN using state-space restriction. The corresponding functions
-can be imported with
-
-```python
-from mhn.training import likelihood_cmhn, state_containers
-```
 Training a new MHN can be as simple as writing the following few lines of code:
 
 ```python
-from mhn.optimizers import cMHNOptimizer
+from mhn.optimizers import Optimizer
 
-opt = cMHNOptimizer()
-opt = opt.load_data_from_csv("path/to/training_data")
+opt = Optimizer()
+opt = opt.load_data_from_csv("path/to/training_data.csv")
 new_mhn = opt.train()
 new_mhn.save("path/to/saving/location")
 ```
@@ -121,12 +110,12 @@ pip install mhn --no-cache-dir
 ## How to Train a New MHN
 
 The simplest way to train a new MHN is to import the ```optimizers``` module and
-use the ```cMHNOptimizer``` class.
+use the ```Optimizer``` class.
 
 ```python
-from mhn.optimizers import cMHNOptimizer
+from mhn.optimizers import Optimizer
 
-opt = cMHNOptimizer()
+opt = Optimizer()
 ```
 We can specify the data that we want our MHN to be trained on:
 ```python
@@ -186,9 +175,9 @@ opt.set_callback_func(some_callback_function)
 Finally, you can train a new MHN with
 
 ```python
-from mhn.optimizers import cMHNOptimizer
+from mhn.optimizers import Optimizer
 
-opt = cMHNOptimizer()
+opt = Optimizer()
 opt = opt.load_data_from_csv(filename, delimiter)
 opt.train()
 ```
