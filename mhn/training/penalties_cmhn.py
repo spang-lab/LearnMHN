@@ -13,7 +13,14 @@ from .state_containers import StateContainer
 
 def l1(theta: np.ndarray, eps: float = 1e-05) -> float:
     """
-    Computes the L1 penalty
+    Computes the L1 penalty. Base rates are not penalized.
+
+    Args:
+        theta (np.ndarray): The input array.
+        eps (float): Small value that avoids division by zero
+
+    Returns:
+        float: The L1 penalty value.
     """
     theta_ = theta.copy()
     np.fill_diagonal(theta_, 0)
@@ -22,16 +29,60 @@ def l1(theta: np.ndarray, eps: float = 1e-05) -> float:
 
 def l1_(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     """
-    Derivative of the L1 penalty
+    Derivative of the L1 penalty.
+
+    Args:
+        theta (np.ndarray): The input array.
+        eps (float): Small value that avoids division by zero
+
+    Returns:
+        np.ndarray: The gradient of the L1 penalty with respect to theta.
     """
     theta_ = theta.copy()
     np.fill_diagonal(theta_, 0)
     return theta_ / np.sqrt(theta_**2 + eps)
 
 
+def l2(theta: np.ndarray) -> float:
+    """
+    Computes the L2 penalty. Base rates are not penalized.
+
+    Args:
+        theta (np.ndarray): The input array.
+
+    Returns:
+        float: The L2 penalty value.
+    """
+    theta_ = theta.copy()
+    np.fill_diagonal(theta_, 0)
+    return np.sum(theta_ ** 2)
+
+
+def l2_(theta: np.ndarray) -> np.ndarray:
+    """
+    Derivative of the L2 penalty.
+
+    Args:
+        theta (np.ndarray): The input array.
+
+    Returns:
+        np.ndarray: The gradient of the L2 penalty with respect to theta.
+    """
+    theta_ = theta.copy()
+    np.fill_diagonal(theta_, 0)
+    return 2. * theta_
+
+
 def sym_sparse(theta: np.ndarray, eps: float = 1e-05) -> float:
     """
     A penalty which induces sparsity and soft symmetry.
+
+    Args:
+        theta (np.ndarray): The input array.
+        eps (float): Small value that avoids division by zero
+
+    Returns:
+        float: The penalty value.
     """
     theta_copy = theta.copy()
     np.fill_diagonal(theta_copy, 0)
@@ -49,6 +100,13 @@ def sym_sparse(theta: np.ndarray, eps: float = 1e-05) -> float:
 def sym_sparse_deriv(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     """
     Derivative of the sym_sparse penalty.
+
+    Args:
+        theta (np.ndarray): The input array.
+        eps (float): Small value that avoids division by zero
+
+    Returns:
+        np.ndarray: The gradient of the sym_sparse penalty with respect to theta.
     """
     theta_copy = theta.copy()
     np.fill_diagonal(theta_copy, 0)
