@@ -631,6 +631,9 @@ class Optimizer:
 
     def __init__(self, mhn_type: MHNType = MHNType.oMHN):
         """Initialize with an instance of the specific optimizer (e.g., oMHNOptimizer, cMHN Optimizer, etc.)"""
+        if not isinstance(mhn_type, MHNType):
+            raise ValueError(
+                f"The given MHN type is not an instance of {MHNType}")
         self._optimizer = {
             MHNType.cMHN: cMHNOptimizer,
             MHNType.oMHN: oMHNOptimizer
