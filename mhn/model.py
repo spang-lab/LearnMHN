@@ -10,6 +10,7 @@ import json
 import warnings
 from math import factorial, log
 from typing import Iterator, Optional, Union
+from collections import defaultdict
 
 import matplotlib
 import matplotlib.axes
@@ -739,6 +740,96 @@ class cMHN:
         ax[-1].legend(handles, labels, loc="center")
         ax[-1].axis("off")
 
+        return ax
+
+    def plot_order_tree(self, orderings: Optional[list[tuple[int]]] = None, states: Optional[np.array] = None, max_event_num: int = 4, min_line_width: int = 1,
+                        max_line_width: int = 5, ax: Optional[matplotlib.axes.Axes] = None, inner_circle_radius: float = 2.0,
+                        circle_radius_diff: float = 1.0, markers: list[str] = ["o", "s", "D", "^", "p", "P"],
+                        min_number_of_occurrence: int = 3) -> matplotlib.axes.Axes:
+        """
+        Plots a tree representing the most probable chronological orders of events according to this MHN. Each path from the root of the tree to a
+        leaf represents the progression of events in one of the given states.
+
+        Args:
+            orderings (Optional[list[tuple[int]]]): A list where each element represents an ordering of events that should be added to the tree. The
+                elements of each ordering should be the index of the event in this objects events list. If None is given, states is used instead.
+            states (Optional[np.array]): An array of states ((binary, dtype int32), shape (n,) with n the number of total events) to compute the orders from.
+                If None, `orderings` must be provided.
+            max_event_num (int): Maximum number of events of a single state that should be plotted in the tree. If a state has more that this number of active
+                events, only the first active events up until this point are plotted.
+            min_line_width (int): Minimum line width of the lines connecting the events in the tree.
+            max_line_width (int): Maximum line width of the lines connecting the events in the tree.
+            ax (Optional[matplotlib.axes.Axes]): Axis on which the tree is plotted. If None, a new axis is created.
+            inner_circle_radius (float): Distance between the tree root and the first event in the tree.
+            circle_radius_diff (float): Difference in radius between the circles on which consecutive events lie on.
+            markers (list[str]): A list of markers to use for plotting the events. Defaults to ["o", "s", "D", "^", "p", "P"].
+            min_number_of_occurrence (int): Minimum number of occurrence of a state / ordering to be plotted in the tree. Used to avoid clutter.
+
+        Returns:
+             The axis with the plotted tree.
+        """
+
+        if orderings is None:
+            if states is None:
+                raise ValueError(
+                    "Either orders or states must be provided to plot the most likely orders."
+                )
+            orderings = [
+                tuple(self.likeliest_order(state=state)[1]) for state in states
+            ]
+
+        if ax is None:
+            _, ax = plt.subplots()
+
+        def filter_subsets(list_of_lists):
+            """Remove all lists that are prefixes of any other list in the list of lists."""
+            filtered_lists = []
+            for lst in list_of_lists:
+                # Check if the current list is a prefix of any other list
+                if not any(len(other) > len(lst) and other[:len(lst)] == lst for other in list_of_lists):
+                    filtered_lists.append(lst)
+            return filtered_lists
+
+        circle_num = min(max_event_num, max(map(lambda ordering: len(ordering), orderings)))
+        orderings = list(filter(lambda ordering: orderings.count(ordering) >= min_number_of_occurrence, orderings))
+        orderings = sorted(set(orderings))
+        orderings = filter_subsets(orderings)
+        event_coordinates = defaultdict(list)
+
+        def recursive_tree_builder(ordering_group: list[list[int]], min_angle: float, max_angle: float, order_idx: int,
+                                   prev_coordinates: tuple[float, float]):
+            """Recursively build the tree by adding the lines and saving the symbol coordinates in event_coordinates."""
+
+            if order_idx > circle_num:
+                return
+
+            grouped = defaultdict(list)
+            for ordering in ordering_group:
+                if len(ordering) > 0:
+                    grouped[ordering[0]].append(ordering[1:])
+
+            circle_radius = inner_circle_radius + order_idx * circle_radius_diff
+            curr_angle = min_angle
+            for event in grouped:
+                num_of_samples = len(grouped[event])
+                span = num_of_samples / len(ordering_group) * (max_angle - min_angle)
+                symbol_angle = curr_angle + 0.5 * span
+                coordinates = np.sin(symbol_angle) * circle_radius, np.cos(symbol_angle) * circle_radius
+                event_coordinates[event].append(coordinates)
+                ax.plot(*zip(prev_coordinates, coordinates), marker="", zorder=1,
+                        linestyle="-", color="black", linewidth=max(min_line_width, min(max_line_width, num_of_samples)))
+                recursive_tree_builder(grouped[event], curr_angle, curr_angle + span, order_idx + 1, coordinates)
+                curr_angle += span
+
+        recursive_tree_builder(orderings, 0, 2 * np.pi, 0, (0., 0.))
+        ax.scatter([0], [0], marker="o", color="white", zorder=2, edgecolors="black", s=150)
+        for event in event_coordinates:
+            marker = np.random.choice(markers)
+            event_name = self.events[event] if self.events is not None else str(event)
+            ax.scatter(*zip(*event_coordinates[event]), label=event_name, alpha=1, zorder=2, marker=marker, edgecolors="black", s=100)
+
+        ax.axis("off")
+        ax.legend()
         return ax
 
 
