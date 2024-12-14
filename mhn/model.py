@@ -6,6 +6,7 @@ This submodule contains classes to represent Mutual Hazard Networks
 
 from __future__ import annotations
 
+import itertools
 import json
 import warnings
 from math import factorial, log
@@ -744,7 +745,7 @@ class cMHN:
 
     def plot_order_tree(self, orderings: Optional[list[tuple[int]]] = None, states: Optional[np.array] = None, max_event_num: int = 4, min_line_width: int = 1,
                         max_line_width: int = 5, ax: Optional[matplotlib.axes.Axes] = None, inner_circle_radius: float = 2.0,
-                        circle_radius_diff: float = 1.0, markers: list[str] = ["o", "s", "D", "^", "p", "P"],
+                        circle_radius_diff: float = 1.0, markers: list[str] = ["o", "s", "D", "^", "p", "P", ">"],
                         min_number_of_occurrence: int = 3) -> matplotlib.axes.Axes:
         """
         Plots a tree representing the most probable chronological orders of events according to this MHN. Each path from the root of the tree to a
@@ -823,8 +824,7 @@ class cMHN:
 
         recursive_tree_builder(orderings, 0, 2 * np.pi, 0, (0., 0.))
         ax.scatter([0], [0], marker="o", color="white", zorder=2, edgecolors="black", s=150)
-        for event in event_coordinates:
-            marker = np.random.choice(markers)
+        for event, marker in zip(event_coordinates, itertools.cycle(markers)):
             event_name = self.events[event] if self.events is not None else str(event)
             ax.scatter(*zip(*event_coordinates[event]), label=event_name, alpha=1, zorder=2, marker=marker, edgecolors="black", s=100)
 
