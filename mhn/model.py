@@ -836,12 +836,15 @@ class cMHN:
 
         recursive_tree_builder(suffix_tree_root, 0, 2 * np.pi, 0, (0., 0.))
         ax.scatter([0], [0], marker="o", color="white", zorder=2, edgecolors="black", s=max_line_width**2 * np.pi)
-        for event, marker in zip(event_coordinates, itertools.cycle(markers)):
+        for event, marker in zip(sorted(event_coordinates.keys()), itertools.cycle(markers)):
             event_name = self.events[event] if self.events is not None else str(event)
             ax.scatter(*zip(*event_coordinates[event]), label=event_name, alpha=1, zorder=2, marker=marker, edgecolors="black", s=event_symbol_configs[event])
 
         ax.axis("off")
-        ax.legend()
+        # symbols in legend should have same size (https://stackoverflow.com/questions/24706125/setting-a-fixed-size-for-points-in-legend)
+        lgnd = ax.legend()
+        for handle in lgnd.legend_handles:
+            handle.set_sizes([min_symbol_size])
         return ax
 
 
