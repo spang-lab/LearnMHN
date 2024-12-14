@@ -744,8 +744,8 @@ class cMHN:
         return ax
 
     def plot_order_tree(self, orderings: Optional[list[tuple[int]]] = None, states: Optional[np.array] = None, max_event_num: int = 4, min_line_width: int = 1,
-                        max_line_width: int = 5, ax: Optional[matplotlib.axes.Axes] = None, inner_circle_radius: float = 2.0,
-                        circle_radius_diff: float = 1.0, markers: list[str] = ["o", "s", "D", "^", "p", "P", ">"],
+                        max_line_width: int = 10, ax: Optional[matplotlib.axes.Axes] = None, inner_circle_radius: float = 2.0,
+                        circle_radius_diff: float = 1.0, markers: tuple[str] = ("o", "s", "D", "^", "p", "P", ">"), min_symbol_size: float = 30.,
                         min_number_of_occurrence: int = 3) -> matplotlib.axes.Axes:
         """
         Plots a tree representing the most probable chronological orders of events according to this MHN. Each path from the root of the tree to a
@@ -763,7 +763,8 @@ class cMHN:
             ax (Optional[matplotlib.axes.Axes]): Axis on which the tree is plotted. If None, a new axis is created.
             inner_circle_radius (float): Distance between the tree root and the first event in the tree.
             circle_radius_diff (float): Difference in radius between the circles on which consecutive events lie on.
-            markers (list[str]): A list of markers to use for plotting the events. Defaults to ["o", "s", "D", "^", "p", "P"].
+            markers (tuple[str]): A list of markers to use for plotting the events. Defaults to ("o", "s", "D", "^", "p", "P", ">").
+            min_symbol_size (float): Minimum size of the markers representing events in the tree.
             min_number_of_occurrence (int): Minimum number of occurrence of a state / ordering to be plotted in the tree. Used to avoid clutter.
 
         Returns:
@@ -782,51 +783,62 @@ class cMHN:
         if ax is None:
             _, ax = plt.subplots()
 
-        def filter_subsets(list_of_lists):
-            """Remove all lists that are prefixes of any other list in the list of lists."""
-            filtered_lists = []
-            for lst in list_of_lists:
-                # Check if the current list is a prefix of any other list
-                if not any(len(other) > len(lst) and other[:len(lst)] == lst for other in list_of_lists):
-                    filtered_lists.append(lst)
-            return filtered_lists
-
         circle_num = min(max_event_num, max(map(lambda ordering: len(ordering), orderings)))
         orderings = list(filter(lambda ordering: orderings.count(ordering) >= min_number_of_occurrence, orderings))
-        orderings = sorted(set(orderings))
-        orderings = filter_subsets(orderings)
-        event_coordinates = defaultdict(list)
+        orderings.sort()
 
-        def recursive_tree_builder(ordering_group: list[list[int]], min_angle: float, max_angle: float, order_idx: int,
-                                   prev_coordinates: tuple[float, float]):
+        # chronological tree can be seen as a suffix tree
+        suffix_tree_root = {"nodes": {}, "leaves": 0, "passed": 0, "is_end": False}
+        for ordering in orderings:
+            curr_node = suffix_tree_root
+            backtracking_nodes = []
+            new_leaf = False
+            for event in ordering:
+                if event not in curr_node["nodes"]:
+                    if len(curr_node["nodes"]) > 0:
+                        new_leaf = True
+                    curr_node["nodes"][event] = {"nodes": {}, "leaves": 1, "passed": 0, "is_end": False}
+                curr_node = curr_node["nodes"][event]
+                curr_node["passed"] += 1
+                backtracking_nodes.append(curr_node)
+
+            curr_node["is_end"] = True
+            if new_leaf:
+                for node in backtracking_nodes:
+                    node["leaves"] += 1
+
+        suffix_tree_root = suffix_tree_root["nodes"]
+        event_coordinates = defaultdict(list)
+        event_symbol_configs = defaultdict(list)
+        max_passed = max(suffix_tree_root[event]["passed"] for event in suffix_tree_root)
+
+        def recursive_tree_builder(suffix_tree: dict, min_angle: float, max_angle: float, order_idx: int, prev_coordinates: tuple[float, float]):
             """Recursively build the tree by adding the lines and saving the symbol coordinates in event_coordinates."""
 
-            if order_idx > circle_num:
+            if order_idx > circle_num or len(suffix_tree) == 0:
                 return
-
-            grouped = defaultdict(list)
-            for ordering in ordering_group:
-                if len(ordering) > 0:
-                    grouped[ordering[0]].append(ordering[1:])
 
             circle_radius = inner_circle_radius + order_idx * circle_radius_diff
             curr_angle = min_angle
-            for event in grouped:
-                num_of_samples = len(grouped[event])
-                span = num_of_samples / len(ordering_group) * (max_angle - min_angle)
+            total_leaves = sum(suffix_tree[event]["leaves"] for event in suffix_tree)
+            for event in suffix_tree:
+                node = suffix_tree[event]
+                span = node["leaves"] / total_leaves * (max_angle - min_angle)
                 symbol_angle = curr_angle + 0.5 * span
                 coordinates = np.sin(symbol_angle) * circle_radius, np.cos(symbol_angle) * circle_radius
                 event_coordinates[event].append(coordinates)
+                linewidth = max(min_line_width, max_line_width * node["passed"] / max_passed)
+                event_symbol_configs[event].append(max((linewidth * 1.4)**2 / 4 * np.pi, min_symbol_size))
                 ax.plot(*zip(prev_coordinates, coordinates), marker="", zorder=1,
-                        linestyle="-", color="black", linewidth=max(min_line_width, min(max_line_width, num_of_samples)))
-                recursive_tree_builder(grouped[event], curr_angle, curr_angle + span, order_idx + 1, coordinates)
+                        linestyle="-", color="black", linewidth=linewidth)
+                recursive_tree_builder(node["nodes"], curr_angle, curr_angle + span, order_idx + 1, coordinates)
                 curr_angle += span
 
-        recursive_tree_builder(orderings, 0, 2 * np.pi, 0, (0., 0.))
-        ax.scatter([0], [0], marker="o", color="white", zorder=2, edgecolors="black", s=150)
+        recursive_tree_builder(suffix_tree_root, 0, 2 * np.pi, 0, (0., 0.))
+        ax.scatter([0], [0], marker="o", color="white", zorder=2, edgecolors="black", s=max_line_width**2 * np.pi)
         for event, marker in zip(event_coordinates, itertools.cycle(markers)):
             event_name = self.events[event] if self.events is not None else str(event)
-            ax.scatter(*zip(*event_coordinates[event]), label=event_name, alpha=1, zorder=2, marker=marker, edgecolors="black", s=100)
+            ax.scatter(*zip(*event_coordinates[event]), label=event_name, alpha=1, zorder=2, marker=marker, edgecolors="black", s=event_symbol_configs[event])
 
         ax.axis("off")
         ax.legend()
