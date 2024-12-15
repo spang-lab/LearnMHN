@@ -809,7 +809,8 @@ class cMHN:
 
         suffix_tree_root = suffix_tree_root["nodes"]
         event_coordinates = defaultdict(list)
-        event_symbol_configs = defaultdict(list)
+        event_symbol_sizes = defaultdict(list)
+        event_symbol_border = defaultdict(list)
         max_passed = max(suffix_tree_root[event]["passed"] for event in suffix_tree_root)
 
         def recursive_tree_builder(suffix_tree: dict, min_angle: float, max_angle: float, order_idx: int, prev_coordinates: tuple[float, float]):
@@ -828,7 +829,8 @@ class cMHN:
                 coordinates = np.sin(symbol_angle) * circle_radius, np.cos(symbol_angle) * circle_radius
                 event_coordinates[event].append(coordinates)
                 linewidth = max(min_line_width, max_line_width * node["passed"] / max_passed)
-                event_symbol_configs[event].append(max((linewidth * 1.4)**2 / 4 * np.pi, min_symbol_size))
+                event_symbol_sizes[event].append(max((linewidth * 1.4)**2 / 4 * np.pi, min_symbol_size))
+                event_symbol_border[event].append("black" if node["is_end"] else "white")
                 ax.plot(*zip(prev_coordinates, coordinates), marker="", zorder=1,
                         linestyle="-", color="black", linewidth=linewidth)
                 recursive_tree_builder(node["nodes"], curr_angle, curr_angle + span, order_idx + 1, coordinates)
@@ -838,7 +840,8 @@ class cMHN:
         ax.scatter([0], [0], marker="o", color="white", zorder=2, edgecolors="black", s=max_line_width**2 * np.pi)
         for event, marker in zip(sorted(event_coordinates.keys()), itertools.cycle(markers)):
             event_name = self.events[event] if self.events is not None else str(event)
-            ax.scatter(*zip(*event_coordinates[event]), label=event_name, alpha=1, zorder=2, marker=marker, edgecolors="black", s=event_symbol_configs[event])
+            ax.scatter(*zip(*event_coordinates[event]), label=event_name, alpha=1, zorder=2, marker=marker,
+                       edgecolors=event_symbol_border[event], s=event_symbol_sizes[event])
 
         ax.axis("off")
         # symbols in legend should have same size (https://stackoverflow.com/questions/24706125/setting-a-fixed-size-for-points-in-legend)
