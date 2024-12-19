@@ -748,8 +748,10 @@ class cMHN:
                         circle_radius_diff: float = 1.0, markers: tuple[str] = ("o", "s", "D", "^", "p", "P", ">"), min_symbol_size: float = 30.,
                         min_number_of_occurrence: int = 3) -> matplotlib.axes.Axes:
         """
-        Plots a tree representing the most probable chronological orders of events according to this MHN. Each path from the root of the tree to a
-        leaf represents the progression of events in one of the given states.
+        Plots a tree representing the most probable chronological orders of events according to this MHN. Each path from the root of the tree (white circle) to
+        a leaf illustrates a possible cancer progression within the given dataset. The symbols along each path denote events whose most probable chronological
+        order was derived from this MHN model. Each ordering / state corresponds to a terminal node in the tree or an internal node with a black outline.
+        The size of the edges and symbols along a path scale with the total number of patients with that cancer state.
 
         Args:
             orderings (Optional[list[tuple[int]]]): A list where each element represents an ordering of events that should be added to the tree. The
@@ -829,7 +831,7 @@ class cMHN:
                 coordinates = np.sin(symbol_angle) * circle_radius, np.cos(symbol_angle) * circle_radius
                 event_coordinates[event].append(coordinates)
                 linewidth = max(min_line_width, max_line_width * node["passed"] / max_passed)
-                event_symbol_sizes[event].append(max((linewidth * 1.4)**2 / 4 * np.pi, min_symbol_size))
+                event_symbol_sizes[event].append(max(linewidth**2 * np.pi / 2, min_symbol_size))
                 event_symbol_border[event].append("black" if node["is_end"] else "white")
                 ax.plot(*zip(prev_coordinates, coordinates), marker="", zorder=1,
                         linestyle="-", color="black", linewidth=linewidth)
