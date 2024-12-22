@@ -1,6 +1,7 @@
 from setuptools import setup, Extension, find_packages
 from Cython.Build import cythonize
 import numpy
+import scipy
 
 import sys
 import os
@@ -176,11 +177,11 @@ setup(
     include_dirs=[numpy.get_include()],
     include_package_data=True,
     install_requires=[
-        'numpy>=1.23.0,<2.0.0',
-        'scipy>=1.10.0',
+        f'numpy>={numpy.__version__},<2.0.0',
+        f'scipy>={scipy.__version__}',
         'pandas>=1.5.3',
-        'tqdm>=4.65.0',
+        'tqdm>=4.66.3',
         'matplotlib>=3.6.0'
     ],
-    python_requires='>=3.8, <3.12'
+    python_requires='>=3.8, <3.13'
 )
