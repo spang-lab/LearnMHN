@@ -433,6 +433,10 @@ class cMHNOptimizer(_Optimizer):
             for i in trange(steps, desc="Lambda Evaluation", position=1, leave=False, disable=disable_progressbar):
                 opt.train(lam=lambda_path[i].item())
                 theta = opt.result.log_theta
+                # make sure that events have not a rate of zero, which can become
+                # a problem if the event is present in the test set, in which case
+                # this would lead to score = -inf
+                theta[theta < -34] = -34  # approx. log(1e-15)
                 scores[j, i] = self._gradient_and_score_func(
                     theta, test_data_container)[1]
 
