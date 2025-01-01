@@ -166,6 +166,7 @@ setup(
     description="A package to train and work with Mutual Hazard Networks",
     long_description=long_description,
     long_description_content_type='text/markdown',
+    license="MIT",
     ext_modules=cythonize(ext_modules,
                           annotate=GENERATE_DEBUG_HTML,
                           compile_time_env=dict(
