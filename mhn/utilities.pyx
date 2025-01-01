@@ -13,6 +13,17 @@ cimport numpy as np
 np.import_array()
 
 
+def set_seed(seed: int):
+    """
+    Set the random seed for reproducibility. Internally, this sets the seed for the numpy random generator.
+
+    Parameters:
+        seed (int): The seed value to use for random number generators.
+    """
+    # if the package should ever use other sources of randomness in the future, add the corresponding seed setting functions here
+    np.random.seed(seed)
+
+
 @cython.wraparound(False)
 @cython.boundscheck(False)
 def sample_artificial_data(np.ndarray[np.double_t, ndim=2] theta, int sample_num) -> np.ndarray:
