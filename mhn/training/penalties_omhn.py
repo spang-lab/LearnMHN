@@ -14,11 +14,11 @@ def l1(theta: np.ndarray, eps: float = 1e-05) -> float:
     Computes the L1 penalty. Base rates are not penalized.
 
     Args:
-        theta (np.ndarray): The input array.
-        eps (float): Small value that avoids division by zero
+        theta (np.ndarray): Input array representing model parameters.
+        eps (float, optional): Small value to avoid division by zero. Defaults to 1e-05.
 
     Returns:
-        float: The L1 penalty value.
+        float: Computed L1 penalty.
     """
     theta_ = theta.copy()
     np.fill_diagonal(theta_, 0)
@@ -27,14 +27,14 @@ def l1(theta: np.ndarray, eps: float = 1e-05) -> float:
 
 def l1_(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     """
-    Derivative of the L1 penalty.
+    Computes the derivative of the L1 penalty.
 
     Args:
-        theta (np.ndarray): The input array.
-        eps (float): Small value that avoids division by zero
+        theta (np.ndarray): Input array representing model parameters.
+        eps (float, optional): Small value to avoid division by zero. Defaults to 1e-05.
 
     Returns:
-        np.ndarray: The gradient of the L1 penalty with respect to theta.
+        np.ndarray: Gradient of the L1 penalty with respect to theta.
     """
     theta_ = theta.copy()
     np.fill_diagonal(theta_, 0)
@@ -46,10 +46,10 @@ def l2(theta: np.ndarray) -> float:
     Computes the L2 penalty. Base rates are not penalized.
 
     Args:
-        theta (np.ndarray): The input array.
+        theta (np.ndarray): Input array representing model parameters.
 
     Returns:
-        float: The L2 penalty value.
+        float: Computed L2 penalty.
     """
     theta_ = theta.copy()
     np.fill_diagonal(theta_, 0)
@@ -58,13 +58,13 @@ def l2(theta: np.ndarray) -> float:
 
 def l2_(theta: np.ndarray) -> np.ndarray:
     """
-    Derivative of the L2 penalty.
+    Computes the derivative of the L2 penalty.
 
     Args:
-        theta (np.ndarray): The input array.
+        theta (np.ndarray): Input array representing model parameters.
 
     Returns:
-        np.ndarray: The gradient of the L2 penalty with respect to theta.
+        np.ndarray: Gradient of the L2 penalty with respect to theta.
     """
     theta_ = theta.copy()
     np.fill_diagonal(theta_, 0)
@@ -73,14 +73,14 @@ def l2_(theta: np.ndarray) -> np.ndarray:
 
 def sym_sparse(omega_theta: np.ndarray, eps: float = 1e-05) -> float:
     """
-    A penalty which induces sparsity and soft symmetry.
+    Computes a penalty that induces sparsity and soft symmetry.
 
     Args:
-        omega_theta (np.ndarray): The input array.
-        eps (float): Small value that avoids division by zero
+        omega_theta (np.ndarray): Input array representing model parameters.
+        eps (float, optional): Small value to avoid division by zero. Defaults to 1e-05.
 
     Returns:
-        float: The penalty value.
+        float: Computed penalty.
     """
     theta_copy = omega_theta.copy()
     np.fill_diagonal(theta_copy, 0)
@@ -100,14 +100,14 @@ def sym_sparse(omega_theta: np.ndarray, eps: float = 1e-05) -> float:
 
 def sym_sparse_deriv(omega_theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     """
-    Derivative of the sym_sparse penalty.
+    Computes the derivative of the sparsity and symmetry penalty.
 
     Args:
-        omega_theta (np.ndarray): The input array.
-        eps (float): Small value that avoids division by zero
+        omega_theta (np.ndarray): Input array representing parameters.
+        eps (float, optional): Small value to avoid division by zero. Defaults to 1e-05.
 
     Returns:
-        np.ndarray: The gradient of the sym_sparse penalty with respect to theta.
+        np.ndarray: Gradient of the sym_sparse penalty.
     """
     theta_copy = omega_theta.copy()
     np.fill_diagonal(theta_copy, 0)
@@ -121,23 +121,32 @@ def sym_sparse_deriv(omega_theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     return np.vstack((theta_derivative, omega_derivative))
 
 
-def build_regularized_score_func(gradient_and_score_function: Callable, penalty_function: Callable = l1):
+def build_regularized_score_func(gradient_and_score_function: Callable, penalty_function: Callable = l1) -> Callable:
     """
-    This function gets a function which can compute a gradient and a score at the same time and returns a function
-    which computes the score and adds a regularization function.
+    Wraps a gradient-and-score function to include regularization.
+
+    Args:
+        gradient_and_score_function (Callable): Function that computes gradient and score.
+        penalty_function (Callable, optional): Regularization penalty function. Defaults to l1.
+
+    Returns:
+        Callable: Regularized score function.
     """
 
     def reg_score_func(theta: np.ndarray, states: StateContainer, lam: float,
                        n: int, score_grad_container: list) -> float:
         """
-        Computes the score using state space restriction with L1 regularization
+        Computes a regularized score using state space restriction.
 
-        :param theta: current theta
-        :param states: states observed in the data
-        :param lam: regularization parameter
-        :param n: size of theta (n+1xn)
-        :param score_grad_container: a list that enables this function to communicate with the gradient function
-        :return: regularized score
+        Args:
+            theta (np.ndarray): Current model parameters.
+            states (StateContainer): Observed states from data.
+            lam (float): Regularization parameter.
+            n (int): Size of the theta (n+1xn).
+            score_grad_container (list): Container for communication between score and gradient functions.
+
+        Returns:
+            float: Regularized score.
         """
         theta = theta.reshape((n + 1, n))
         grad, score = gradient_and_score_function(theta, states)
@@ -148,23 +157,32 @@ def build_regularized_score_func(gradient_and_score_function: Callable, penalty_
     return reg_score_func
 
 
-def build_regularized_gradient_func(gradient_and_score_function: Callable, penalty_derivative: Callable = l1_):
+def build_regularized_gradient_func(gradient_and_score_function: Callable, penalty_derivative: Callable = l1_) -> Callable:
     """
-    This function gets a function which can compute a gradient and a score at the same time and returns a function
-    which computes the gradient and adds the gradient of the regularization function.
+    Wraps a gradient-and-score function to include regularization gradient.
+
+    Args:
+        gradient_and_score_function (Callable): Function that computes gradient and score.
+        penalty_derivative (Callable, optional): Regularization penalty derivative function. Defaults to l1_.
+
+    Returns:
+        Callable: Regularized gradient function.
     """
 
     def reg_gradient_func(theta: np.ndarray, states: StateContainer, lam: float,
                           n: int, score_grad_container: list) -> np.ndarray:
         """
-        Computes the gradient state space restriction with L1 regularization
+        Computes a regularized gradient using state space restriction.
 
-        :param theta: current theta
-        :param states: states observed in the data
-        :param lam: regularization parameter
-        :param n: size of theta (n+1xn)
-        :param score_grad_container: a list that enables this function to communicate with the score function
-        :return: regularized gradient
+        Args:
+            theta (np.ndarray): Current model parameters.
+            states (StateContainer): Observed states from data.
+            lam (float): Regularization parameter.
+            n (int): Size of the theta (n+1xn).
+            score_grad_container (list): Container for communication between score and gradient functions.
+
+        Returns:
+            np.ndarray: Regularized gradient.
         """
         theta_ = theta.reshape((n + 1, n))
         grad = score_grad_container[0]
