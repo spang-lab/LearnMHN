@@ -28,12 +28,14 @@ def set_seed(seed: int):
 @cython.boundscheck(False)
 def sample_artificial_data(np.ndarray[np.double_t, ndim=2] theta, int sample_num) -> np.ndarray:
     """
-    Returns artificial cross-sectional data sampled from an cMHN. Random values are generated with numpy,
-    use np.random.seed() to make results reproducible.
+    Samples artificial cross-sectional data from a cMHN. Use np.random.seed() to make results reproducible.
 
-    :param theta: theta matrix representing an cMHN
-    :param sample_num: number of samples in the generated data
-    :returns: 2d numpy array in which every row corresponds to a sample and each column to a gene
+    Args:
+        theta (np.ndarray[np.double_t, ndim=2]): Theta matrix representing a cMHN.
+        sample_num (int): Number of samples in the generated data.
+
+    Returns:
+        np.ndarray: 2D array where each row corresponds to a sample and each column to a gene.
     """
     cdef int n = theta.shape[0]
     cdef np.ndarray[np.double_t, ndim=2] exp_theta = np.exp(theta)
@@ -89,15 +91,21 @@ def sample_artificial_data(np.ndarray[np.double_t, ndim=2] theta, int sample_num
 @cython.boundscheck(False)
 def gillespie(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int32_t, ndim=1] initial_state, int sample_num) -> tuple[list[list[int]], np.ndarray]:
     """
-    Gillespie algorithm to simulate event accumulation.
+    Simulates event accumulation using the Gillespie algorithm.
 
-    :param theta: theta matrix representing the either a cMHN or an oMHN
-    :param initial_state: Array representing the starting state, each entry corresponds to an event being present (1) or not (0)
-    :param sample_num: number of samples that should be simulated
+    Args:
+        theta (np.ndarray[np.double_t, ndim=2]): Theta matrix representing a cMHN or an oMHN.
+        initial_state (np.ndarray[np.int32_t, ndim=1]): Array representing the starting state.
+            Each entry corresponds to an event being present (1) or not (0).
+        sample_num (int): Number of samples to simulate.
 
-    :returns: A tuple: first element is a list of lists containing the active events in the correct time order, second element is a numpy array that contains the observation times
+    Returns:
+        tuple[list[list[int]], np.ndarray]: A tuple containing:
+            - A list of lists where each inner list contains active events in chronological order.
+            - A numpy array of observation times.
 
-    :raise ValueError: if the size of theta is neither (n, n) nor (n+1, n), a ValueError is raised
+    Raises:
+        ValueError: If the size of theta is neither (n, n) nor (n+1, n).
     """
     cdef int n = theta.shape[1]
     cdef np.ndarray[np.double_t, ndim=2] exp_theta = np.exp(theta)
@@ -181,14 +189,20 @@ def gillespie(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int32_t, ndim
 
 def compute_next_event_probs(np.ndarray[np.double_t, ndim=2] theta, np.ndarray[np.int32_t, ndim=1] current_state, double observation_rate = 0) -> np.ndarray:
     """
-    Compute the probability for each event that it will be the next one to occur given the current state.
+    Computes probabilities for each event to be the next one to occur, given the current state.
 
-    :param theta: theta matrix representing an cMHN
-    :param current_state: array representing the current state, each entry corresponds to an event being present (1) or not (0)
-    :param observation_rate: rate of the observation event, by default set to 0 which means no observation before some other event occurs
-    :returns: array that contains the probability for each event that it will be the next one to occur
+    Args:
+        theta (np.ndarray[np.double_t, ndim=2]): Theta matrix representing a cMHN.
+        current_state (np.ndarray[np.int32_t, ndim=1]): Array representing the current state.
+            Each entry corresponds to an event being present (1) or not (0).
+        observation_rate (float, optional): Rate of the observation event. Defaults to 0,
+            meaning no observation occurs before another event.
 
-    :raise ValueError: if the size of theta does not match the size of current_state, a ValueError is raised
+    Returns:
+        np.ndarray: Array containing the probabilities for each event to occur next.
+
+    Raises:
+        ValueError: If the size of theta does not match the size of current_state.
     """
     cdef int n = theta.shape[1]  # use shape[1] to be compatible with oMHN
     if n != current_state.shape[0]:
