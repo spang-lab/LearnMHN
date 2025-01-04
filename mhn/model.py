@@ -32,8 +32,12 @@ def bits_fixed_n(n: int, k: int) -> Iterator[int]:
 
     From https://graphics.stanford.edu/~seander/bithacks.html#NextBitPermutation
 
-    :param n: How many 1s there should be
-    :param k: How many bits the integer should have
+    Args:
+        n (int): How many 1s there should be
+        k (int): How many bits the integer should have
+
+    Yields:
+        Iterator[int]: Integers with the specified binary properties.
     """
 
     v = int("1" * n, 2)
@@ -48,16 +52,22 @@ def bits_fixed_n(n: int, k: int) -> Iterator[int]:
 
 class cMHN:
     """
-    This class represents a classical Mutual Hazard Network.
+    Represents a classical Mutual Hazard Network (cMHN) (see Schill et al. (2019)).
+
+    Attributes:
+        log_theta (np.ndarray): logarithmic values of the theta matrix representing the cMHN
+        events (list[str] | None): Names of the events considered by the cMHN.
+        meta (dict | None): Metadata for the cMHN, e.g., parameters used to train the model.
     """
 
-    def __init__(
-        self, log_theta: np.array, events: list[str] = None, meta: dict = None
-    ):
+    def __init__(self, log_theta: np.array, events: list[str] = None, meta: dict = None):
         """
-        :param log_theta: logarithmic values of the theta matrix representing the cMHN
-        :param events: (optional) list of strings containing the names of the events considered by the cMHN
-        :param meta: (optional) dictionary containing metadata for the cMHN, e.g. parameters used to train the model
+        Initializes the cMHN with a theta matrix, optional event names, and metadata.
+
+        Args:
+            log_theta (np.array): Logarithmic values of the theta matrix representing the cMHN.
+            events (list[str], optional): Names of the events considered by the cMHN.
+            meta (dict, optional): Metadata for the cMHN, e.g., parameters used to train the model.
         """
         n = log_theta.shape[1]
         self.log_theta = log_theta
@@ -68,17 +78,16 @@ class cMHN:
         self.events = events
         self.meta = meta
 
-    def sample_artificial_data(
-        self, sample_num: int, as_dataframe: bool = False
-    ) -> np.ndarray | pd.DataFrame:
+    def sample_artificial_data(self, sample_num: int, as_dataframe: bool = False) -> np.ndarray | pd.DataFrame:
         """
-        Returns artificial data sampled from this cMHN. Random values are generated with numpy, use np.random.seed()
-        to make results reproducible.
+        Samples artificial data from the cMHN. Use np.random.seed() to make results reproducible.
 
-        :param sample_num: number of samples in the generated data
-        :param as_dataframe: if True, the data is returned as a pandas DataFrame, else as a numpy matrix
+        Args:
+            sample_num (int): Number of samples to generate.
+            as_dataframe (bool, optional): Whether to return the data as a pandas DataFrame. Defaults to False.
 
-        :returns: array or DataFrame with samples as rows and events as columns
+        Returns:
+            np.ndarray | pd.DataFrame: Samples as rows and events as columns, in the specified format.
         """
         art_data = utilities.sample_artificial_data(self.log_theta, sample_num)
         if as_dataframe:
@@ -96,15 +105,17 @@ class cMHN:
         output_event_names: bool = False,
     ) -> tuple[list[list[int | str]], np.ndarray]:
         """
-        Simulates event accumulation using the Gillespie algorithm. Random values are generated with numpy, use np.random.seed()
-        to make results reproducible.
+        Simulates event accumulation using the Gillespie algorithm. Use np.random.seed() to make results reproducible.
 
-        :param trajectory_num: Number of trajectories sampled by the Gillespie algorithm
-        :param initial_state: Initial state from which the trajectories start. Can be either a numpy array containing 0s and 1s, where each entry represents an event being present (1) or not (0),
-        or a list of strings, where each string is the name of an event. The later can only be used if events were specified during creation of the cMHN object.
-        :param output_event_names: If True, the trajectories are returned as lists containing the event names, else they contain the event indices
+        Args:
+            trajectory_num (int): Number of trajectories to simulate.
+            initial_state (np.ndarray | list[str]): Starting state for the trajectories. Can be either a numpy array containing 0s and 1s, where each entry
+                                                    represents an event being present (1) or not (0), or a list of strings, where each string is the name of
+                                                    an event. The later can only be used if events were specified during creation of the cMHN object.
+            output_event_names (bool, optional): Whether to return event names instead of indices. Defaults to False.
 
-        :return: A tuple: first element as a list of trajectories, the second element contains the observation times of each trajectory
+        Returns:
+            tuple[list[list[int | str]], np.ndarray]: List of trajectories and their observation times.
         """
         if type(initial_state) is np.ndarray:
             initial_state = initial_state.astype(np.int32)
@@ -150,12 +161,16 @@ class cMHN:
 
     def compute_marginal_likelihood(self, state: np.ndarray) -> float:
         """
-        Computes the likelihood of observing a given state, where we consider the observation time to be an
-        exponential random variable with mean 1.
+        Computes the likelihood of observing a given state. We consider the observation time to be an exponential random variable with mean 1.
 
-        :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
+        Args:
+            state (np.ndarray): Binary array (dtype=np.int32) representing the presence (1) or absence (0) of events.
 
-        :returns: the likelihood of observing the given state according to this cMHN
+        Returns:
+            float: Likelihood of the given state.
+
+        Raises:
+            ValueError: If the given state array contains anything but 0s and 1s.
         """
         if not set(state.flatten()).issubset({0, 1}):
             raise ValueError("The state array must only contain 0s and 1s")
@@ -175,15 +190,18 @@ class cMHN:
         allow_observation: bool = False,
     ) -> np.ndarray | pd.DataFrame:
         """
-        Compute the probability for each event that it will be the next one to occur given the current state.
+        Computes probabilities for each event to be the next to occur.
 
-        :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
-        :param as_dataframe: if True, the result is returned as a pandas DataFrame, else as a numpy array
-        :param allow_observation: if True, the observation event can happen before any other event -> observation probability included in the output
+        Args:
+            state (np.ndarray): Binary array (dtype=np.int32) representing the presence (1) or absence (0) of events.
+            as_dataframe (bool, optional): Whether to return the probabilities as a DataFrame. Defaults to False.
+            allow_observation (bool, optional): Whether to include an observation event in the probabilities. Defaults to False.
 
-        :returns: array or DataFrame that contains the probability for each event that it will be the next one to occur
+        Returns:
+            np.ndarray | pd.DataFrame: Probabilities for the next event, in the specified format.
 
-        :raise ValueError: if the number of events in state does not align with the number of events modeled by this cMHN object
+        Raises:
+            ValueError: If the number of events in state does not align with the number of events modeled by this cMHN object.
         """
         n = self.log_theta.shape[1]
         if n != state.shape[0]:
@@ -210,10 +228,20 @@ class cMHN:
         return df
 
     def _get_observation_rate(self, state: np.ndarray) -> float:
+        """
+        Calculates the observation rate for a given state.
+
+        Args:
+            state (np.ndarray): Current state of events.
+
+        Returns:
+            float: Observation rate.
+        """
         return 1.0
 
     def order_likelihood(self, sigma: tuple[int]) -> float:
-        """Marginal likelihood of an order of events.
+        """
+        Computes the marginal likelihood of an order of events.
 
         Args:
             sigma (tuple[int]): Tuple of integers where the integers represent the events.
@@ -241,10 +269,9 @@ class cMHN:
             ]
         )
 
-    def likeliest_order(
-        self, state: np.array, normalize: bool = False
-    ) -> tuple[float, np.array]:
-        """Returns the likeliest order in which a given state accumulated according to the MHN.
+    def likeliest_order(self, state: np.array, normalize: bool = False) -> tuple[float, np.array]:
+        """
+        Returns the likeliest order in which a given state accumulated according to the MHN.
 
         Args:
             state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
@@ -253,7 +280,7 @@ class cMHN:
             Defaults to False.
 
         Returns:
-            tuple[float, np.array]: Likelihood of the likeliest accumulation order and the order itself.
+            tuple[float, np.ndarray]: Likelihood of the likeliest accumulation order and the order itself.
         """
         restr_diag = self.get_restr_diag(state=state)
         log_theta = self.log_theta[state.astype(bool)][:, state.astype(bool)]
@@ -293,7 +320,8 @@ class cMHN:
     def m_likeliest_orders(
         self, state: np.array, m: int, normalize: bool = False
     ) -> tuple[np.array, np.array]:
-        """Returns the m likeliest orders in which a given state accumulated according to the MHN.
+        """
+        Returns the m likeliest orders in which a given state accumulated according to the MHN.
 
         Args:
             state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
@@ -303,7 +331,7 @@ class cMHN:
             Defaults to False.
 
         Returns:
-            tuple[np.array, np.array]: Array of likelihoods of the likeliest accumulation order and
+            tuple[np.ndarray, np.ndarray]: Array of likelihoods of the likeliest accumulation order and
             array of the order itself.
         """
         restr_diag = self.get_restr_diag(state=state)
@@ -349,9 +377,10 @@ class cMHN:
 
     def save(self, filename: str):
         """
-        Save the cMHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
+        Saves the cMHN to a CSV file. Metadata is stored in a separate JSON file if provided.
 
-        :param filename: name of the CSV file, JSON will be named accordingly
+        Args:
+            filename (str): Name of the CSV file. JSON metadata file is named accordingly.
         """
         pd.DataFrame(
             self.log_theta, columns=self.events, index=self.events
@@ -372,12 +401,14 @@ class cMHN:
     @classmethod
     def load(cls, filename: str, events: list[str] = None) -> cMHN:
         """
-        Load an cMHN object from a CSV file.
+        Loads a cMHN object from a CSV file.
 
-        :param filename: name of the CSV file
-        :param events: list of strings containing the names of the events considered by the cMHN
+        Args:
+            filename (str): Name of the CSV file.
+            events (list[str], optional): List of event names considered by the cMHN. Defaults to None.
 
-        :returns: cMHN object
+        Returns:
+            cMHN: Loaded cMHN object.
         """
         df = pd.read_csv(f"{filename}", index_col=0)
         if (
@@ -396,7 +427,8 @@ class cMHN:
         return cls(np.array(df), events=events, meta=meta)
 
     def get_restr_diag(self, state: np.array) -> np.array:
-        """Get the diagonal of the state-space-restricted Q_Theta matrix.
+        """
+        Get the diagonal of the state-space-restricted Q_Theta matrix.
 
         Args:
             state (np.array): State (binary, dtype int32) which should be considered for the
@@ -455,6 +487,12 @@ class cMHN:
         return diag
 
     def __str__(self):
+        """
+        Returns a string representation of the object.
+
+        Returns:
+            str: String representation including events, log_theta matrix, and metadata.
+        """
         if isinstance(self.meta, dict):
             meta_data_string = "\n".join(
                 [f"{key}:\n{value}\n" for key, value in self.meta.items()]
@@ -855,20 +893,26 @@ class cMHN:
 
 class oMHN(cMHN):
     """
-    This class represents an oMHN.
+    Represents a Mutual Hazard Network that additionally models the observation event (oMHN) (see Schill et al. (2024)).
+
+    Attributes:
+        log_theta (np.ndarray): logarithmic values of the theta matrix representing the oMHN
+        events (list[str] | None): Names of the events considered by the cMHN.
+        meta (dict | None): Metadata for the oMHN, e.g., parameters used to train the model.
     """
 
     def sample_artificial_data(
         self, sample_num: int, as_dataframe: bool = False
     ) -> np.ndarray | pd.DataFrame:
         """
-        Returns artificial data sampled from this oMHN. Random values are generated with numpy, use np.random.seed()
-        to make results reproducible.
+        Samples artificial data from the cMHN. Use np.random.seed() to make results reproducible.
 
-        :param sample_num: number of samples in the generated data
-        :param as_dataframe: if True, the data is returned as a pandas DataFrame, else numpy matrix
+        Args:
+            sample_num (int): Number of samples to generate.
+            as_dataframe (bool, optional): Whether to return the data as a pandas DataFrame. Defaults to False.
 
-        :returns: array or DataFrame with samples as rows and events as columns
+        Returns:
+            np.ndarray | pd.DataFrame: Samples as rows and events as columns, in the specified format.
         """
         return self.get_equivalent_classical_mhn().sample_artificial_data(
             sample_num, as_dataframe
@@ -876,12 +920,16 @@ class oMHN(cMHN):
 
     def compute_marginal_likelihood(self, state: np.ndarray) -> float:
         """
-        Computes the likelihood of observing a given state, where we consider the observation time to be an
-        exponential random variable with mean 1.
+        Computes the likelihood of observing a given state. We consider the observation time to be an exponential random variable with mean 1.
 
-        :param state: a 1d numpy array (dtype=np.int32) containing 0s and 1s, where each entry represents an event being present (1) or not (0)
+        Args:
+            state (np.ndarray): Binary array (dtype=np.int32) representing the presence (1) or absence (0) of events.
 
-        :returns: the likelihood of observing the given state according to this oMHN
+        Returns:
+            float: Likelihood of the given state.
+
+        Raises:
+            ValueError: If the given state array contains anything but 0s and 1s.
         """
         return self.get_equivalent_classical_mhn().compute_marginal_likelihood(
             state
@@ -889,9 +937,10 @@ class oMHN(cMHN):
 
     def get_equivalent_classical_mhn(self) -> cMHN:
         """
-        This method returns a classical cMHN object that represents the same distribution as this oMHN object.
+        Converts this oMHN into an equivalent classical cMHN object representing the same distribution.
 
-        :returns: classical cMHN object representing the same distribution as this oMHN object
+        Returns:
+            cMHN: Equivalent cMHN object.
         """
         n = self.log_theta.shape[1]
         # subtract observation rates from each element in each column
@@ -901,13 +950,23 @@ class oMHN(cMHN):
         return cMHN(equivalent_classical_mhn, self.events, self.meta)
 
     def _get_observation_rate(self, state: np.ndarray) -> float:
+        """
+        Calculates the observation rate for a given state.
+
+        Args:
+            state (np.ndarray): Current state of events.
+
+        Returns:
+            float: Observation rate.
+        """
         return np.exp(np.sum(self.log_theta[-1, state != 0]))
 
     def save(self, filename: str):
         """
-        Save the oMHN in a CSV file. If metadata is given, it will be stored in a separate JSON file.
+        Saves the oMHN to a CSV file. Metadata is stored in a separate JSON file if provided.
 
-        :param filename: name of the CSV file, JSON will be named accordingly
+        Args:
+            filename (str): Name of the CSV file. JSON metadata file is named accordingly.
         """
         if self.events is None:
             events_and_observation_labels = None
@@ -932,7 +991,8 @@ class oMHN(cMHN):
                 json.dump(json_serializable_meta, file, indent=4)
 
     def order_likelihood(self, sigma: tuple[int]) -> float:
-        """Marginal likelihood of an order of events.
+        """
+        Marginal likelihood of an order of events.
 
         Args:
             sigma (tuple[int]): Tuple of integers where the integers represent the events.
@@ -942,13 +1002,13 @@ class oMHN(cMHN):
         """
         return self.get_equivalent_classical_mhn().order_likelihood(sigma)
 
-    def likeliest_order(
-        self, state: np.array, normalize: bool = False
-    ) -> tuple[float, np.array]:
-        """Returns the likeliest order in which a given state accumulated according to the MHN.
+    def likeliest_order(self, state: np.array,
+                        normalize: bool = False) -> tuple[float, np.array]:
+        """
+        Returns the likeliest order in which a given state accumulated according to the MHN.
 
         Args:
-            state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
+            state (np.ndarray):  State (binary, dtype int32), shape (n,) with n the number of total
             events.
             normalize (bool, optional): Whether to normalize among all possible accumulation orders.
             Defaults to False.
@@ -966,14 +1026,14 @@ class oMHN(cMHN):
         """Returns the m likeliest orders in which a given state accumulated according to the MHN.
 
         Args:
-            state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
+            state (np.ndarray):  State (binary, dtype int32), shape (n,) with n the number of total
             events.
             m (int): Number of likeliest orders to compute.
             normalize (bool, optional): Whether to normalize among all possible accumulation orders.
             Defaults to False.
 
         Returns:
-            tuple[np.array, np.array]: Array of likelihoods of the likeliest accumulation order and
+            tuple[np.ndarray, np.ndarray]: Array of likelihoods of the likeliest accumulation order and
             array of the order itself.
         """
         return self.get_equivalent_classical_mhn().m_likeliest_orders(
