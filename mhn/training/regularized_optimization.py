@@ -15,19 +15,22 @@ def learn_mhn(states: StateContainer, score_func: Callable, jacobi: Callable, in
               maxit: int = 5000, trace: bool = False, reltol: float = 1e-07, round_result: bool = True,
               callback: Callable = None) -> OptimizeResult:
     """
-    This function is used to train an MHN.
+    Trains an MHN.
 
-    :param states: a StateContainer object containing all mutation states observed in the data
-    :param init: starting point for the training (initial theta)
-    :param lam: tuning parameter lambda for regularization
-    :param maxit: maximum number of training iterations
-    :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
-    :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
-    :param round_result: if True, the result is rounded to two decimal places
-    :param callback: function called after each iteration, must take theta as argument
-    :param score_func: score function used for training
-    :param jacobi: gradient function used for training
-    :return: OptimizeResult object containing the trained model
+    Args:
+        states (StateContainer): A container object holding all mutation states observed in the data.
+        score_func (Callable): The score function used for training.
+        jacobi (Callable): The gradient function used for training.
+        init (np.ndarray, optional): Initial theta for training. If None is given, an independence model is used. Defaults to None.
+        lam (float, optional): Regularization tuning parameter lambda. Defaults to 0.
+        maxit (int, optional): Maximum number of training iterations. Defaults to 5000.
+        trace (bool, optional): If True, prints convergence messages (see `scipy.optimize.minimize`). Defaults to False.
+        reltol (float, optional): Gradient norm threshold for successful termination (see "gtol" in `scipy.optimize.minimize`). Defaults to 1e-07.
+        round_result (bool, optional): If True, rounds the result to two decimal places. Defaults to True.
+        callback (Callable, optional): A function called after each iteration, taking theta as an argument. Defaults to None.
+
+    Returns:
+        OptimizeResult: The result of the optimization containing the trained model.
     """
 
     n = states.get_data_shape()[1]
