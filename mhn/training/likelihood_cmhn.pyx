@@ -56,7 +56,7 @@ def count_ones64(long long x):
 
 cdef int get_mutation_num(State *state):
     """
-    Get the number of mutations in a given state
+    Get the number of mutations in a given state.
     """
     cdef int mutation_num = 0
     cdef int i
@@ -91,16 +91,17 @@ IF NVCC_AVAILABLE:
 @cython.boundscheck(False)
 cdef void restricted_kronvec(double[:, :] theta_mat, int i, double[:] x_vec, State *state, int mutation_num, double *pout, bint diag = False, bint transp = False) nogil:
     """
-    This function multiplies the kronecker product described in the original cMHN paper in eq.9 with a vector
+    Multiplies the Kronecker product described in eq. 9 of the original cMHN paper with a vector.
 
-    :param theta_mat: matrix containing the theta entries
-    :param i: vector is multiplied with the ith kronecker product (ith summand in eq. 9 of the original paper) 
-    :param x_vec: vector that is multiplied with the kronecker product
-    :param state: current state used to compute the gradient
-    :param mutation_num: number of mutations present in state
-    :param pout: vector which will contain the result of this multiplication
-    :param diag: if False, the diagonal of the kronecker product is set to zero
-    :param transp: if True, the kronecker product is transposed
+    Args:
+        theta_mat (double[:, :]): Matrix containing the theta entries.
+        i (int): Index specifying which Kronecker product (ith summand in eq. 9) is used for the multiplication.
+        x_vec (double[:]): Vector to be multiplied with the Kronecker product.
+        state (State): Current state used to compute the gradient.
+        mutation_num (int): Number of mutations present in the state.
+        pout (double*): Pointer to a vector where the result of the multiplication will be stored.
+        diag (bool, optional): If False, we pretend that the diagonal of the Kronecker product is zero. Defaults to False.
+        transp (bool, optional): If True, the Kronecker product is transposed. Defaults to False.
     """
 
     # initialize some constants used in this function
@@ -199,14 +200,15 @@ cdef void restricted_kronvec(double[:, :] theta_mat, int i, double[:] x_vec, Sta
 
 cdef void restricted_q_vec(double[:, :] theta, double[:] x, State *state, double *yout, bint diag= False, bint transp = False):
     """
-    multiplies the matrix Q(ptheta) with the vector x, result is saved in yout
+    Multiplies the transition rate matrix Q (constructed from ptheta) with the vector x and saves the result in yout.
 
-    :param theta: matrix containing the theta entries
-    :param x: vector that should be multiplied with Q(ptheta)
-    :param state: state representing current tumor sample
-    :param yout: array in which the result is stored
-    :param diag: if False, the diag of Q is set to zero during multiplication
-    :param transp: if True, multiplication is done with the transposed Q
+    Args:
+        theta (double[:, :]): Matrix containing the theta entries.
+        x (double[:]): Vector to be multiplied with Q(ptheta).
+        state (State): State representing the current tumor sample.
+        yout (double*): Array where the result of the multiplication is stored.
+        diag (bool, optional): If False, the diagonal of Q is set to zero during multiplication. Defaults to False.
+        transp (bool, optional): If True, the multiplication is performed with the transposed Q. Defaults to False.
     """
 
     cdef int n = theta.shape[0]
@@ -236,11 +238,12 @@ cdef void restricted_q_vec(double[:, :] theta, double[:] x, State *state, double
 @cython.boundscheck(False)
 cdef void restricted_q_diag(double[:, :] theta, State *state, double *dg):
     """
-    Compute the diagonal of the transition rate matrix Q
+    Computes the diagonal of the transition rate matrix Q.
 
-    :param theta: matrix containing the theta entries
-    :param state: state representing current tumor sample
-    :param dg: array in which the diagonal is stored at the end
+    Args:
+        theta (double[:, :]): Matrix containing the theta entries.
+        state (State): State representing the current tumor sample.
+        dg (double*): Array where the diagonal of Q is stored.
     """
     cdef int mutation_num = get_mutation_num(state)
     cdef int nx = 1 << mutation_num
@@ -298,14 +301,18 @@ cdef void restricted_q_diag(double[:, :] theta, State *state, double *dg):
 @cython.boundscheck(False)
 cdef np.ndarray[np.double_t] restricted_jacobi(double[:, :] theta, double[:] b, State *state, bint transp = False):
     """
-    ** this function is deprecated, you should use _compute_restricted_inverse() instead **
-    
-    this function multiplies [I-Q]^(-1) with b
+    **Deprecated:** Use `_compute_restricted_inverse()` instead.
 
-    :param theta: matrix containing the theta entries
-    :param b: array that is multiplied with [I-Q]^(-1)
-    :param state: state representing current tumor sample
-    :param transp: if True, b is multiplied with the transposed [I-Q]^(-1)
+    Multiplies [I-Q]^(-1) with the vector b.
+
+    Args:
+        theta (double[:, :]): Matrix containing the theta entries.
+        b (double[:]): Array to be multiplied with [I-Q]^(-1).
+        state (State): State representing the current tumor sample.
+        transp (bool, optional): If True, b is multiplied with the transposed [I-Q]^(-1). Defaults to False.
+
+    Returns:
+        np.ndarray[np.double_t]: Result of the multiplication.
     """
     cdef int mutation_num = get_mutation_num(state)
     cdef int nx = 1 << mutation_num
@@ -341,14 +348,17 @@ cdef np.ndarray[np.double_t] restricted_jacobi(double[:, :] theta, double[:] b, 
 
 cdef void _compute_restricted_inverse(double[:, :] theta, double *dg, State *state, double[:] b, double[:] xout, bint transp = False):
     """
-    this function multiplies [I-Q]^(-1) with b and is much faster than restricted_jacobi()
-    
-    :param theta: matrix containing the theta entries
-    :param dg: vector containing the diagonal of [I-Q]
-    :param state: state representing current tumor sample
-    :param b: array that is multiplied with [I-Q]^(-1)
-    :param xout: vector which will contain the result at the end
-    :param transp: if True, b is multiplied with the transposed [I-Q]^(-1)
+    Multiplies [I-Q]^(-1) with the vector b efficiently.
+
+    This function is significantly faster than `restricted_jacobi()` for performing the same operation.
+
+    Args:
+        theta (double[:, :]): Matrix containing the theta entries.
+        dg (double*): Vector containing the diagonal of [I-Q].
+        state (State): State representing the current tumor sample.
+        b (double[:]): Array to be multiplied with [I-Q]^(-1).
+        xout (double[:]): Vector where the result of the multiplication will be stored.
+        transp (bool, optional): If True, b is multiplied with the transposed [I-Q]^(-1). Defaults to False.
     """
     cdef int n = theta.shape[0]
     cdef int mutation_num = get_mutation_num(state)
@@ -393,15 +403,19 @@ cdef void _compute_restricted_inverse(double[:, :] theta, double *dg, State *sta
 @cython.boundscheck(False)
 def compute_restricted_inverse(double[:, :] theta, int[:] state, double[:] b, bint transp = False) -> np.ndarray:
     """
-    This functions multiplies [I-Q]^(-1) with b, where Q is the restricted transition rate matrix constructed from the given state.
+    Multiplies [I-Q]^(-1) with the vector b, where Q is the restricted transition rate matrix constructed from the given state.
+
     This is a Python wrapper for the internal Cython function.
 
-    :param theta: matrix containing the theta entries
-    :param state: state representing current tumor sample, has to be a binary 1d numpy array with dtype=np.int32, where each entry corresponds to an event being present or not
-    :param b: array that is multiplied with [I-Q]^(-1)
-    :param transp: if True, b is multiplied with the transposed [I-Q]^(-1)
+    Args:
+        theta (np.ndarray): Matrix containing the theta entries used to construct Q.
+        state (np.ndarray): State representing the current tumor sample. Must be a binary 1D NumPy array with `dtype=np.int32`,
+            where each entry indicates whether an event is present (1) or not (0).
+        b (np.ndarray): Array to be multiplied with [I-Q]^(-1).
+        transp (bool, optional): If True, multiplies b with the transposed [I-Q]^(-1). Defaults to False.
 
-    :returns: the result as numpy array
+    Returns:
+        np.ndarray: The result of the multiplication as a NumPy array.
     """
     cdef State c_state
     cdef int nx = b.shape[0]
@@ -433,12 +447,15 @@ def compute_restricted_inverse(double[:, :] theta, int[:] state, double[:] b, bi
 @cython.boundscheck(False)
 cdef double restricted_gradient_and_score(double[:, :] theta, State *state, double[:, :] g):
     """
-    Computes a part of the gradient and score corresponding to a given state
+    Computes a part of the gradient and score corresponding to a given state.
 
-    :param theta: matrix containing the theta entries
-    :param state: state representing current tumor sample
-    :param g: the resulting gradient is stored in this matrix
-    :return: part of the total score
+    Args:
+        theta (double[:, :]): Matrix containing the theta entries.
+        state (State): State representing the current tumor sample.
+        g (double[:, :]): Matrix where the resulting gradient will be stored.
+
+    Returns:
+        double: Part of the total score corresponding to the given state.
     """
     cdef int n = theta.shape[0]
     cdef int mutation_num = get_mutation_num(state)
@@ -528,11 +545,14 @@ cdef double restricted_gradient_and_score(double[:, :] theta, State *state, doub
 
 cpdef cpu_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
-    Computes the total gradient and score for a given cMHN and given mutation data.
+    Computes the total gradient and score for a given cMHN and mutation data.
 
-    :param theta: matrix containing the theta entries of the current cMHN
-    :param mutation_data: StateContainer containing the mutation data the cMHN should be trained on
-    :return: tuple containing the gradient and the score
+    Args:
+        theta (np.ndarray): Matrix containing the theta entries of the current cMHN.
+        mutation_data (StateContainer): Mutation data used to train the cMHN.
+
+    Returns:
+        tuple: The computed gradient and score.
     """
     cdef int n = theta.shape[0]
     cdef int data_size = mutation_data.data_size
@@ -559,13 +579,16 @@ cpdef cpu_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
 
 cpdef cython_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
-    ** This function is deprecated. Use cpu_gradient_and_score() instead. **
-    
-    Computes the total gradient and score for a given cMHN and given mutation data.
+    **Deprecated:** Use `cpu_gradient_and_score()` instead.
 
-    :param theta: matrix containing the theta entries of the current cMHN
-    :param mutation_data: StateContainer containing the mutation data the cMHN should be trained on
-    :return: tuple containing the gradient and the score
+    Computes the total gradient and score for a given cMHN and mutation data.
+
+    Args:
+        theta (np.ndarray): Matrix containing the theta entries of the current cMHN.
+        mutation_data (StateContainer): Mutation data used to train the cMHN.
+
+    Returns:
+        tuple: The computed gradient and score.
     """
     return cpu_gradient_and_score(theta, mutation_data)
 
@@ -576,9 +599,12 @@ cdef double restricted_score(double[:, :] theta, State *state):
     """
     Computes a part of the log-likelihood score corresponding to a given state.
 
-    :param theta: matrix containing the theta entries
-    :param state: state representing current tumor sample
-    :return: part of the total score
+    Args:
+        theta (double[:, :]): Matrix containing the theta entries.
+        state (State): State representing the current tumor sample.
+
+    Returns:
+        double: Part of the total log-likelihood score corresponding to the given state.
     """
     cdef int mutation_num = get_mutation_num(state)
     cdef int nx = 1 << mutation_num
@@ -605,11 +631,14 @@ cdef double restricted_score(double[:, :] theta, State *state):
 
 cpdef cpu_score(double[:, :] theta, StateContainer mutation_data):
     """
-    Computes the total log-likelihood score for a given cMHN and given mutation data.
+    Computes the total log-likelihood score for a given cMHN and mutation data.
 
-    :param theta: matrix containing the theta entries of the current cMHN
-    :param mutation_data: StateContainer containing the mutation data the cMHN should be trained on
-    :return: normalized log-likelihood score
+    Args:
+        theta (np.ndarray): Matrix containing the theta entries of the current cMHN.
+        mutation_data (StateContainer): StateContainer holding the mutation data used to train the cMHN.
+
+    Returns:
+        float: The normalized log-likelihood score.
     """
     cdef int i
     cdef int data_size = mutation_data.data_size
@@ -633,14 +662,18 @@ class CUDAError(Exception):
 cpdef cuda_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
     This function is a wrapper for the CUDA implementation of state-space restriction.
-    
-    **It can only be used if the mhn package was compiled with CUDA.**
 
-    :param theta: matrix containing the theta entries of the current cMHN
-    :param mutation_data: StateContainer containing the mutation data the cMHN should be trained on
-    :return: tuple containing the normalized gradient and score
-    
-    :raise RuntimeError: this function raises a RuntimeError if the mhn package was not compiled with CUDA
+    **This function can only be used if the mhn package was compiled with CUDA.**
+
+    Args:
+        theta (np.ndarray): Matrix containing the theta entries of the current cMHN.
+        mutation_data (StateContainer): Mutation data used to train the cMHN.
+
+    Returns:
+        tuple: The computed gradient and score.
+
+    Raises:
+        RuntimeError: If the mhn package was not compiled with CUDA.
     """
     IF NVCC_AVAILABLE:
         cdef int n = theta.shape[0]
@@ -665,14 +698,18 @@ cpdef cuda_gradient_and_score(double[:, :] theta, StateContainer mutation_data):
 
 cpdef gradient_and_score(double[:, :] theta, StateContainer mutation_data):
     """
-    This function computes the gradient using the CPU AND CUDA (only if CUDA is installed)
-    It will compute the gradients for data points with few mutations using the CPU implementation
-    and compute the gradients for data points with many mutations using CUDA.
-    If CUDA is not installed on your device, this function will only use the CPU implementation.
-    
-    :param theta: matrix containing the theta entries of the current cMHN
-    :param mutation_data: StateContainer containing the mutation data the cMHN should be trained on
-    :return: tuple containing the normalized gradient and score
+    Computes the gradient using both the CPU and CUDA implementation (only if CUDA is installed).
+
+    The function computes gradients for data points with few mutations using the CPU implementation, 
+    and for data points with many mutations using CUDA. If CUDA is not installed on your device, 
+    the function will only use the CPU implementation.
+
+    Args:
+        theta (np.ndarray): Matrix containing the theta entries of the current cMHN.
+        mutation_data (StateContainer): Mutation data used to train the cMHN.
+
+    Returns:
+        tuple: The computed gradient and score.
     """
     IF NVCC_AVAILABLE:
         # number of mutations for which it is still faster to do it on the CPU
