@@ -3,6 +3,7 @@ This submodule contains functions that can be used to compute the scores and gra
 """
 # author(s): Stefan Vocht
 
+from __future__ import annotations
 from typing import Callable
 
 import numpy as np
@@ -11,13 +12,17 @@ from . import likelihood_cmhn
 from .state_containers import StateContainer
 
 
-def _internal_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer, grad_and_score_func: Callable):
+def _internal_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer, grad_and_score_func: Callable) -> tuple[np.ndarray, float]:
     """
-    Computes the log-likelihood score as well as its gradient using the given gradient and score function.
+    Computes the log-likelihood score and its gradient using the specified gradient and score function.
 
-    :param omega_theta: theta matrix for the oMHN (shape: (n+1) x n), last row contains observation rates
-    :param mutation_data: StateContainer object containing the data which is used for training
-    :returns: tuple containing the gradient and the score of the current oMHN
+    Args:
+        omega_theta (np.ndarray): Theta matrix for the oMHN (shape: (n+1) x n), where the last row contains observation rates.
+        mutation_data (StateContainer): Data used for training.
+        grad_and_score_func (Callable): Function that computes the gradient and score.
+
+    Returns:
+        tuple[np.ndarray, float]: The gradient (as a numpy array) and the score (as a float).
     """
     n = omega_theta.shape[1]
     if omega_theta.shape[0] != n+1:
@@ -37,45 +42,47 @@ def _internal_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateCo
     return omega_gradient, score
 
 
-def gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
+def gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer) -> tuple[np.ndarray, float]:
     """
-    Computes the log-likelihood score as well as its gradient.
+    Computes the log-likelihood score and gradient using both CPU and GPU.
 
-    This function computes the gradient using both the CPU AND CUDA (only if CUDA is installed).
-    It will compute the gradients for data points with few mutations using the CPU implementation
-    and compute the gradients for data points with many mutations using CUDA.
-    If CUDA is not installed on your device, this function will only use the CPU implementation.
+    This function uses the CPU implementation for data points with few mutations and CUDA (if available) for data points with many mutations.
+    If CUDA is not installed, the function defaults to CPU.
 
-    :param omega_theta: theta matrix for the oMHN (shape: (n+1) x n), last row contains observation rates
-    :param mutation_data: StateContainer object containing the data which is used for training
-    :returns: tuple containing the gradient and the score of the current oMHN
+    Args:
+        omega_theta (np.ndarray): Theta matrix for the oMHN (shape: (n+1) x n), where the last row contains observation rates.
+        mutation_data (StateContainer): Data used for training.
+
+    Returns:
+        tuple[np.ndarray, float]: The gradient (as a numpy array) and the score (as a float).
     """
     return _internal_gradient_and_score(omega_theta, mutation_data, likelihood_cmhn.gradient_and_score)
 
 
-def cpu_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
+def cpu_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer) -> tuple[np.ndarray, float]:
     """
-    Computes the log-likelihood score as well as its gradient on the CPU.
+    Computes the log-likelihood score and gradient on the CPU.
 
-    :param omega_theta: theta matrix for the oMHN (shape: (n+1) x n), last row contains observation rates
-    :param mutation_data: StateContainer object containing the data which is used for training
-    :returns: tuple containing the gradient and the score of the current oMHN
+    Args:
+        omega_theta (np.ndarray): Theta matrix for the oMHN (shape: (n+1) x n), where the last row contains observation rates.
+        mutation_data (StateContainer): Data used for training.
+
+    Returns:
+        tuple[np.ndarray, float]: The gradient (as a numpy array) and the score (as a float).
     """
     return _internal_gradient_and_score(omega_theta, mutation_data, likelihood_cmhn.cpu_gradient_and_score)
 
 
-def cpu_score(omega_theta: np.ndarray, mutation_data: StateContainer):
+def cpu_score(omega_theta: np.ndarray, mutation_data: StateContainer) -> float:
     """
     Computes the log-likelihood score on the CPU.
 
     Args:
-        omega_theta: np.ndarray
-            theta matrix for the oMHN (shape: (n+1) x n), last row contains observation rates
-        mutation_data: StateContainer
-            StateContainer object containing the data which is used for training
+        omega_theta (np.ndarray): Theta matrix for the oMHN (shape: (n+1) x n), where the last row contains observation rates.
+        mutation_data (StateContainer): Data used for training.
 
     Returns:
-        log-likelihood score of the given oMHN for the given data.
+        float: Log-likelihood score of the given oMHN for the provided data.
     """
     n = omega_theta.shape[1]
     if omega_theta.shape[0] != n+1:
@@ -90,13 +97,16 @@ def cpu_score(omega_theta: np.ndarray, mutation_data: StateContainer):
 
 def cuda_gradient_and_score(omega_theta: np.ndarray, mutation_data: StateContainer):
     """
-    Computes the log-likelihood score as well as the gradient on the GPU.
+    Computes the log-likelihood score and gradient on the GPU.
 
-    **This function can only be used if the mhn package was compiled with CUDA.**
+    **Note:** This function can only be used if the mhn package was compiled with CUDA.
 
-    :param omega_theta: theta matrix for the oMHN (shape: (n+1) x n), last row contains observation rates
-    :param mutation_data: StateContainer object containing the data which is used for training
-    :returns: tuple containing the gradient and the score of the current oMHN
+    Args:
+        omega_theta (np.ndarray): Theta matrix for the oMHN (shape: (n+1) x n), where the last row contains observation rates.
+        mutation_data (StateContainer): Data used for training.
+
+    Returns:
+        tuple[np.ndarray, float]: The gradient (as a numpy array) and the score (as a float).
     """
     return _internal_gradient_and_score(omega_theta, mutation_data, likelihood_cmhn.cuda_gradient_and_score)
 
