@@ -16,15 +16,15 @@ np.import_array()
 
 cdef void internal_kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, double *pout, bint diag, bint transp):
     """
-    This function multiplies the kronecker-product you get from the ith row of theta with a vector
+    Multiplies the Kronecker product of the ith row of the theta matrix with a vector.
 
-    :param theta_mat: matrix containing the theta values
-    :param i: row of theta used for the kronecker-product
-    :param x_vec: vector that is multiplied with the kronecker-product matrix
-    :param pout: vector that will contain the result of the multiplication
-    :param diag: if False, the diagonal of the kronecker-product matrix is set to zero
-    :param transp: if True, the kronecker-product matrix is transposed
-    :return:
+    Args:
+        theta_mat (double[:, :]): Matrix containing the theta values.
+        i (int): Row of theta used for the Kronecker product.
+        x_vec (double[:]): Vector that is multiplied with the Kronecker product matrix.
+        pout (double *): Vector that will contain the result of the multiplication.
+        diag (bool): If False, the diagonal of the Kronecker product matrix is set to zero.
+        transp (bool): If True, the Kronecker product matrix is transposed.
     """
     # inizialize some constants used in this function
     cdef double[:] theta_i = theta_mat[i, :]
@@ -97,15 +97,18 @@ cdef void internal_kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, doub
 
 def kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, bint diag = False, bint transp = False) -> np.ndarray:
     """
-    This function multiplies the kronecker-product you get from the ith row of theta with a vector.
+    Multiplies the Kronecker product of the ith row of the theta matrix with a vector.
     This is a Python wrapper for the more efficient Cython implementation.
 
-    :param theta_mat: matrix containing the theta values
-    :param i: row of theta used for the kronecker-product
-    :param x_vec: vector that is multiplied with the kronecker-product matrix
-    :param diag: if False, the diagonal of the kronecker-product matrix is set to zero
-    :param transp: if True, the kronecker-product matrix is transposed
-    :return: vector that will contain the result of the multiplication
+    Args:
+        theta_mat (np.ndarray): Matrix containing the theta values.
+        i (int): Row of theta used for the Kronecker product.
+        x_vec (np.ndarray): Vector that is multiplied with the Kronecker product matrix.
+        diag (bool, optional): If False, the diagonal of the Kronecker product matrix is set to zero. Defaults to False.
+        transp (bool, optional): If True, the Kronecker product matrix is transposed. Defaults to False.
+
+    Returns:
+        np.ndarray: Vector that will contain the result of the multiplication.
     """
     cdef int n = theta_mat.shape[0]
     cdef np.ndarray[np.double_t] result = np.empty(2**n, dtype=np.double)
@@ -115,14 +118,14 @@ def kron_vec(double[:, :] theta_mat, int i, double[:] x_vec, bint diag = False, 
 
 cdef void loop_j(int i, int n, double *pr, double *pg):
     """
-    This function is used in the gradient function (in Likelihood.pyx) to compute the gradient more efficiently
+    Used in the gradient function to compute the gradient more efficiently.
 
-    :param i: current row of the gradient to be computed
-    :param n: number of columns/rows of theta
-    :param pr: a vector calculated in the gradient function
-    :param pg: gradient matrix (output)
-    :return:
-    """   
+    Args:
+        i (int): Current row of the gradient to be computed.
+        n (int): Number of columns/rows of the theta matrix.
+        pr (double*): A vector calculated in the gradient function.
+        pg (double*): Gradient matrix (output).
+    """
 
     cdef int nx = 1 << n
     cdef int nxhalf = nx/2
@@ -163,12 +166,14 @@ cdef void loop_j(int i, int n, double *pr, double *pg):
 @cython.cdivision(True)
 cdef void _compute_inverse(const double *theta, int n, const double *dg, const double *b, double *xout):
     """
-    Internal function to compute the solution for [I-Q] x = b using forward substitution
-    
-    :param theta: thetas used to construct Q
-    :param dg: vector containing the diagonal values of [I-Q]
-    :param b: a double vector 
-    :param xout: solution x as double vector
+    Internal function to compute the solution for [I-Q] * x = b using forward substitution.
+
+    Args:
+        theta (const double*): Thetas used to construct Q (size: n x n).
+        n (int): Number of events considered by the MHN. 
+        dg (const double*): Vector containing the diagonal values of [I-Q].
+        b (const double*): A double vector representing the right-hand side of the equation.
+        xout (double*): Solution vector x, output of the computation.
     """
     cdef int nx = 1 << n
     cdef int incx = 1
@@ -224,12 +229,14 @@ cdef void _compute_inverse(const double *theta, int n, const double *dg, const d
 @cython.cdivision(True)
 cdef void _compute_inverse_t(const double *theta, int n, const double *dg, const double *b, double *xout):
     """
-    Internal function to compute the solution for [I-Q]^T x = b using backward substitution
+    Internal function to compute the solution for [I-Q]^T * x = b using backward substitution.
 
-    :param theta: thetas used to construct Q
-    :param dg: vector containing the diagonal values of [I-Q]
-    :param b: a double vector 
-    :param xout: solution x as double vector
+    Args:
+        theta (const double*): Thetas used to construct Q (size: n x n).
+        n (int): Number of events considered by the MHN. 
+        dg (const double*): Vector containing the diagonal values of [I-Q].
+        b (const double*): A double vector representing the right-hand side of the equation.
+        xout (double*): Solution vector x, output of the computation.
     """
     cdef int nx = 1 << n
     cdef int incx = 1
@@ -285,13 +292,14 @@ cdef void _compute_inverse_t(const double *theta, int n, const double *dg, const
 
 cpdef compute_inverse(double[:, :] theta, double[:] dg, double[:] b, double[:] xout, bint transp):
     """
-    Computes the solution for [I - Q] x = b using forward (and backward) substitution.
+    Computes the solution for [I - Q] * x = b using forward (and backward) substitution.
 
-    :param theta: thetas used to construct Q
-    :param dg: vector containing the diagonal values of [I-Q]
-    :param b: a double vector
-    :param xout: double vector that will contain the solution after running this function
-    :param transp: if True, returns solution for [I - Q]^T x = b
+    Args:
+        theta (np.ndarray): Thetas used to construct Q.
+        dg (np.ndarray): Vector containing the diagonal values of [I-Q].
+        b (np.ndarray): A double vector representing the right-hand side of the equation.
+        xout (np.ndarray): Double vector that will contain the solution after running this function.
+        transp (bool): If True, returns solution for [I - Q]^T * x = b.
     """
     cdef int n = theta.shape[0]
     if transp:
