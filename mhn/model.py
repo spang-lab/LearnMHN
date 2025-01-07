@@ -274,10 +274,10 @@ class cMHN:
         Returns the likeliest order in which a given state accumulated according to the MHN.
 
         Args:
-            state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
-            events.
+            state (np.array): State (binary, dtype int32), shape (n,) with n the number of total
+                              events.
             normalize (bool, optional): Whether to normalize among all possible accumulation orders.
-            Defaults to False.
+                                        Defaults to False.
 
         Returns:
             tuple[float, np.ndarray]: Likelihood of the likeliest accumulation order and the order itself.
@@ -324,11 +324,11 @@ class cMHN:
         Returns the m likeliest orders in which a given state accumulated according to the MHN.
 
         Args:
-            state (np.array):  State (binary, dtype int32), shape (n,) with n the number of total
-            events.
+            state (np.array): State (binary, dtype int32), shape (n,) with n the number of total
+                              events.
             m (int): Number of likeliest orders to compute.
             normalize (bool, optional): Whether to normalize among all possible accumulation orders.
-            Defaults to False.
+                                        Defaults to False.
 
         Returns:
             tuple[np.ndarray, np.ndarray]: Array of likelihoods of the likeliest accumulation order and
@@ -432,7 +432,7 @@ class cMHN:
 
         Args:
             state (np.array): State (binary, dtype int32) which should be considered for the
-            state space restriction. Shape (n,) with n the number of total events.
+                              state space restriction. Shape (n,) with n the number of total events.
 
         Returns:
             np.array: Diagonal of the state-space-restricted Q_Theta matrix. Shape (2^k,) with
@@ -1008,10 +1008,10 @@ class oMHN(cMHN):
         Returns the likeliest order in which a given state accumulated according to the MHN.
 
         Args:
-            state (np.ndarray):  State (binary, dtype int32), shape (n,) with n the number of total
-            events.
+            state (np.ndarray): State (binary, dtype int32), shape (n,) with n the number of total
+                                events.
             normalize (bool, optional): Whether to normalize among all possible accumulation orders.
-            Defaults to False.
+                                        Defaults to False.
 
         Returns:
             tuple[float, Any]: Likelihood of the likeliest accumulation order and the order itself.
@@ -1026,11 +1026,11 @@ class oMHN(cMHN):
         """Returns the m likeliest orders in which a given state accumulated according to the MHN.
 
         Args:
-            state (np.ndarray):  State (binary, dtype int32), shape (n,) with n the number of total
-            events.
+            state (np.ndarray): State (binary, dtype int32), shape (n,) with n the number of total
+                                events.
             m (int): Number of likeliest orders to compute.
             normalize (bool, optional): Whether to normalize among all possible accumulation orders.
-            Defaults to False.
+                                        Defaults to False.
 
         Returns:
             tuple[np.ndarray, np.ndarray]: Array of likelihoods of the likeliest accumulation order and
