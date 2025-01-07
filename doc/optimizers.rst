@@ -1,13 +1,12 @@
 Available Optimizers in the *optimizers* module
 ===============================================
 
-You can use the following *Optimizer* classes of the *mhn* package to learn a new
-MHN for given training data:
-
-.. autoclass:: mhn.optimizers.cMHNOptimizer
+.. automodule:: mhn.optimizers
    :members:
    :undoc-members:
    :inherited-members:
+   :exclude-members: Device, Penalty, MHNType
+
 
 .. raw:: html
 
@@ -15,10 +14,12 @@ MHN for given training data:
    <hr>
    <br>
 
+.. autoclass:: mhn.optimizers.Device
+    :undoc-members:
 
-.. autoclass:: mhn.optimizers.oMHNOptimizer
-   :members:
-   :undoc-members:
-   :inherited-members:
-   :noindex: Device
+.. autoclass:: mhn.optimizers.Penalty
+    :undoc-members:
+
+.. autoclass:: mhn.optimizers.MHNType
+    :undoc-members:
 
