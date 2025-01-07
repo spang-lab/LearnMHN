@@ -1,5 +1,5 @@
 """
-This submodule contains classes to represent Mutual Hazard Networks
+This submodule contains classes to represent Mutual Hazard Networks.
 """
 
 # author(s): Y. Linda Hu, Stefan Vocht
@@ -33,8 +33,8 @@ def bits_fixed_n(n: int, k: int) -> Iterator[int]:
     From https://graphics.stanford.edu/~seander/bithacks.html#NextBitPermutation
 
     Args:
-        n (int): How many 1s there should be
-        k (int): How many bits the integer should have
+        n (int): How many 1s there should be.
+        k (int): How many bits the integer should have.
 
     Yields:
         Iterator[int]: Integers with the specified binary properties.
