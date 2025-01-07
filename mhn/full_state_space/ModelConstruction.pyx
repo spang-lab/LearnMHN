@@ -19,12 +19,15 @@ np.import_array()
 
 def random_theta(n: int, sparsity: float = 0, rounded: bool = True) -> np.ndarray:
     """
-    Creates a random cMHN with (log-transformed) parameters Theta
+    Creates a random cMHN Theta matrix (logarithmic format).
 
-    :param n: size of Theta -> size of corresponding Q is 2^n
-    :param sparsity: sparsity of Theta as percentage
-    :param rounded: if True, the random Theta is rounded to two decimals
-    :return: random Theta
+    Args:
+        n (int): Number of events considered by the MHN. The corresponding Q matrix will have size 2^n.
+        sparsity (float, optional): Sparsity of Theta as a percentage (default is 0).
+        rounded (bool, optional): If True, the random Theta is rounded to two decimal places (default is True).
+
+    Returns:
+        np.ndarray: Randomly generated MHN.
     """
     theta = np.zeros((n, n))
 
@@ -44,9 +47,14 @@ def random_theta(n: int, sparsity: float = 0, rounded: bool = True) -> np.ndarra
 
 cpdef np.ndarray[np.double_t, ndim=1] q_subdiag(double[:, :] theta, int i):
     """
-    Creates a single subdiagonal of Q from the ith row in Theta
+    Creates a single subdiagonal of Q from the ith row in Theta.
 
-    :return: subdiagonal of Q corresponding to the ith row of Theta
+    Args:
+        theta (np.ndarray): A 2D array representing the Theta matrix.
+        i (int): The index of the row in Theta from which the subdiagonal of Q is created.
+
+    Returns:
+        np.ndarray: A 1D array representing the subdiagonal of Q corresponding to the ith row of Theta.
     """
     cdef double[:] row = theta[i, :]
     cdef int n = theta.shape[0]
@@ -64,10 +72,13 @@ cpdef np.ndarray[np.double_t, ndim=1] q_subdiag(double[:, :] theta, int i):
 
 def build_q(theta: np.ndarray) -> np.ndarray:
     """
-    Build the transition rate matrix Q from its subdiagonals for a given Theta
+    Build the transition rate matrix Q for a given MHN.
 
-    :param theta: matrix representing the cMHN
-    :return: rate matrix Q
+    Args:
+        theta (np.ndarray): A 2D array representing the MHN.
+
+    Returns:
+        np.ndarray: A 2D array representing the transition rate matrix Q constructed from the subdiagonals of Theta.
     """
     n = theta.shape[0]
 
@@ -82,9 +93,13 @@ def build_q(theta: np.ndarray) -> np.ndarray:
 
 cpdef np.ndarray[np.double_t, ndim=1]  q_diag(double[:, :] theta):
     """
-    get the diagonal of Q
+    Get the diagonal of the transition rate matrix Q for a given MHN.
 
-    :param theta: theta representing the cMHN
+    Args:
+        theta (np.ndarray): A 2D array representing the MHN.
+
+    Returns:
+        np.ndarray: A 1D array representing the diagonal of the transition rate matrix Q.
     """
     cdef int n = theta.shape[0]
     cdef int i
@@ -100,10 +115,13 @@ cpdef np.ndarray[np.double_t, ndim=1]  q_diag(double[:, :] theta):
 def learn_indep(pD: np.ndarray) -> np.ndarray:
     """
     Learns an independence model from the data distribution, which assumes that no events interact.
-    Used to initialize the parameters of the actual model before optimization
+    This model is used to initialize the parameters of the actual model before optimization.
 
-    :param pD: probability distribution of the events in the data
-    :return: independence model
+    Args:
+        pD (np.ndarray): Probability distribution of the events in the data.
+
+    Returns:
+        np.ndarray: The learned independence model.
     """
     cdef int n = int(np.log2(pD.size))
     cdef int i
