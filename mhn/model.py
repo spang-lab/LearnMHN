@@ -9,7 +9,7 @@ from __future__ import annotations
 import itertools
 import json
 import warnings
-from math import factorial, log
+from math import factorial
 from typing import Iterator, Optional, Union
 from collections import defaultdict
 
@@ -19,7 +19,6 @@ import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from numpy.core.multiarray import array as array
 from scipy.linalg.blas import daxpy, dcopy, dscal
 
 from . import utilities
@@ -700,18 +699,22 @@ class cMHN:
         names: Optional[list[str]] = None,
     ) -> matplotlib.image.AxesImage:
         """
-        Plots a given order of events or, if instead states are given, plots the most likely order in which the state accumulated its events.
+        Plots a given order of events or, if `states` are provided, plots the most likely order in which the state accumulated its events.
 
-        :param orders: An array of orders to plot. If None, `states` must be provided to compute the orders.
-        :param states: An array of states to compute the orders from. If None, `orders` must be provided.
-        :param ax: An array of matplotlib axes to plot on. Should have shape (i + 1,) where i is the number of order to plot. If None, new axes will be created.
-        :param cmap: The colormap to use for plotting the events. Defaults to "hsv".
-        :param markers: A list of markers to use for plotting the events. Defaults to ["o", "s", "D", "^", "p", "P"].
-        :param names: An optional list of names for orders to be plotted as titles.
+        Args:
+            orders (np.ndarray, optional): An array of orders to plot. If None, `states` must be provided to compute the orders. Defaults to None.
+            states (np.ndarray, optional): An array of states to compute the orders from. If None, `orders` must be provided. Defaults to None.
+            ax (np.arraymatplotlib.axes.Axes, optional): An array of matplotlib axes to plot on. Should have shape (i + 1,) where i is the number
+                                                         of orders to plot. If None, new axes will be created. Defaults to None.
+            cmap (str | matplotlib.colors.Colormap, optional): The colormap to use for plotting the events. Defaults to "hsv".
+            markers (list[str], optional): A list of markers to use for plotting the events. Defaults to ["o", "s", "D", "^", "p", "P"].
+            names (list[str], optional): An optional list of names for orders to be plotted as titles. Defaults to None.
 
-        :returns: The axes with the plotted orders.
+        Returns:
+            matplotlib.image.AxesImage: The axes with the plotted orders.
 
-        :raises ValueError: If neither `orders` nor `states` are provided, or if both are provided.
+        Raises:
+            ValueError: If neither `orders` nor `states` are provided, or if both are provided.
         """
         if orders is None:
             if states is None:
@@ -792,15 +795,15 @@ class cMHN:
         The size of the edges and symbols along a path scale with the total number of patients with that cancer state.
 
         Args:
-            orderings (Optional[list[tuple[int]]]): A list where each element represents an ordering of events that should be added to the tree. The
+            orderings (list[tuple[int]], optional): A list where each element represents an ordering of events that should be added to the tree. The
                 elements of each ordering should be the index of the event in this objects events list. If None is given, states is used instead.
-            states (Optional[np.array]): An array of states ((binary, dtype int32), shape (n,) with n the number of total events) to compute the orders from.
+            states (np.ndarray, optional): An array of states ((binary, dtype int32), shape (n,) with n the number of total events) to compute the orders from.
                 If None, `orderings` must be provided.
             max_event_num (int): Maximum number of events of a single state that should be plotted in the tree. If a state has more that this number of active
                 events, only the first active events up until this point are plotted.
             min_line_width (int): Minimum line width of the lines connecting the events in the tree.
             max_line_width (int): Maximum line width of the lines connecting the events in the tree.
-            ax (Optional[matplotlib.axes.Axes]): Axis on which the tree is plotted. If None, a new axis is created.
+            ax (matplotlib.axes.Axes, optional): Axis on which the tree is plotted. If None, a new axis is created.
             inner_circle_radius (float): Distance between the tree root and the first event in the tree.
             circle_radius_diff (float): Difference in radius between the circles on which consecutive events lie on.
             markers (tuple[str]): A list of markers to use for plotting the events. Defaults to ("o", "s", "D", "^", "p", "P", ">").
@@ -808,7 +811,7 @@ class cMHN:
             min_number_of_occurrence (int): Minimum number of occurrence of a state / ordering to be plotted in the tree. Used to avoid clutter.
 
         Returns:
-             The axis with the plotted tree.
+             matplotlib.axes.Axes: The axis with the plotted tree.
         """
 
         if orderings is None:
