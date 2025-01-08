@@ -898,6 +898,7 @@ class cMHN:
                        edgecolors=event_symbol_border[event], s=event_symbol_sizes[event])
 
         ax.axis("off")
+        ax.set_aspect("equal")
         # symbols in legend should have same size (https://stackoverflow.com/questions/24706125/setting-a-fixed-size-for-points-in-legend)
         lgnd = ax.legend()
         for handle in lgnd.legend_handles:
