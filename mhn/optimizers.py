@@ -487,7 +487,8 @@ class cMHNOptimizer(_Optimizer):
                 # make sure that events have not a rate of zero, which can become
                 # a problem if the event is present in the test set, in which case
                 # this would lead to score = -inf
-                theta[theta < -34] = -34  # approx. log(1e-15)
+                minimum_base_rate = -np.log(train_data.shape[0] + 1)  # log(1 / (#samples + 1))
+                theta[theta < minimum_base_rate] = minimum_base_rate
                 scores[j, i] = self._gradient_and_score_func(
                     theta, test_data_container)[1]
 
