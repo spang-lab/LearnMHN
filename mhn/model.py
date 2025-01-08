@@ -596,6 +596,8 @@ class cMHN:
 
         # get base rates
         base_rates = np.diag(self.log_theta).reshape(-1, 1)
+        if self.__class__ == oMHN:
+            base_rates = np.concatenate([base_rates, np.array([[0]])])
         if not logarithmic:
             base_rates = np.exp(base_rates)
 
@@ -658,6 +660,15 @@ class cMHN:
                     va="center",
                     fontsize=8,
                 )
+            if self.__class__ == oMHN:
+                _ = ax_brs.text(
+                        0,
+                        dim_theta_1,
+                        np.around(base_rates[-1, 0], decimals=2),
+                        ha="center",
+                        va="center",
+                        fontsize=8,
+                    )
             for i in range(dim_theta_0):
                 for j in range(dim_theta_1):
                     if not i == j and (
