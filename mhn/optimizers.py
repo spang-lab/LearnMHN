@@ -404,10 +404,10 @@ class cMHNOptimizer(_Optimizer):
 
     def lambda_from_cv(self, lambda_min: float | None = None, lambda_max: float | None = None,
                        steps: int = 9, nfolds: int = 5, lambda_vector: np.ndarray | None = None,
-                       show_progressbar: bool = False, return_lambda_scores: bool = False
+                       show_progressbar: bool = False, return_lambda_scores: bool = False, pick_1se: bool = True,
                        ) -> float | tuple[float, pd.DataFrame]:
         """
-        Finds the best value for lambda according to the "one standard error rule" through n-fold cross-validation.
+        Finds the best value for lambda according to either the maximal average test set likelihood or the "one-standard-error-rule" through n-fold cross-validation.
 
         You can specify the lambda values that should be tested in cross-validation by setting the lambda_vector
         parameter accordingly.
@@ -419,6 +419,9 @@ class cMHNOptimizer(_Optimizer):
         If you set neither lambda_vector nor lambda_min and lambda_max, the default range (0.1/#datasamples, 10/#datasamples)
         will be used.
 
+        By default, the greatest lambda that performed within one standard error of the best-performing lambda is returned as the
+        preferred lambda ("one-standard-error-rule"). When setting pick_1se=False, the function will simply return the best-performing lambda instead.
+
         Use np.random.seed() to make results reproducible.
 
         Args:
@@ -429,6 +432,8 @@ class cMHNOptimizer(_Optimizer):
             lambda_vector (np.ndarray, optional): Specific lambda values to test.
             show_progressbar (bool, optional): Whether to show a progress bar during cross-validation. Defaults to False.
             return_lambda_scores (bool, optional): Whether to return lambda scores along with the best lambda. Defaults to False.
+            pick_1se (bool, optional): if True (default), applies the one-standard-error-rule to pick the returned lambda value. If False,
+                                       returns the best-performing lambda.
 
         Returns:
             float | tuple[float, pd.DataFrame]: Best lambda value, or, if return_lambda_scores is set to True, a tuple with the best lambda and
@@ -496,11 +501,16 @@ class cMHNOptimizer(_Optimizer):
         score_means = np.sum(scores, axis=0) / nfolds
         best_lambda_idx = np.argmax(score_means)
 
-        # choose the actual lambda according to the "one standard error rule"
-        standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
-        threshold = np.max(score_means) - standard_error
-        chosen_lambda_idx = np.max(np.argwhere(score_means >= threshold))
-        chosen_lambda = lambda_path[chosen_lambda_idx].item()
+        if pick_1se:
+            # choose the actual lambda according to the "one standard error rule"
+            standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
+            threshold = np.max(score_means) - standard_error
+            chosen_lambda_idx = np.max(np.argwhere(score_means >= threshold))
+            chosen_lambda = lambda_path[chosen_lambda_idx].item()
+        else:
+            # simply choose the best-performing lambda
+            chosen_lambda_idx = best_lambda_idx
+            chosen_lambda = lambda_path[chosen_lambda_idx].item()
 
         if not lambda_path.min() < chosen_lambda < lambda_path.max():
             warnings.warn(
