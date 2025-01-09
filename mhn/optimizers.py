@@ -8,6 +8,7 @@ from __future__ import annotations
 import abc
 import warnings
 from enum import Enum
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -715,31 +716,17 @@ class Optimizer:
     making it behave as if it were an instance of the wrapped optimizer.
 
     Args:
-        mhn_type (MHNType, optional): The type of MHN model (default is MHNType.oMHN).
+        mhn_type: type of MHN trained by this optimizer class
     """
-    MHNType = MHNType  # Reference to the external enum (re-export), makes separate import of MHNType unnecessary
 
-    _initialized: bool = False
-    _optimizer: _Optimizer
-
-    def __init__(self, mhn_type: MHNType = MHNType.oMHN):
-        """Initialize with an instance of the specific optimizer (e.g., oMHNOptimizer, cMHN Optimizer, etc.)"""
-        if not isinstance(mhn_type, MHNType):
-            raise ValueError(
-                f"The given MHN type is not an instance of {MHNType}")
-        self._optimizer = {
-            MHNType.cMHN: cMHNOptimizer,
-            MHNType.oMHN: oMHNOptimizer
-        }[mhn_type]()
-        self._initialized = True
-
-    def __getattr__(self, name):
-        """Delegate method and attribute access to the wrapped optimizer instance."""
-        return getattr(self._optimizer, name)
-
-    def __setattr__(self, name, value):
-        """Allow setting attributes, but redirect them to the optimizer instance if not internal."""
-        if not self._initialized:  # Allow normal attribute setting before initialization is finished
-            super().__setattr__(name, value)
+    def __new__(
+        cls, mhn_type: MHNType = MHNType.oMHN
+    ) -> Union[oMHNOptimizer, cMHNOptimizer]:
+        if mhn_type == MHNType.oMHN:
+            return oMHNOptimizer()
+        elif mhn_type == MHNType.cMHN:
+            return cMHNOptimizer()
         else:
-            setattr(self._optimizer, name, value)
+            raise ValueError(
+                f"Invalid type {mhn_type}. Must be MHNType.oMHN or MHNType.cMHN."
+            )
