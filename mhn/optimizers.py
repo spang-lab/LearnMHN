@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import abc
 import warnings
-from enum import Enum
+from enum import Enum, auto
 from typing import Union
 
 import numpy as np
@@ -704,7 +704,13 @@ class MHNType(Enum):
         cMHN: Classical MHN as proposed by Schill et al. (2019).
         oMHN: MHN with observation bias correction as proposed by Schill et al. (2024).
     """
-    cMHN, oMHN = range(2)
+    # add new types with their Optimizer classes here
+    cMHN = cMHNOptimizer
+    oMHN = oMHNOptimizer
+
+    def get_optimizer(self) -> Union[oMHNOptimizer, cMHNOptimizer]:
+        """ Associates each enum member with its optimizer. """
+        return self.value()
 
 
 class Optimizer:
@@ -712,21 +718,19 @@ class Optimizer:
     A dynamic wrapper for optimizer classes (e.g., oMHNOptimizer, cMHNOptimizer) that
     provides access to all methods and attributes of the wrapped optimizer instance.
 
-    This class allows for seamless delegation of method calls and attributes,
-    making it behave as if it were an instance of the wrapped optimizer.
-
     Args:
-        mhn_type: type of MHN trained by this optimizer class
+        mhn_type (MHNType, optional): Type of MHN trained by this optimizer class. Defaults to the most recent type.
     """
+
+    # Reference to the external enum (re-export), makes separate import of MHNType unnecessary
+    MHNType = MHNType
 
     def __new__(
         cls, mhn_type: MHNType = MHNType.oMHN
     ) -> Union[oMHNOptimizer, cMHNOptimizer]:
-        if mhn_type == MHNType.oMHN:
-            return oMHNOptimizer()
-        elif mhn_type == MHNType.cMHN:
-            return cMHNOptimizer()
-        else:
+        if not isinstance(mhn_type, MHNType):
+            mhn_type_options = ['MHNType.' + member.name for member in MHNType]
             raise ValueError(
-                f"Invalid type {mhn_type}. Must be MHNType.oMHN or MHNType.cMHN."
+                f"Invalid type {mhn_type}. Must be {', '.join(mhn_type_options[:-1])} or {mhn_type_options[-1]}."
             )
+        return mhn_type.get_optimizer()
