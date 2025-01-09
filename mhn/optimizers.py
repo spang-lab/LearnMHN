@@ -407,7 +407,8 @@ class cMHNOptimizer(_Optimizer):
                        show_progressbar: bool = False, return_lambda_scores: bool = False, pick_1se: bool = True,
                        ) -> float | tuple[float, pd.DataFrame]:
         """
-        Finds the best value for lambda according to either the maximal average test set likelihood or the "one-standard-error-rule" through n-fold cross-validation.
+        Finds the best value for lambda according to either the maximal average test set likelihood or the
+        "one-standard-error-rule" through n-fold cross-validation.
 
         You can specify the lambda values that should be tested in cross-validation by setting the lambda_vector
         parameter accordingly.
@@ -419,7 +420,7 @@ class cMHNOptimizer(_Optimizer):
         If you set neither lambda_vector nor lambda_min and lambda_max, the default range (0.1/#datasamples, 10/#datasamples)
         will be used.
 
-        By default, the greatest lambda that performed within one standard error of the best-performing lambda is returned as the
+        By default, the largest lambda that performed within one standard error of the best-performing lambda is returned as the
         preferred lambda ("one-standard-error-rule"). When setting pick_1se=False, the function will simply return the best-performing lambda instead.
 
         Use np.random.seed() to make results reproducible.
@@ -506,11 +507,11 @@ class cMHNOptimizer(_Optimizer):
             standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
             threshold = np.max(score_means) - standard_error
             chosen_lambda_idx = np.max(np.argwhere(score_means >= threshold))
-            chosen_lambda = lambda_path[chosen_lambda_idx].item()
         else:
             # simply choose the best-performing lambda
             chosen_lambda_idx = best_lambda_idx
-            chosen_lambda = lambda_path[chosen_lambda_idx].item()
+
+        chosen_lambda = lambda_path[chosen_lambda_idx].item()
 
         if not lambda_path.min() < chosen_lambda < lambda_path.max():
             warnings.warn(
