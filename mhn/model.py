@@ -693,9 +693,8 @@ class cMHN:
             cbar_thetas = plt.colorbar(
                 im_thetas, ax=ax_cbar, orientation="horizontal", aspect=3
             )
-
-        if colorbar:
             return im_brs, im_thetas, cbar_thetas, cbar_brs
+
         else:
             return im_brs, im_thetas
 
@@ -798,7 +797,7 @@ class cMHN:
     def plot_order_tree(self, orderings: Optional[list[tuple[int]]] = None, states: Optional[np.array] = None, max_event_num: int = 4, min_line_width: int = 1,
                         max_line_width: int = 10, ax: Optional[matplotlib.axes.Axes] = None, inner_circle_radius: float = 2.0,
                         circle_radius_diff: float = 1.0, markers: tuple[str] = ("o", "s", "D", "^", "p", "P", ">"), min_symbol_size: float = 30.,
-                        min_number_of_occurrence: int = 3, legend: Optional[Union[bool, dict]]=None) -> matplotlib.axes.Axes:
+                        min_number_of_occurrence: int = 3, legend: Optional[Union[bool, dict]] = None) -> matplotlib.axes.Axes:
         """
         Plots a tree representing the most probable chronological orders of events according to this MHN. Each path from the root of the tree (white circle) to
         a leaf illustrates a possible cancer progression within the given dataset. The symbols along each path denote events whose most probable chronological
