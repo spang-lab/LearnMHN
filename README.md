@@ -15,7 +15,9 @@ A detailed documentation of the *mhn* package is available [here](https://learnm
 
 ## Install the mhn Package
 
-You can install the mhn package using pip:
+Since the *mhn* package is largely written in [Cython](https://cython.org/), a [Cython-supported C compiler](https://cython.readthedocs.io/en/latest/src/quickstart/install.html),
+such as GCC or MSVC, must be installed on your device before you can install this package.  
+If that is the case, you can simply install the *mhn* package using *pip*:
 
 ```bash
 pip install mhn
