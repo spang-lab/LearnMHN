@@ -6,25 +6,28 @@
 How to train your MHN
 =====================
 
-If you want to learn a new MHN from some mutation data, *mhn*'s :code:`optimizers` submodule
-is probably the place you are looking for. It contains *Optimizer* classes for training
+If you want to learn a new MHN from mutation data, the :code:`optimizers` submodule
+is likely where you should start. It currently contains *Optimizer* classes for training
 a *classical* MHN (cMHN) (see `Schill et al. (2020) <https://academic.oup.com/bioinformatics/article/36/1/241/5524604>`_)
 or an *observation* MHN (oMHN) (see `Schill et al. (2024) <https://link.springer.com/chapter/10.1007/978-1-0716-3989-4_14>`_).
 
 Configure the Optimizer
 -----------------------
 
-You can learn a new MHN from cross-sectional data
-with either the :code:`cMHNOptimizer` or the :code:`oMHNOptimizer` class. As the name suggests,
-one is used to learn cMHNs and the other to train oMHNs. Both optimizer classes
-have the same methods. For the sake of simplicity, we will only use the
-:code:`oMHNOptimizer`  in the following example:
+You can learn a new MHN from cross-sectional data with the :code:`Optimizer` class:
 
 .. code-block:: python
 
-    from mhn.optimizers import oMHNOptimizer
-    opt = oMHNOptimizer()
+    from mhn.optimizers import Optimizer
+    opt = Optimizer()
 
+By default, this class will train the most recent type of MHN. To train an older type,
+you can specify it explicitly:
+
+.. code-block:: python
+
+    # Example: training a classical MHN (cMHN) that does not account for the collider bias
+    opt = Optimizer(Optimizer.MHNType.cMHN)
 
 We can specify the data that we want our MHN to be trained on:
 
@@ -65,13 +68,13 @@ If you work with a CUDA-capable device, you can choose which device you want to 
 .. code-block:: python
 
     # uses both CPU and GPU depending on the number of mutations in the individual sample (default)
-    opt.set_device(cMHNOptimizer.Device.AUTO)
+    opt.set_device(Optimizer.Device.AUTO)
 
-    # use the CPU to compute log-likelihood score and gradient
-    opt.set_device(cMHNOptimizer.Device.CPU)
+    # use the CPU to compute log-likelihood and gradient
+    opt.set_device(Optimizer.Device.CPU)
 
-    # use the GPU to compute log-likelihood score and gradient
-    opt.set_device(cMHNOptimizer.Device.GPU)
+    # use the GPU to compute log-likelihood and gradient
+    opt.set_device(Optimizer.Device.GPU)
 
     # you can also access the Device enum directly with an Optimizer object
     opt.set_device(opt.Device.AUTO)
@@ -83,7 +86,7 @@ used by Schill et al. (2019), with
 
     opt.set_init_theta(init_theta)
 
-If you want to regularly save the progress during training you can use the :code:`save_progress()` method:
+If you want to regularly save the progress during training, you can use the :code:`save_progress()` method:
 
 .. code-block:: python
 
@@ -100,17 +103,17 @@ You can also specify a callback function that is called after each training step
 
 .. code-block:: python
 
-    # In this example we create a callback function that prints
+    # In this example, we create a callback function that prints
     # the current theta matrix after each training step.
-    # Make sure that your callback function takes the theta matrix as parameter
-    # else you will get an error.
+    # Ensure that your callback function accepts the theta matrix as a parameter;
+    # otherwise, it will raise an error.
     def our_callback_function(theta: np.ndarray):
         print(theta)
 
     opt.set_callback_func(our_callback_function)
 
 During training, a regularization penalty is applied to prevent overfitting. The
-optimizer classes currently support two types: the L1-penalty (used by default) and
+:code:`Optimizer` class currently supports three types: the L1-penalty (used by default), the L2-penalty, and
 a custom symmetrical penalty that is further discussed in `Schill et al. (2024) <https://link.springer.com/chapter/10.1007/978-1-0716-3989-4_14>`_. |br|
 The following code snippet shows how to set a penalty:
 
@@ -118,6 +121,8 @@ The following code snippet shows how to set a penalty:
 
      # for the L1-penalty, we set
      opt.set_penalty(opt.Penalty.L1)
+     # for the L2-penalty, we set
+     opt.set_penalty(opt.Penalty.L2)
      # for the symmetrical penalty, we set
      opt.set_penalty(opt.Penalty.SYM_SPARSE)
 
@@ -160,4 +165,4 @@ You can also access the learned model via the :code:`result` property:
 
     learned_mhn = opt.result
 
-The documentation of both the :code:`oMHNOptimizer` and the :code:`cMHNOptimizer` can be found :ref:`here <Available Optimizers in the *optimizers* module>`.
+The documentation of all available optimizer classes can be found :ref:`here <Available Optimizers in the *optimizers* module>`.

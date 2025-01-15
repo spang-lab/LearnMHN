@@ -22,10 +22,13 @@ If the installation of *mhn* was successful, you should be able to import it wit
 
     import mhn
 
-Use the CUDA implementation to accelerate score computations
-------------------------------------------------------------
+Use the CUDA implementation to accelerate computations
+------------------------------------------------------
 
-If your device has an Nvidia GPU, you can accelerate the computation of the log-likelihood score and its gradient for both the full and the restricted state-space with CUDA. For that you have to have CUDA and the CUDA compiler installed on your device. You can check that in the terminal with
+If your device has an Nvidia GPU, you can accelerate the computation of the
+log-likelihood and its gradient for both the full and the restricted state space
+with CUDA. For that you have to have CUDA and the CUDA compiler installed on your
+device. You can check that in the terminal with
 
 .. code-block:: console
 
@@ -55,7 +58,11 @@ functions using the :code:`cuda_available()` function as shown below:
     if mhn.cuda_available() == mhn.CUDA_NOT_FUNCTIONAL:
         print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')
 
-Be especially aware of the :code:`CUDA_NOT_FUNCTIONAL` case: This means that the CUDA compiler is installed on your device but basic functionalities like allocating memory on the GPU are not working as expected. In this case something is probably wrong with your CUDA drivers and you should check your CUDA installation.
+
+Pay special attention to the :code:`CUDA_NOT_FUNCTIONAL` case. This indicates that while
+the CUDA compiler is installed, basic functionalities like GPU memory allocation
+are not working as expected. This likely points to an issue with your CUDA drivers,
+so you should verify your CUDA installation.
 
 If you cannot resolve :code:`CUDA_NOT_FUNCTIONAL`  by changing CUDA drivers, we recommend to install the package with CPU support only.
 This can be accomplished on Linux via
