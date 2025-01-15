@@ -733,8 +733,10 @@ class Optimizer:
         mhn_type (MHNType, optional): Type of MHN trained by this optimizer class. Defaults to the most recent type.
     """
 
-    # Reference to the external enum (re-export), makes separate import of MHNType unnecessary
+    # Reference to the external enums (re-export), makes separate import of enums unnecessary
     MHNType = MHNType
+    Device = Device
+    Penalty = Penalty
 
     def __new__(
         cls, mhn_type: MHNType = MHNType.oMHN
