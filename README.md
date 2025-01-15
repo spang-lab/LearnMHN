@@ -1,12 +1,13 @@
-# *mhn*: A Python Package to Efficiently Compute Mutual Hazard Networks
+# *mhn*: A Python Package for Analyzing Cancer Progression with Mutual Hazard Networks
 
 Mutual Hazard Networks (MHN) were first introduced by [Schill et al. (2019)](https://academic.oup.com/bioinformatics/article/36/1/241/5524604)
 and are used to model cancer progression.  
-This Python package can be used to work with MHNs. It includes optimizer classes that 
-make training an MHN possible with only a few lines of code, as well as utility functions 
-like plotting MHNs or generating artificial tumor histories for a given MHN.  
-This package uses state-space restriction, allowing the training of MHNs with well over 100 events, 
-as long as individual samples do not have more than about 25 active events.
+This Python package provides tools to work with MHNs. It includes optimizer classes that enable 
+training an MHN with just a few lines of code. Additionally, it offers utility functions such 
+as plotting MHNs and generating artificial tumor histories for a given MHN.
+The package also incorporates state space restriction, allowing the training of 
+MHNs with well over 100 events, provided that individual samples contain no more 
+than about 25 active events.
 
 ## Documentation
 
@@ -73,11 +74,10 @@ if mhn.cuda_available() == mhn.CUDA_NOT_FUNCTIONAL:
     print('CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation')
 ```
 
-Be especially aware of the ```CUDA_NOT_FUNCTIONAL``` case: This means that the CUDA compiler
-is installed on your device but basic functionalities like allocating memory on the GPU
-are not working as expected.
-In this case something is probably wrong with your CUDA drivers and you should check your CUDA
-installation.
+Pay special attention to the ```CUDA_NOT_FUNCTIONAL``` case. This indicates that while 
+the CUDA compiler is installed, basic functionalities like GPU memory allocation 
+are not working as expected. This likely points to an issue with your CUDA drivers, 
+so you should verify your CUDA installation.
 
 If you cannot resolve ```CUDA_NOT_FUNCTIONAL``` by changing CUDA drivers, we recommend to install the package with CPU support only.
 This can be accomplished on Linux via
@@ -141,11 +141,11 @@ If you work with a CUDA-capable device, you can choose which device you want to 
 train a new MHN:
 ```python
 # uses both CPU and GPU depending on the number of mutations in the individual sample
-opt.set_device(cMHNOptimizer.Device.AUTO)
+opt.set_device(Optimizer.Device.AUTO)
 # use the CPU to compute log-likelihood score and gradient
-opt.set_device(cMHNOptimizer.Device.CPU)
+opt.set_device(Optimizer.Device.CPU)
 # use the GPU to compute log-likelihood score and gradient
-opt.set_device(cMHNOptimizer.Device.GPU)
+opt.set_device(Optimizer.Device.GPU)
 # you can also access the Device enum directly with an Optimizer object
 opt.set_device(opt.Device.AUTO)
 ```
@@ -154,15 +154,15 @@ is an independence model, with
 ```python
 opt.set_init_theta(init_theta)
 ```
-If you want to regularly save the progress during training you can use
+If you want to regularly save the progress during training, you can use
 ```python
 opt.save_progress(steps=-1, always_new_file=False, filename='theta_backup.npy')
 ```
-The parameters of this method are  
-``steps`` (default: ``-1``): if positive, the number of iterations between two progress storages  
-``always_new_file`` (default: ``False``): if True, creates a new file for every progress storage, 
+The parameters of this method are:  
+- ``steps`` (default: ``-1``): if positive, the number of iterations between two progress storages  
+- ``always_new_file`` (default: ``False``): if True, creates a new file for every progress storage, 
 else the former progress file is overwritten each time  
-``filename`` (default: ``"theta_backup.npy"``): the file name of the progress file.
+- ``filename`` (default: ``"theta_backup.npy"``): the file name of the progress file.
 
 Lastly, you could specify a callback function that is called after each training step
 ```python
@@ -181,13 +181,13 @@ opt = Optimizer()
 opt = opt.load_data_from_csv(filename, delimiter)
 opt.train()
 ```
-Some important parameters of the ``train`` method include  
-``lam`` (default: ``0``), which is
+Some important parameters of the ``train`` method include:  
+- ``lam`` (default: ``0``), which is
 the lambda tuning parameter to control L1 regularization,  
-``maxit`` (default: ``5000``), which is the maximum
+- ``maxit`` (default: ``5000``), which is the maximum
 number of training iterations,  
-```reltol``` (default: ``1e-7``), which is the gradient norm at which the training terminates and  
-```round_result``` (default: ``True``), which, if set to True, rounds the result to two decimal places  
+- ```reltol``` (default: ``1e-7``), which is the gradient norm at which the training terminates and  
+- ```round_result``` (default: ``True``), which, if set to True, rounds the result to two decimal places  
   
 The resulting MHN is returned by the ```train()``` method, but can also be obtained
 from the ```result``` parameter:
