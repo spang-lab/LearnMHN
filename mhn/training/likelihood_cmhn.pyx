@@ -13,6 +13,8 @@ from libc.math cimport exp, log
 from mhn.training.state_containers cimport State, StateContainer
 from mhn.full_state_space.PerformanceCriticalCode cimport _compute_inverse, _compute_inverse_t
 
+from typing import Literal
+
 import numpy as np
 cimport numpy as np
 
@@ -787,7 +789,7 @@ cpdef gradient_and_score(double[:, :] theta, StateContainer mutation_data):
 CUDA_AVAILABLE = "CUDA is available"
 CUDA_NOT_AVAILABLE = "CUDA compiler nvcc was not present during installation"
 CUDA_NOT_FUNCTIONAL = "CUDA compiler nvcc available but CUDA functions not working. Check CUDA installation"
-def cuda_available():
+def cuda_available() -> Literal[CUDA_AVAILABLE, CUDA_NOT_AVAILABLE, CUDA_NOT_FUNCTIONAL]:
     """
     Call this function if you want to know if the mhn package is able to use CUDA functions on your device.
     """
