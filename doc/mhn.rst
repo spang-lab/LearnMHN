@@ -7,6 +7,8 @@ the *mhn* package.
 Directly callable functions and constants
 -----------------------------------------
 
+.. autofunction:: mhn.set_seed
+
 .. autofunction:: mhn.cuda_available
 
 

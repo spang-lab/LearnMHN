@@ -140,6 +140,10 @@ In this example, we opted for the latter option:
 
 .. code-block:: python
 
+    import mhn
+    # use a seed to make the cross-validation results reproducible
+    mhn.set_seed(0)
+
     cv_lambda = opt.lambda_from_cv(
         lambda_min=1e-4,       # the smallest lambda value evaluated
         lambda_max=1e-1,       # the largest lambda value evaluated
