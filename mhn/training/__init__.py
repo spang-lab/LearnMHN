@@ -1,6 +1,5 @@
 """
-This part of the package contains functions that use state-space restriction (SSR) to become more efficient and
-compute scores and their gradients that are needed for learning MHNs much faster.
+This part of the package contains functions that are needed for model training.
 """
 
 from . import state_containers

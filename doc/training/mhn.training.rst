@@ -1,5 +1,5 @@
-*training*: The package containing everything related to state-space restriction
-================================================================================
+*training*: The package containing functionalities needed for model training
+============================================================================
 
 .. automodule:: mhn.training
 
