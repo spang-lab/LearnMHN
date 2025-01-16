@@ -434,7 +434,7 @@ class cMHNOptimizer(_Optimizer):
             lambda_vector (np.ndarray, optional): Specific lambda values to test.
             show_progressbar (bool, optional): Whether to show a progress bar during cross-validation. Defaults to False.
             return_lambda_scores (bool, optional): Whether to return lambda scores along with the best lambda. Defaults to False.
-            pick_1se (bool, optional): if True (default), applies the one-standard-error-rule to pick the returned lambda value. If False,
+            pick_1se (bool, optional): If True (default), applies the one-standard-error-rule to pick the returned lambda value. If False,
                                        returns the best-performing lambda.
 
         Returns:
