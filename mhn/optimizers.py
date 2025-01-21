@@ -1,13 +1,13 @@
 """
 This submodule contains Optimizer classes to learn an MHN from mutation data.
 """
-# author(s): Stefan Vocht, Y. Linda Hu, Rudolf Schill
+# author(s): Stefan Vocht, Y. Linda Hu, Rudolf Schill, Andreas Lösch
 
 from __future__ import annotations
 
 import abc
 import warnings
-from enum import Enum, auto
+from enum import Enum
 from typing import Union
 
 import numpy as np
