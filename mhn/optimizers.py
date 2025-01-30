@@ -8,7 +8,6 @@ from __future__ import annotations
 import abc
 import warnings
 from enum import Enum
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -318,41 +317,71 @@ class _Optimizer(abc.ABC):
 
         return self
 
-    def set_penalty(self, penalty: Penalty):
+    def set_penalty(
+        self,
+        penalty: (
+            Penalty
+            | tuple[
+                Callable[[np.ndarray], float],
+                Callable[[np.ndarray], np.ndarray],
+            ]
+        ),
+    ) -> _Optimizer:
         """
         Sets the penalty type for training.
 
-        You have three options:
-            Penalty.L1:          (default) uses the L1 penalty as regularization
-            Penalty.L2:          uses the L2 penalty as regularization
-            Penalty.SYM_SPARSE:  uses a penalty which induces sparsity and soft symmetry
+        You have four options:
+            Penalty.L1:                 (default) uses the L1 penalty as
+                regularization
+            Penalty.L2:                 uses the L2 penalty as
+                regularization
+            Penalty.SYM_SPARSE:         uses a penalty which induces
+                sparsity and soft symmetry
+            (penalty, penalty_deriv):   a custom penalty function and
+                its derivative. They must both take the log_theta matrix
+                in the form of a numpy array as input and return a float
+                and a numpy array, respectively.
 
         The Penalty enum is part of this optimizer class.
 
         Args:
-            penalty (Penalty): The penalty to use (L1, L2, SYM_SPARSE).
+            penalty (Penalty | tuple[Callable[[np.ndarray], float], Callable[[np.array], np.array]]): The penalty to use (L1, L2, SYM_SPARSE).
 
         Returns:
             _Optimizer: The optimizer instance.
 
         Raises:
-            ValueError: If the given penalty is not an instance of Penalty.
+            ValueError: If the given penalty is not an instance of
+            Penalty or a tuple of two functions.
         """
-        if not isinstance(penalty, Penalty):
+        if not isinstance(penalty, oMHNOptimizer.Penalty) and (
+            not isinstance(penalty, tuple)
+            or len(penalty) != 2
+            or not isinstance(penalty[0], Callable)
+            or not isinstance(penalty[1], Callable)
+        ):
             raise ValueError(
-                f"The given penalty is not an instance of {_Optimizer.Penalty}")
-        penalty_score, penalty_gradient = {
-            Penalty.L1: (penalties_cmhn.l1, penalties_cmhn.l1_),
-            Penalty.L2: (penalties_cmhn.l2, penalties_cmhn.l2_),
-            Penalty.SYM_SPARSE: (
-                penalties_cmhn.sym_sparse, penalties_cmhn.sym_sparse_deriv)
-        }[penalty]
-        self._regularized_score_func_builder = lambda grad_score_func: \
-            penalties_cmhn.build_regularized_score_func(
-                grad_score_func, penalty_score)
-        self._regularized_gradient_func_builder = lambda grad_score_func: \
-            penalties_cmhn.build_regularized_gradient_func(
-                grad_score_func, penalty_gradient)
+                "The given penalty must either be an instance of _Optimizer.Penalty or a tuple of two functions."
+            )
+        
+        if isinstance(penalty, oMHNOptimizer.Penalty):
+            penalty_score, penalty_gradient = {
+                Penalty.L1: (penalties_cmhn.l1, penalties_cmhn.l1_),
+                Penalty.L2: (penalties_cmhn.l2, penalties_cmhn.l2_),
+                Penalty.SYM_SPARSE: (
+                    penalties_cmhn.sym_sparse,
+                    penalties_cmhn.sym_sparse_deriv,
+                ),
+            }[penalty]
+        else:
+            penalty_score, penalty_gradient = penalty
+        
+        self._regularized_score_func_builder = lambda grad_score_func: penalties_cmhn.build_regularized_score_func(
+            grad_score_func, penalty_score
+        )
+        self._regularized_gradient_func_builder = lambda grad_score_func: penalties_cmhn.build_regularized_gradient_func(
+            grad_score_func, penalty_gradient
+        )
         return self
 
 
@@ -669,41 +698,71 @@ class oMHNOptimizer(cMHNOptimizer):
             }[device]
         return self
 
-    def set_penalty(self, penalty: Penalty):
+    def set_penalty(
+        self,
+        penalty: (
+            Penalty
+            | tuple[
+                Callable[[np.ndarray], float],
+                Callable[[np.ndarray], np.ndarray],
+            ]
+        ),
+    ):
         """
         Sets the penalty type for training.
 
-        You have three options:
-            Penalty.L1:          (default) uses the L1 penalty as regularization
-            Penalty.L2:          uses the L2 penalty as regularization
-            Penalty.SYM_SPARSE:  uses a penalty which induces sparsity and soft symmetry
+        You have four options:
+            Penalty.L1:                 (default) uses the L1 penalty as
+                regularization
+            Penalty.L2:                 uses the L2 penalty as
+                regularization
+            Penalty.SYM_SPARSE:         uses a penalty which induces
+                sparsity and soft symmetry
+            (penalty, penalty_deriv):   a custom penalty function and
+                its derivative. They must both take the log_theta matrix
+                in the form of a numpy array as input and return a float
+                and a numpy array, respectively.
 
         The Penalty enum is part of this optimizer class.
 
         Args:
-            penalty (Penalty): The penalty to use (L1, L2, SYM_SPARSE).
+            penalty (Penalty | tuple[Callable[[np.ndarray], float], Callable[[np.array], np.array]]): The penalty to use (L1, L2, SYM_SPARSE).
 
         Returns:
             _Optimizer: The optimizer instance.
 
         Raises:
-            ValueError: If the given penalty is not an instance of Penalty.
+            ValueError: If the given penalty is not an instance of
+            Penalty or a tuple of two functions.
         """
-        if not isinstance(penalty, oMHNOptimizer.Penalty):
+        if not isinstance(penalty, oMHNOptimizer.Penalty) and (
+            not isinstance(penalty, tuple)
+            or len(penalty) != 2
+            or not isinstance(penalty[0], Callable)
+            or not isinstance(penalty[1], Callable)
+        ):
             raise ValueError(
-                f"The given penalty is not an instance of {oMHNOptimizer.Penalty}")
-        penalty_score, penalty_gradient = {
-            Penalty.L1: (penalties_omhn.l1, penalties_omhn.l1_),
-            Penalty.L2: (penalties_omhn.l2, penalties_omhn.l2_),
-            Penalty.SYM_SPARSE: (
-                penalties_omhn.sym_sparse, penalties_omhn.sym_sparse_deriv)
-        }[penalty]
-        self._regularized_score_func_builder = lambda grad_score_func: \
-            penalties_omhn.build_regularized_score_func(
-                grad_score_func, penalty_score)
-        self._regularized_gradient_func_builder = lambda grad_score_func: \
-            penalties_omhn.build_regularized_gradient_func(
-                grad_score_func, penalty_gradient)
+                "The given penalty must either be an instance of oMHNOptimizer.Penalty or a tuple of two functions."
+            )
+
+        if isinstance(penalty, oMHNOptimizer.Penalty):
+            penalty_score, penalty_gradient = {
+                Penalty.L1: (penalties_omhn.l1, penalties_omhn.l1_),
+                Penalty.L2: (penalties_omhn.l2, penalties_omhn.l2_),
+                Penalty.SYM_SPARSE: (
+                    penalties_omhn.sym_sparse,
+                    penalties_omhn.sym_sparse_deriv,
+                ),
+            }[penalty]
+        else:
+            penalty_score, penalty_gradient = penalty
+
+        self._regularized_score_func_builder = lambda grad_score_func: penalties_omhn.build_regularized_score_func(
+            grad_score_func, penalty_score
+        )
+        self._regularized_gradient_func_builder = lambda grad_score_func: penalties_omhn.build_regularized_gradient_func(
+            grad_score_func, penalty_gradient
+        )
         return self
 
 
@@ -719,8 +778,8 @@ class MHNType(Enum):
     cMHN = cMHNOptimizer
     oMHN = oMHNOptimizer
 
-    def get_optimizer(self) -> Union[oMHNOptimizer, cMHNOptimizer]:
-        """ Associates each enum member with its optimizer. """
+    def get_optimizer(self) -> oMHNOptimizer | cMHNOptimizer:
+        """Associates each enum member with its optimizer."""
         return self.value()
 
 
@@ -740,7 +799,7 @@ class Optimizer:
 
     def __new__(
         cls, mhn_type: MHNType = MHNType.oMHN
-    ) -> Union[oMHNOptimizer, cMHNOptimizer]:
+    ) -> oMHNOptimizer | cMHNOptimizer:
         if not isinstance(mhn_type, MHNType):
             mhn_type_options = ['MHNType.' + member.name for member in MHNType]
             raise ValueError(
