@@ -162,7 +162,8 @@ Finally, you can train a new MHN with
         round_result=True,  # round the resulting theta matrix to two decimal places
     )
 
-This function will return an :code:`MHN` object (see :ref:`here <*model*: A submodule containing the MHN classes>`) that contains the learned model. |br|
+This function returns an :code:`MHN` object (see :ref:`here <*model*: A submodule containing the MHN classes>`), which contains the learned model
+and provides additional methods for cancer progression analysis. |br|
 You can also access the learned model via the :code:`result` property:
 
 .. code-block:: python
