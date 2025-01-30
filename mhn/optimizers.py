@@ -8,6 +8,7 @@ from __future__ import annotations
 import abc
 import warnings
 from enum import Enum
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -345,7 +346,7 @@ class _Optimizer(abc.ABC):
         The Penalty enum is part of this optimizer class.
 
         Args:
-            penalty (Penalty | tuple[Callable[[np.ndarray], float], Callable[[np.array], np.array]]): The penalty to use (L1, L2, SYM_SPARSE).
+            penalty (Penalty | tuple[Callable[[np.ndarray], float], Callable[[np.ndarray], np.ndarray]]): The penalty to use (L1, L2, SYM_SPARSE).
 
         Returns:
             _Optimizer: The optimizer instance.
@@ -357,8 +358,8 @@ class _Optimizer(abc.ABC):
         if not isinstance(penalty, oMHNOptimizer.Penalty) and (
             not isinstance(penalty, tuple)
             or len(penalty) != 2
-            or not isinstance(penalty[0], Callable)
-            or not isinstance(penalty[1], Callable)
+            or not callable(penalty[0])
+            or not callable(penalty[1])
         ):
             raise ValueError(
                 "The given penalty must either be an instance of _Optimizer.Penalty or a tuple of two functions."
@@ -726,7 +727,7 @@ class oMHNOptimizer(cMHNOptimizer):
         The Penalty enum is part of this optimizer class.
 
         Args:
-            penalty (Penalty | tuple[Callable[[np.ndarray], float], Callable[[np.array], np.array]]): The penalty to use (L1, L2, SYM_SPARSE).
+            penalty (Penalty | tuple[Callable[[np.ndarray], float], Callable[[np.ndarray], np.ndarray]]): The penalty to use (L1, L2, SYM_SPARSE).
 
         Returns:
             _Optimizer: The optimizer instance.
@@ -738,8 +739,8 @@ class oMHNOptimizer(cMHNOptimizer):
         if not isinstance(penalty, oMHNOptimizer.Penalty) and (
             not isinstance(penalty, tuple)
             or len(penalty) != 2
-            or not isinstance(penalty[0], Callable)
-            or not isinstance(penalty[1], Callable)
+            or not callable(penalty[0])
+            or not callable(penalty[1])
         ):
             raise ValueError(
                 "The given penalty must either be an instance of oMHNOptimizer.Penalty or a tuple of two functions."
