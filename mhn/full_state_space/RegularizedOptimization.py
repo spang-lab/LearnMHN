@@ -16,12 +16,14 @@ from typing import Callable
 
 def L1(theta: np.ndarray, eps: float = 1e-05) -> float:
     """
-    Computes the L1 penalty
+    Computes the L1 penalty for the given theta matrix.
 
-    :param theta: the theta matrix representing the cMHN
-    :param eps: small epsilon value, mainly there for the derivative
+    Args:
+        theta (np.ndarray): The theta matrix representing the cMHN.
+        eps (float, optional): A small epsilon value, mainly used for the derivative. Default is 1e-05.
 
-    :returns: the L1 penalty for the given theta matrix
+    Returns:
+        float: The L1 penalty for the given theta matrix.
     """
     theta_ = theta.copy()
     np.fill_diagonal(theta_, 0)
@@ -30,12 +32,14 @@ def L1(theta: np.ndarray, eps: float = 1e-05) -> float:
 
 def L1_(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
     """
-    Derivative of the L1 penalty
+    Computes the derivative of the L1 penalty for the given theta matrix.
 
-    :param theta: the theta matrix representing the cMHN
-    :param eps: small epsilon value that makes sure that we don't divide by zero
+    Args:
+        theta (np.ndarray): The theta matrix representing the cMHN.
+        eps (float, optional): A small epsilon value to prevent division by zero. Default is 1e-05.
 
-    :returns: the derivative of the L1 penalty
+    Returns:
+        np.ndarray: The derivative of the L1 penalty.
     """
     theta_ = theta.copy()
     np.fill_diagonal(theta_, 0)
@@ -44,15 +48,17 @@ def L1_(theta: np.ndarray, eps: float = 1e-05) -> np.ndarray:
 
 def score_reg(theta: np.ndarray, pD: np.ndarray, lam: float, n: int = None, pth_space: np.ndarray = None) -> float:
     """
-    Score with L1 - regularization
+    Computes the score with L1 regularization for the given theta matrix.
 
-    :param theta: the theta matrix representing the cMHN
-    :param pD: distribution given by the training data
-    :param lam: tuning parameter lambda for regularization
-    :param n: number of columns/rows of theta
-    :param pth_space: optional, with this parameter we can communicate with the gradient function and use pth there again -> performance boost
+    Args:
+        theta (np.ndarray): The theta matrix representing the cMHN.
+        pD (np.ndarray): Distribution provided by the training data.
+        lam (float): Tuning parameter lambda for regularization.
+        n (int, optional): The number of columns/rows of the theta matrix. Default is None.
+        pth_space (np.ndarray, optional): Optional parameter used for communication with the gradient function to improve performance.
 
-    :returns: the score of the current cMHN penalized with the L1 regularization
+    Returns:
+        float: The score of the current cMHN, penalized with L1 regularization.
     """
     n = n or int(np.sqrt(theta.size))
     theta = theta.reshape((n, n))
@@ -62,15 +68,17 @@ def score_reg(theta: np.ndarray, pD: np.ndarray, lam: float, n: int = None, pth_
 
 def grad_reg(theta: np.ndarray, pD: np.ndarray, lam: float, n: int = 0, pth_space: np.ndarray = None) -> np.ndarray:
     """
-    Gradient with L1 - regularization
+    Computes the gradient with L1 regularization for the given theta matrix.
 
-    :param theta: the theta matrix representing the cMHN
-    :param pD: distribution given by the training data
-    :param lam: tuning parameter lambda for regularization
-    :param n: number of columns/rows of theta
-    :param pth_space: optional, as pth is calculated in the score function anyway, we do not need to calculate it again -> performance boost
+    Args:
+        theta (np.ndarray): The theta matrix representing the cMHN.
+        pD (np.ndarray): Distribution provided by the training data.
+        lam (float): Tuning parameter lambda for regularization.
+        n (int, optional): The number of columns/rows of the theta matrix. Default is 0.
+        pth_space (np.ndarray, optional): Optional parameter used to avoid recalculating pth, improving performance.
 
-    :return: the gradient of the L1 - regularized score
+    Returns:
+        np.ndarray: The gradient of the L1-regularized score.
     """
     n = n or int(np.sqrt(theta.size))
     theta_ = theta.reshape((n, n))
@@ -82,19 +90,22 @@ def learn_MHN(pD: np.ndarray, init: np.ndarray = None, lam: float = 0, maxit: in
               trace: bool = False, reltol: float = 1e-07, round_result: bool = True,
               callback: Callable = None, score_func: Callable = score_reg, jacobi: Callable = grad_reg) -> np.ndarray:
     """
-    This function is used to train an cMHN to a given probability distribution pD.
+    Trains a cMHN to fit a given probability distribution.
 
-    :param pD: probability distribution used to train the new model
-    :param init: starting point for the training (initial theta)
-    :param lam: tuning parameter lambda for regularization
-    :param maxit: maximum number of training iterations
-    :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
-    :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
-    :param round_result: if True, the result is rounded to two decimal places
-    :param callback: function called after each iteration, must take theta as argument
-    :param score_func: score function used for training
-    :param jacobi: gradient function used for training
-    :return: trained model
+    Args:
+        pD (np.ndarray): Probability distribution used to train the new model.
+        init (np.ndarray, optional): Starting point for the training (initial theta). Default is None.
+        lam (float, optional): Tuning parameter lambda for regularization. Default is 0.
+        maxit (int, optional): Maximum number of training iterations. Default is 5000.
+        trace (bool, optional): If True, convergence messages are printed (see scipy.optimize.minimize). Default is False.
+        reltol (float, optional): Gradient norm must be less than reltol before successful termination. Default is 1e-07.
+        round_result (bool, optional): If True, the result is rounded to two decimal places. Default is True.
+        callback (Callable, optional): Function called after each iteration, must take theta as an argument. Default is None.
+        score_func (Callable, optional): Score function used for training. Default is score_reg.
+        jacobi (Callable, optional): Gradient function used for training. Default is grad_reg.
+
+    Returns:
+        np.ndarray: The trained model (theta matrix).
     """
 
     n = int(np.log2(pD.size))

@@ -10,10 +10,13 @@ import numpy as np
 
 def state_to_int(x: np.ndarray) -> int:
     """
-    This function interprets a binary array x as a binary number and returns the corresponding value as an integer.
+    Interprets a binary array as a binary number and returns the corresponding integer value.
 
-    :param x: binary array, in the context of the script this is a row of the mutation matrix
-    :return: integer number representing the binary array
+    Args:
+        x (np.ndarray): Binary array, typically representing a row of the mutation matrix in this context.
+
+    Returns:
+        int: The integer value corresponding to the binary array.
     """
 
     # reverse list and convert elements to string
@@ -23,10 +26,13 @@ def state_to_int(x: np.ndarray) -> int:
 
 def data_to_pD(data: np.ndarray) -> np.ndarray:
     """
-    This function calculates the probability distribution for the different events for a given binary mutation matrix.
+    Calculates the probability distribution for the different events from a given binary mutation matrix.
 
-    :param data: has to be a numpy array/matrix (mutation matrix)
-    :return: probability distribution of the different events
+    Args:
+        data (np.ndarray): A numpy array or matrix representing the mutation data.
+
+    Returns:
+        np.ndarray: The probability distribution of the different events.
     """
 
     n = data.shape[1]
@@ -42,26 +48,31 @@ def data_to_pD(data: np.ndarray) -> np.ndarray:
     return pD
 
 
-def finite_sample(pTh: np.ndarray, k: int) -> np.ndarray:
+def finite_sample(p_th: np.ndarray, k: int) -> np.ndarray:
     """
-    Generates a random sample given a probability distribution and returns the probability distribution for this new
-    sample.
+    Generates a random sample given a probability distribution and returns the probability distribution for the new sample.
 
-    :param pTh: probability distribution of events (the distribution of a true Theta)
-    :param k: number of samples that should be generated
-    :return: probability distribution of events from the generated samples
+    Args:
+        p_th (np.ndarray): Probability distribution of events (the distribution of a true Theta).
+        k (int): The number of samples to generate.
+
+    Returns:
+        np.ndarray: The probability distribution of events from the generated samples.
     """
-    n = pTh.size
+    n = p_th.size
 
-    return np.bincount(np.random.choice(n, k, replace=True, p=pTh), minlength=n) / k
+    return np.bincount(np.random.choice(n, k, replace=True, p=p_th), minlength=n) / k
 
 
 def KL_div(p: np.ndarray, q: np.ndarray) -> float:
     """
-    Computes the Kullback–Leibler divergence of two probability distributions.
+    Computes the Kullback–Leibler divergence between two probability distributions.
 
-    :param p: probability distribution p
-    :param q: probability distribution q
-    :return: KL-divergence of p and q
+    Args:
+        p (np.ndarray): Probability distribution p.
+        q (np.ndarray): Probability distribution q.
+
+    Returns:
+        float: The KL-divergence of p and q.
     """
     return p.dot(np.log(p)) - p.dot(np.log(q))

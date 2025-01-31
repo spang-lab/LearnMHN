@@ -6,8 +6,8 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'mhn:'
-copyright = '2023, Stefan Vocht'
+project = 'mhn'
+copyright = '2025, Stefan Vocht'
 author = 'Stefan Vocht'
 
 # -- General configuration ---------------------------------------------------
@@ -15,7 +15,8 @@ author = 'Stefan Vocht'
 
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.autosectionlabel'
+    'sphinx.ext.autosectionlabel',
+    'sphinx.ext.napoleon'
 ]
 
 templates_path = ['_templates']

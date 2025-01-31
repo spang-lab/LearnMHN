@@ -3,8 +3,7 @@ This submodule implements Likelihood.R from the original implementation in Cytho
 
 It contains functions to compute the log-likelihood score and its gradient without state-space restriction as
 well as functions for matrix-vector multiplications with the transition rate matrix and [I-Q]^(-1).
-There are also functions to compute the probability distribution represented by an cMHN and to sample artificial data
-from a given cMHN.
+There are also functions to compute the probability distribution represented by an cMHN.
 """
 # author(s): Stefan Vocht
 
@@ -24,15 +23,17 @@ np.import_array()
 
 cdef internal_q_vec(double[:, :] theta, double[:] x, double[:] yout, bint diag = False, bint transp = False):
     """
-    Multiplies the vector x with the matrix Q
+    Multiplies the vector x with the transition rate matrix Q.
 
-    :param theta: thetas used to construct Q
-    :param x: vector that is multiplied with Q
-    :param yout: vector that contains the result of the multiplication
-    :param diag: if False, the diagonal of Q is set to zero
-    :param transp: if True, x is multiplied with Q^T
+    Args:
+        theta (double[:, :]): Thetas used to construct the transition rate matrix Q.
+        x (double[:]): Vector that is multiplied with Q.
+        yout (double[:]): Vector that will contain the result of the multiplication.
+        diag (bool, optional): If False, the diagonal of Q is set to zero. Defaults to False.
+        transp (bool, optional): If True, x is multiplied with Q^T (transposed Q). Defaults to False.
 
-    :return: product of Q and x
+    Returns:
+        double[:]: The product of Q and x, stored in yout.
     """
     cdef int n = theta.shape[0]
     cdef int nx = x.shape[0]
@@ -56,14 +57,16 @@ cdef internal_q_vec(double[:, :] theta, double[:] x, double[:] yout, bint diag =
 
 cpdef np.ndarray[np.double_t] q_vec(double[:, :] theta, double[:] x, bint diag = False, bint transp = False):
     """
-    Multiplies the vector x with the matrix Q
+    Multiplies the vector x with the transition rate matrix Q.
 
-    :param theta: thetas used to construct Q
-    :param x: vector that is multiplied with Q
-    :param diag: if False, the diagonal of Q is set to zero
-    :param transp: if True, x is multiplied with Q^T
+    Args:
+        theta (np.ndarray[np.double_t]): Thetas used to construct the transition rate matrix Q.
+        x (np.ndarray[np.double_t]): Vector that is multiplied with Q.
+        diag (bool, optional): If False, the diagonal of Q is set to zero. Defaults to False.
+        transp (bool, optional): If True, x is multiplied with Q^T (transposed Q). Defaults to False.
 
-    :return: product of Q and x
+    Returns:
+        np.ndarray[np.double_t]: The product of Q and x.
     """
     cdef int n = theta.shape[0]
     cdef np.ndarray[np.double_t] result = np.empty(2**n, dtype=np.double)
@@ -73,12 +76,15 @@ cpdef np.ndarray[np.double_t] q_vec(double[:, :] theta, double[:] x, bint diag =
 
 cpdef np.ndarray[np.double_t] jacobi(double[:, :] theta, np.ndarray[np.double_t] b, bint transp = False):
     """
-    Returns the solution for [I - Q] x = b
+    Returns the solution for [I - Q] x = b.
 
-    :param theta: thetas used to construct Q
-    :param b:
-    :param transp: if True, returns solution for ([I - Q]^-1)^T x = b
-    :return:
+    Args:
+        theta (np.ndarray[np.double_t]): Thetas used to construct the transition rate matrix Q.
+        b (np.ndarray[np.double_t]): The vector on the right-hand side of the equation.
+        transp (bool, optional): If True, returns the solution for ([I - Q]^-1)^T x = b. Defaults to False.
+
+    Returns:
+        np.ndarray[np.double_t]: The solution vector x for the equation [I - Q] x = b.
     """
     cdef int n = theta.shape[1]
     cdef int i
@@ -95,11 +101,14 @@ cpdef np.ndarray[np.double_t] jacobi(double[:, :] theta, np.ndarray[np.double_t]
 
 cpdef np.ndarray[np.double_t] generate_pTh(double[:, :] theta, p0 = None):
     """
-    Returns the probability distribution given by theta
+    Returns the probability distribution given by theta.
 
-    :param theta:
-    :param p0:
-    :return:
+    Args:
+        theta (np.ndarray[np.double_t]): The matrix representing the cMHN parameters.
+        p0 (optional): The initial probability distribution. If None, it assumes no initial active events. Defaults to None.
+
+    Returns:
+        np.ndarray[np.double_t]: The probability distribution computed from the given theta.
     """
     cdef int n = theta.shape[1]
     cdef np.ndarray[np.double_t] dg = 1 - q_diag(theta)
@@ -115,12 +124,16 @@ cpdef np.ndarray[np.double_t] generate_pTh(double[:, :] theta, p0 = None):
 
 def score(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t] pth_space = None) -> float:
     """
-    Calculates the score for the current theta
+    Calculates the score for the current theta.
 
-    :param theta:
-    :param pD: probability distribution in the data
-    :param pth_space: optional, with this parameter we can communicate with the function grad and use pth there again -> performance boost
-    :return: score value
+    Args:
+        theta (np.ndarray[np.double_t]): The matrix representing the cMHN parameters.
+        pD (np.ndarray[np.double_t]): The probability distribution in the data.
+        pth_space (optional, np.ndarray[np.double_t]): Optional parameter for performance optimization. If provided, it allows communication with
+                                                       the gradient function, reducing computation time. Defaults to None.
+
+    Returns:
+        float: The score value for the given theta.
     """
     cdef np.ndarray[np.double_t] pth = generate_pTh(theta)
 
@@ -132,13 +145,16 @@ def score(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t
 
 def grad(double[:, :] theta, np.ndarray[np.double_t] pD, np.ndarray[np.double_t] pth_space = None) -> np.ndarray:
     """
-    Implements gradient calculation of equation 7
+    Implements the gradient calculation of equation 7.
 
-    :param theta:
-    :param pD: probability distribution of the training data
-    :param pth: as pth is calculated in the score function anyway, we do not need to calculate it again
-    :param pth_space: optional, with this parameter we can communicate with the function score and use pth here again -> performance boost
-    :return: gradient you get from equation 7
+    Args:
+        theta (np.ndarray[np.double_t]): The matrix representing the cMHN parameters.
+        pD (np.ndarray[np.double_t]): The probability distribution in the data.
+        pth_space (optional, np.ndarray[np.double_t]): Optional parameter for performance optimization. If provided, it allows communication with
+                                                       the score function, reducing computation time. Defaults to None.
+
+    Returns:
+        np.ndarray[np.double_t]: The gradient calculated according to equation 7.
     """
     cdef int n = theta.shape[0]
     cdef int nx = 1 << n
@@ -196,13 +212,17 @@ def cuda_gradient_and_score(double[:, :] theta, double[:] pD):
     """
     Computes the log-likelihood score and its gradient for a given theta and a given empirical distribution.
 
-    **It can only be used if the mhn package was compiled with CUDA.**
+    **This function can only be used if the mhn package was compiled with CUDA.**
 
-    :param theta: theta matrix representing the cMHN
-    :param pD: probability distribution according to the training data
-    :returns: tuple containing the gradient and the score
+    Args:
+        theta (np.ndarray[np.double_t]): The theta matrix representing the cMHN.
+        pD (np.ndarray[np.double_t]): The probability distribution according to the training data.
 
-    :raise RuntimeError: this function raises a RuntimeError if the mhn package was not compiled with CUDA
+    Returns:
+        tuple: The gradient and the log-likelihood score.
+
+    Raises:
+        RuntimeError: If the mhn package was not compiled with CUDA.
     """
 
     IF NVCC_AVAILABLE:
@@ -222,14 +242,18 @@ def cuda_compute_inverse(double[:, :] theta, double[:] b, bint transp = False):
     """
     Computes the solution for [I-Q] x = b on the GPU.
 
-    **It can only be used if the mhn package was compiled with CUDA.**
+    **This function can only be used if the mhn package was compiled with CUDA.**
 
-    :param theta: theta matrix representing the cMHN
-    :param b: vector that is multiplied with [I-Q]^(-1)
-    :param transp: if set to True, computes solution for [I-Q]^T x = b
-    :returns: the solution for [I-Q] x = b
+    Args:
+        theta (np.ndarray[np.double_t]): The theta matrix representing the cMHN.
+        b (np.ndarray[np.double_t]): A vector that is multiplied with [I-Q]^(-1).
+        transp (bool, optional): If set to True, computes the solution for [I-Q]^T x = b. Defaults to False.
 
-    :raise RuntimeError: this function raises a RuntimeError if the mhn package was not compiled with CUDA
+    Returns:
+        np.ndarray[np.double_t]: The solution for [I-Q] x = b.
+
+    Raises:
+        RuntimeError: If the mhn package was not compiled with CUDA.
     """
 
     IF NVCC_AVAILABLE:

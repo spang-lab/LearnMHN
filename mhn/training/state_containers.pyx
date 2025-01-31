@@ -82,12 +82,13 @@ cdef class StateContainer:
     """
     This class is used as a wrapper such that the C array containing the States can be referenced in a Python script.
 
-    It also makes sure that there aren't more than 32 mutations present in a single sample as this would break the algorithms
+    It also makes sure that there aren't more than 32 mutations present in a single sample as this would break the algorithms.
     """
 
     def __init__(self, int[:, :] mutation_data):
         """
-        :param mutation_data: a 2d numpy array with dtype=np.int32 that contains only 0s and 1s, where rows represent samples, and columns represent events
+        Args:
+            mutation_data (np.ndarray): a 2D numpy array with dtype=np.int32 that contains only 0s and 1s. Rows represent samples, and columns represent events.
         """
         # the number of columns (number of genes) must not exceed 32 * STATE_SIZE
         if mutation_data.shape[1] > (32 * STATE_SIZE):
@@ -112,13 +113,15 @@ cdef class StateContainer:
 
     def get_data_shape(self):
         """
-        returns a tuple containing the number of tumor samples and the number of genes stored in this object
+        Returns:
+            tuple: Number of tumor samples and the number of genes stored in this object
         """
-        return (self.data_size, self.gene_num)
+        return self.data_size, self.gene_num
 
     def get_max_mutation_num(self):
         """
-        returns the maximum number of mutations present in a single sample, might be useful as a sanity check
+        Returns:
+            Maximum number of mutations present in a single sample.
         """
         return self.max_mutation_num
 
@@ -133,8 +136,9 @@ cdef class StateAgeContainer(StateContainer):
 
     def __init__(self, int[:, :] mutation_data, double[:] ages):
         """
-        :param mutation_data: a 2d numpy array with dtype=np.int32 that contains only 0s and 1s, where rows represent samples, and columns represent events
-        :param ages: a 1d numpy array with dtype=np.double that contains the ages of the samples present in mutation_data
+        Args:
+            mutation_data (np.ndarray): 2D numpy array with dtype=np.int32 that contains only 0s and 1s. Rows represent samples, and columns represent events.
+            ages (np.ndarray): 1D numpy array with dtype=np.double that contains the ages of the samples present in mutation_data.
         """
         super().__init__(mutation_data)
         if ages.shape[0] != self.data_size:
@@ -155,8 +159,11 @@ def create_indep_model(StateContainer state_container):
     of each event is set to its empirical odds and the hazard ratios (off-diagonal entries) are set to exactly 1.
     The independence model is returned in logarithmic representation.
 
-    :param state_container: StateContainer object containing the data on which the independence model is based
-    :returns: an independence model in logarithmic representation
+    Args:
+        state_container (StateContainer): Data used to compute the independence model.
+
+    Returns:
+        np.ndarray: Independence model in logarithmic representation.
     """
 
     cdef int n = state_container.gene_num

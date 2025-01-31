@@ -1,13 +1,14 @@
 """
 This submodule contains Optimizer classes to learn an MHN from mutation data.
 """
-# author(s): Stefan Vocht, Y. Linda Hu, Rudolf Schill
+# author(s): Stefan Vocht, Y. Linda Hu, Rudolf Schill, Andreas Lösch
 
 from __future__ import annotations
 
 import abc
 import warnings
 from enum import Enum
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -22,10 +23,44 @@ from .training.likelihood_cmhn import CUDA_AVAILABLE, CUDAError, cuda_available
 from .training.state_containers import StateContainer, create_indep_model
 
 
+class Device(Enum):
+    """
+    Enum of device types.
+
+    Attributes:
+        AUTO (int): Automatically selects the device based on the number of active events in each sample.
+        CPU (int): Executes all computations on the CPU.
+        GPU (int): Executes score and gradient computations on the GPU.
+    """
+
+    AUTO, CPU, GPU = range(3)
+
+
+class Penalty(Enum):
+    """
+    Enumeration of penalty functions.
+
+    Attributes:
+        L1 (int): Applies L1 regularization during training.
+        L2 (int): Applies L2 regularization during training.
+        SYM_SPARSE (int): Induces sparsity and soft symmetry (see Schill et al., 2024).
+    """
+
+    L1, L2, SYM_SPARSE = range(3)
+
+
 class _Optimizer(abc.ABC):
     """
-    This abstract Optimizer class is the base class for the other Optimizer classes and cannot be instantiated alone.
+    Abstract Optimizer class serving as a base for other optimizer classes.
+
+    Attributes:
+        Device (Device): Enum reference for device types.
+        Penalty (Penalty): Enum reference for penalty types.
     """
+
+    # Reference to the external enum (re-export), makes separate import of Enums unnecessary
+    Device = Device
+    Penalty = Penalty
 
     def __init__(self):
         self._data = None
@@ -51,22 +86,26 @@ class _Optimizer(abc.ABC):
 
         self._OutputMHNClass = model.cMHN
 
-    def set_init_theta(self, init: np.ndarray | None):
+    def set_init_theta(self, init: np.ndarray | None) -> _Optimizer:
         """
-        Use this method to set a theta as starting point for learning a new MHN. The theta must be in logarithmic form.
+        Sets the initial theta matrix for learning a new MHN.
 
-        If none is given, the optimization starts with an independence model, where the baseline hazard Theta_ii
-        of each event is set to its empirical odds and the hazard ratios (off-diagonal entries) are set to exactly 1.
+        Args:
+            init (np.ndarray | None): Initial theta matrix in logarithmic form. If None, uses an independence model where the baseline hazard Theta_ii
+                                      of each event is set to its empirical odds and the hazard ratios (off-diagonal entries) are set to exactly 1.
+
+        Returns:
+            _Optimizer: The optimizer instance.
         """
         self._init_theta = init
         return self
 
-    def get_data_properties(self):
+    def get_data_properties(self) -> dict:
         """
-        You can use this method to get some information about the loaded training data, e.g. how many events and samples
-        are present in the data, how many events have occurred in a sample on average etc.
+        Retrieves properties of the loaded training data.
 
-        :returns: a dictionary containing information about the data
+        Returns:
+            dict: A dictionary with information about the training data, including sample and event statistics.
         """
         if self._bin_datamatrix is None:
             return {}
@@ -94,25 +133,35 @@ class _Optimizer(abc.ABC):
             'event statistics': event_dataframe
         }
 
-    def set_callback_func(self, callback=None):
+    def set_callback_func(self, callback=None) -> _Optimizer:
         """
-        Use this method to set a callback function called after each iteration in the BFGS algorithm.
-        The given function must take exactly one argument, namely the theta matrix computed in the last iteration.
+        Sets a callback function to be invoked after each iteration of the BFGS algorithm.
+
+        Args:
+            callback (Callable): A function that takes a single argument (theta matrix computed in the last iteration). Defaults to None.
+
+        Raises:
+            ValueError: If the provided callback is not callable.
+
+        Returns:
+            _Optimizer: The optimizer instance.
         """
         if callback is not None and not callable(callback):
             raise ValueError("callback has to be a function!")
         self.__custom_callback = callback
         return self
 
-    def save_progress(self, steps: int = -1, always_new_file: bool = False, filename: str = 'theta_backup.npy'):
+    def save_progress(self, steps: int = -1, always_new_file: bool = False, filename: str = 'theta_backup.npy') -> _Optimizer:
         """
-        If you want to regularly save the progress during training, you can use this function and define the number
-        of steps between each progress save.
+        Configures periodic saving of training progress.
 
-        :param filename: file name of the backup file
-        :param steps: number of training iterations between each progress backup
-        :param always_new_file: if this is True, every backup is stored in a separate file, else the file is overwritten each time
-        :return: this optimizer object
+        Args:
+            steps (int): Number of training iterations between progress saves. Defaults to -1 (disabled).
+            always_new_file (bool): Whether to save each backup as a new file. Defaults to False.
+            filename (str): Name of the backup file. Defaults to 'theta_backup.npy'.
+
+        Returns:
+            _Optimizer: The optimizer instance.
         """
         self.__backup_steps = steps
         self.__backup_always_new_file = always_new_file
@@ -143,14 +192,20 @@ class _Optimizer(abc.ABC):
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
               reltol: float = 1e-7, round_result: bool = True) -> model.cMHN:
         """
-        Use this function to learn a new MHN from the data given to this optimizer.
+        Trains a new MHN model using the loaded data.
 
-        :param lam: tuning parameter lambda for regularization (default: 1/(number of samples in the dataset))
-        :param maxit: maximum number of training iterations
-        :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
-        :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
-        :param round_result: if True, the result is rounded to two decimal places
-        :return: trained model
+        Args:
+            lam (float, optional): Regularization parameter. Defaults to 1/(number of samples).
+            maxit (int): Maximum number of training iterations. Defaults to 5000.
+            trace (bool): Whether to print convergence messages. Defaults to False.
+            reltol (float): Gradient norm tolerance for termination. Defaults to 1e-7. (see "gtol" in scipy.optimize.minimize)
+            round_result (bool): Whether to round the result to two decimal places. Defaults to True.
+
+        Returns:
+            model.cMHN: The trained MHN model.
+
+        Raises:
+            ValueError: If no data has been loaded.
         """
         if self._data is None:
             raise ValueError("You have to load data before training!")
@@ -195,9 +250,10 @@ class _Optimizer(abc.ABC):
     @property
     def result(self) -> model.cMHN:
         """
-        The resulting cMHN after training, same as the return value of the train() method.
-        This property mainly exists as a kind of backup to ensure that the result of the training is not lost, if the
-        user forgets to save the returned value of the train() method in a variable.
+        Property for retrieving the training result.
+
+        Returns:
+            model.cMHN: The resulting MHN model after training.
         """
         return self._result
 
@@ -212,14 +268,16 @@ class _Optimizer(abc.ABC):
     @staticmethod
     def _preprocess_binary_matrix(data_matrix: np.ndarray) -> np.ndarray:
         """
-        This function is used to make sure that the given data matrix is in the correct format.
-        Correct format:
-            a 2D numpy array with dtype=np.int32, which only contains 0s and 1s
+        Preprocesses a binary data matrix to ensure the correct format.
 
-        While the dtype will be changed automatically, if not np.int32, a matrix not being 2D or containing other values
-        than 0s and 1s will raise a ValueError.
+        Args:
+            data_matrix (np.ndarray): Input binary matrix.
 
-        :return: the given data_matrix with its dtype set to np.int32
+        Returns:
+            np.ndarray: Preprocessed data matrix with dtype set to np.int32.
+
+        Raises:
+            ValueError: If the matrix is not two-dimensional or contains values other than 0 and 1.
         """
         if len(data_matrix.shape) != 2:
             raise ValueError("The given data matrix must be two-dimensional")
@@ -234,9 +292,9 @@ class _Optimizer(abc.ABC):
         return data_matrix
 
     @abc.abstractmethod
-    def set_device(self, device: "_Optimizer.Device"):
+    def set_device(self, device: Device) -> _Optimizer:
         """
-        Set the device that should be used for training.
+        Sets the computational device for training.
 
         You have three options:
             Device.AUTO: (default) automatically select the device that is likely to match the data
@@ -244,50 +302,88 @@ class _Optimizer(abc.ABC):
             Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
 
         The Device enum is part of this optimizer class.
+
+        Args:
+            device (Device): The device to use (AUTO, CPU, or GPU).
+
+        Returns:
+            _Optimizer: The optimizer instance.
+
+        Raises:
+            ValueError: If the given device is not an instance of Device.
         """
-        if not isinstance(device, _Optimizer.Device):
+        if not isinstance(device, Device):
             raise ValueError(
-                f"The given device is not an instance of {_Optimizer.Device}")
+                f"The given device is not an instance of {Device}")
 
         return self
 
-    def set_penalty(self, penalty: "_Optimizer.Penalty"):
+    def set_penalty(
+        self,
+        penalty: (
+            Penalty
+            | tuple[
+                Callable[[np.ndarray], float],
+                Callable[[np.ndarray], np.ndarray],
+            ]
+        ),
+    ) -> _Optimizer:
         """
-        Set the penalty that should be used for training.
+        Sets the penalty type for training.
 
-        You have two options:
-            Penalty.L1:          (default) uses the L1 penalty as regularization
-            Penalty.SYM_SPARSE:  uses a penalty which induces sparsity and soft symmetry
+        You have four options:
+            Penalty.L1:                 (default) uses the L1 penalty as
+                regularization
+            Penalty.L2:                 uses the L2 penalty as
+                regularization
+            Penalty.SYM_SPARSE:         uses a penalty which induces
+                sparsity and soft symmetry
+            (penalty, penalty_deriv):   a custom penalty function and
+                its derivative. They must both take the log_theta matrix
+                in the form of a numpy array as input and return a float
+                and a numpy array, respectively.
 
         The Penalty enum is part of this optimizer class.
+
+        Args:
+            penalty (Penalty | tuple[Callable[[np.ndarray], float], Callable[[np.ndarray], np.ndarray]]): The penalty to use (L1, L2, SYM_SPARSE).
+
+        Returns:
+            _Optimizer: The optimizer instance.
+
+        Raises:
+            ValueError: If the given penalty is not an instance of
+            Penalty or a tuple of two functions.
         """
-        if not isinstance(penalty, _Optimizer.Penalty):
+        if not isinstance(penalty, oMHNOptimizer.Penalty) and (
+            not isinstance(penalty, tuple)
+            or len(penalty) != 2
+            or not callable(penalty[0])
+            or not callable(penalty[1])
+        ):
             raise ValueError(
-                f"The given penalty is not an instance of {_Optimizer.Penalty}")
-        penalty_score, penalty_gradient = {
-            _Optimizer.Penalty.L1: (penalties_cmhn.l1, penalties_cmhn.l1_),
-            _Optimizer.Penalty.SYM_SPARSE: (
-                penalties_cmhn.sym_sparse, penalties_cmhn.sym_sparse_deriv)
-        }[penalty]
-        self._regularized_score_func_builder = lambda grad_score_func: \
-            penalties_cmhn.build_regularized_score_func(
-                grad_score_func, penalty_score)
-        self._regularized_gradient_func_builder = lambda grad_score_func: \
-            penalties_cmhn.build_regularized_gradient_func(
-                grad_score_func, penalty_gradient)
+                "The given penalty must either be an instance of _Optimizer.Penalty or a tuple of two functions."
+            )
+        
+        if isinstance(penalty, oMHNOptimizer.Penalty):
+            penalty_score, penalty_gradient = {
+                Penalty.L1: (penalties_cmhn.l1, penalties_cmhn.l1_),
+                Penalty.L2: (penalties_cmhn.l2, penalties_cmhn.l2_),
+                Penalty.SYM_SPARSE: (
+                    penalties_cmhn.sym_sparse,
+                    penalties_cmhn.sym_sparse_deriv,
+                ),
+            }[penalty]
+        else:
+            penalty_score, penalty_gradient = penalty
+        
+        self._regularized_score_func_builder = lambda grad_score_func: penalties_cmhn.build_regularized_score_func(
+            grad_score_func, penalty_score
+        )
+        self._regularized_gradient_func_builder = lambda grad_score_func: penalties_cmhn.build_regularized_gradient_func(
+            grad_score_func, penalty_gradient
+        )
         return self
-
-    class Device(Enum):
-        """
-        A small Enum which can represent device types.
-        """
-        AUTO, CPU, GPU = range(3)
-
-    class Penalty(Enum):
-        """
-        Small Enum which represents penalty functions
-        """
-        L1, SYM_SPARSE = range(2)
 
 
 class cMHNOptimizer(_Optimizer):
@@ -301,12 +397,14 @@ class cMHNOptimizer(_Optimizer):
 
     def load_data_matrix(self, data_matrix: np.ndarray | pd.DataFrame):
         """
-        Load mutation data stored in a numpy array or pandas DataFrame, where the rows represent samples and
-        columns represent genes.
-        Mutations of genes are represented by 1s, intact genes are represented by 0s.
+        Loads mutation data stored in a numpy array or pandas DataFrame.
 
-        :param data_matrix: either a pandas DataFrame or a two-dimensional numpy array which should have dtype=np.int32
-        :return: this optimizer object
+        Args:
+            data_matrix (np.ndarray | pd.DataFrame): Data matrix where rows represent samples and columns represent genes.
+                                                     Mutations of genes are represented by 1s, intact genes by 0s.
+
+        Returns:
+            cMHNOptimizer: This optimizer object.
         """
         if isinstance(data_matrix, pd.DataFrame):
             self._events = data_matrix.columns.to_list()
@@ -323,10 +421,13 @@ class cMHNOptimizer(_Optimizer):
         Load mutation data from a CSV file. The rows have to represent samples and the columns represent genes.
         Mutations of genes are represented by 1s, intact genes are represented by 0s.
 
-        :param src: path to the CSV file
-        :param delimiter:  delimiter used in the CSV file (default: ',')
-        :param kwargs: all additional keyword arguments are passed on to pandas' read_csv() function
-        :return: this optimizer object
+        Args:
+            src (str): Path to the CSV file.
+            delimiter (str, optional): Delimiter used in the CSV file (default is ',').
+            kwargs: Additional keyword arguments passed to pandas' read_csv() function.
+
+        Returns:
+            cMHNOptimizer: This optimizer object.
         """
         df = pd.read_csv(src, delimiter=delimiter, **kwargs)
         self.load_data_matrix(df)
@@ -334,10 +435,11 @@ class cMHNOptimizer(_Optimizer):
 
     def lambda_from_cv(self, lambda_min: float | None = None, lambda_max: float | None = None,
                        steps: int = 9, nfolds: int = 5, lambda_vector: np.ndarray | None = None,
-                       show_progressbar: bool = False, return_lambda_scores: bool = False
+                       show_progressbar: bool = False, return_lambda_scores: bool = False, pick_1se: bool = True,
                        ) -> float | tuple[float, pd.DataFrame]:
         """
-        Find the best value for lambda according to the "one standard error rule" through n-fold cross-validation.
+        Finds the best value for lambda according to either the maximal average test set likelihood or the
+        "one-standard-error-rule" through n-fold cross-validation.
 
         You can specify the lambda values that should be tested in cross-validation by setting the lambda_vector
         parameter accordingly.
@@ -349,19 +451,25 @@ class cMHNOptimizer(_Optimizer):
         If you set neither lambda_vector nor lambda_min and lambda_max, the default range (0.1/#datasamples, 10/#datasamples)
         will be used.
 
+        By default, the largest lambda that performed within one standard error of the best-performing lambda is returned as the
+        preferred lambda ("one-standard-error-rule"). When setting pick_1se=False, the function will simply return the best-performing lambda instead.
+
         Use np.random.seed() to make results reproducible.
 
-        :param lambda_min: minimum lambda value that should be tested; this will be ignored if lambda_vector is set
-        :param lambda_max: maximum lambda value that should be tested; this will be ignored if lambda_vector is set
-        :param steps: number of steps between lambda_min and lambda_max; this will be ignored if lambda_vector is set
-        :param nfolds: number of folds used for cross-validation
-        :param lambda_vector: a numpy array containing lambda values that should be used for cross-validation
-        :param show_progressbar: if True, shows a progressbar during cross-validation
-        :param return_lambda_scores: if True, this method will return a tuple containing the best lambda value as well as a Dataframe that contains the mean score of each lambda value tested in cross-validation
+        Args:
+            lambda_min (float, optional): Minimum lambda value to test. Will be ignored if lambda_vector is set.
+            lambda_max (float, optional): Maximum lambda value to test. Will be ignored if lambda_vector is set.
+            steps (int, optional): Number of steps between lambda_min and lambda_max. Defaults to 9. Will be ignored if lambda_vector is set.
+            nfolds (int, optional): Number of folds for cross-validation. Defaults to 5.
+            lambda_vector (np.ndarray, optional): Specific lambda values to test.
+            show_progressbar (bool, optional): Whether to show a progress bar during cross-validation. Defaults to False.
+            return_lambda_scores (bool, optional): Whether to return lambda scores along with the best lambda. Defaults to False.
+            pick_1se (bool, optional): If True (default), applies the one-standard-error-rule to pick the returned lambda value. If False,
+                                       returns the best-performing lambda.
 
-        :returns: lambda value that performed best during cross-validation. If return_lambda_scores is set to True, this
-        method will return a tuple that contains the best lambda value as well as a Dataframe that contains the mean
-        score of each lambda value tested in cross-validation.
+        Returns:
+            float | tuple[float, pd.DataFrame]: Best lambda value, or, if return_lambda_scores is set to True, a tuple with the best lambda and
+                                                a DataFrame containing the mean scores for each lambda.
         """
         if self._bin_datamatrix is None:
             raise ValueError(
@@ -413,6 +521,11 @@ class cMHNOptimizer(_Optimizer):
             for i in trange(steps, desc="Lambda Evaluation", position=1, leave=False, disable=disable_progressbar):
                 opt.train(lam=lambda_path[i].item())
                 theta = opt.result.log_theta
+                # make sure that events have not a rate of zero, which can become
+                # a problem if the event is present in the test set, in which case
+                # this would lead to score = -inf
+                minimum_base_rate = -np.log(train_data.shape[0] + 1)  # log(1 / (#samples + 1))
+                theta[theta < minimum_base_rate] = minimum_base_rate
                 scores[j, i] = self._gradient_and_score_func(
                     theta, test_data_container)[1]
 
@@ -420,10 +533,15 @@ class cMHNOptimizer(_Optimizer):
         score_means = np.sum(scores, axis=0) / nfolds
         best_lambda_idx = np.argmax(score_means)
 
-        # choose the actual lambda according to the "one standard error rule"
-        standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
-        threshold = np.max(score_means) - standard_error
-        chosen_lambda_idx = np.max(np.argwhere(score_means > threshold))
+        if pick_1se:
+            # choose the actual lambda according to the "one standard error rule"
+            standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
+            threshold = np.max(score_means) - standard_error
+            chosen_lambda_idx = np.max(np.argwhere(score_means >= threshold))
+        else:
+            # simply choose the best-performing lambda
+            chosen_lambda_idx = best_lambda_idx
+
         chosen_lambda = lambda_path[chosen_lambda_idx].item()
 
         if not lambda_path.min() < chosen_lambda < lambda_path.max():
@@ -440,9 +558,9 @@ class cMHNOptimizer(_Optimizer):
 
         return chosen_lambda
 
-    def set_device(self, device: "cMHNOptimizer.Device"):
+    def set_device(self, device: Device) -> cMHNOptimizer:
         """
-        Set the device that should be used for training.
+        Sets the computational device for training.
 
         You have three options:
             Device.AUTO: (default) automatically select the device that is likely to match the data
@@ -450,31 +568,43 @@ class cMHNOptimizer(_Optimizer):
             Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
 
         The Device enum is part of this optimizer class.
+
+        Args:
+            device (Device): The device to use (AUTO, CPU, or GPU).
+
+        Returns:
+            cMHNOptimizer: The optimizer instance.
+
+        Raises:
+            ValueError: If the given device is not an instance of Device.
         """
         super().set_device(device)
-        if device == _Optimizer.Device.GPU:
+        if device == Device.GPU:
             if cuda_available() != CUDA_AVAILABLE:
                 raise CUDAError(cuda_available())
 
             self._gradient_and_score_func = likelihood_cmhn.cuda_gradient_and_score
         else:
             self._gradient_and_score_func = {
-                _Optimizer.Device.AUTO: likelihood_cmhn.gradient_and_score,
-                _Optimizer.Device.CPU: likelihood_cmhn.cpu_gradient_and_score
+                Device.AUTO: likelihood_cmhn.gradient_and_score,
+                Device.CPU: likelihood_cmhn.cpu_gradient_and_score
             }[device]
         return self
 
     @property
     def training_data(self) -> np.ndarray:
         """
-        This property returns all the data given to this optimizer to train a new cMHN.
+        Returns the data used to train the cMHN model.
+
+        Returns:
+            np.ndarray: The data matrix used for training.
         """
         return self._bin_datamatrix
 
 
 class oMHNOptimizer(cMHNOptimizer):
     """
-    This optimizer models the data with the oMHN.
+    Optimizer for the oMHN model.
     """
 
     def __init__(self):
@@ -491,14 +621,20 @@ class oMHNOptimizer(cMHNOptimizer):
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
               reltol: float = 1e-7, round_result: bool = True) -> model.oMHN:
         """
-        Use this function to learn a new oMHN from the data given to this optimizer.
+        Trains a new oMHN model using the loaded data.
 
-        :param lam: tuning parameter lambda for regularization (default: 1/(number of samples in the dataset))
-        :param maxit: maximum number of training iterations
-        :param trace: set to True to print convergence messages (see scipy.optimize.minimize)
-        :param reltol: Gradient norm must be less than reltol before successful termination (see "gtol" scipy.optimize.minimize)
-        :param round_result: if True, the result is rounded to two decimal places
-        :return: trained model
+        Args:
+            lam (float, optional): Regularization parameter. Defaults to 1/(number of samples).
+            maxit (int): Maximum number of training iterations. Defaults to 5000.
+            trace (bool): Whether to print convergence messages. Defaults to False.
+            reltol (float): Gradient norm tolerance for termination. Defaults to 1e-7. (see "gtol" in scipy.optimize.minimize)
+            round_result (bool): Whether to round the result to two decimal places. Defaults to True.
+
+        Returns:
+            model.oMHN: The trained MHN model.
+
+        Raises:
+            ValueError: If no data has been loaded.
         """
         if self._data is None:
             raise ValueError("You have to load data before training!")
@@ -523,15 +659,16 @@ class oMHNOptimizer(cMHNOptimizer):
     @property
     def result(self) -> model.oMHN:
         """
-        The resulting oMHN after training, same as the return value of the train() method.
-        This property mainly exists as a kind of backup to ensure that the result of the training is not lost, if the
-        user forgets to save the returned value of the train() method in a variable.
+        Property for retrieving the training result.
+
+        Returns:
+            model.oMHN: The resulting MHN model after training.
         """
         return self._result
 
-    def set_device(self, device: "_Optimizer.Device"):
+    def set_device(self, device: Device):
         """
-        Set the device that should be used for training.
+        Sets the computational device for training.
 
         You have three options:
             Device.AUTO: (default) automatically select the device that is likely to match the data
@@ -539,42 +676,134 @@ class oMHNOptimizer(cMHNOptimizer):
             Device.GPU:  use the GPU/CUDA implementations to compute the scores and gradients
 
         The Device enum is part of this optimizer class.
+
+        Args:
+            device (Device): The device to use (AUTO, CPU, or GPU).
+
+        Returns:
+            _Optimizer: The optimizer instance.
+
+        Raises:
+            ValueError: If the given device is not an instance of Device.
         """
         super().set_device(device)
-        if device == _Optimizer.Device.GPU:
+        if device == Device.GPU:
             if cuda_available() != CUDA_AVAILABLE:
                 raise CUDAError(cuda_available())
 
             self._gradient_and_score_func = likelihood_omhn.cuda_gradient_and_score
         else:
             self._gradient_and_score_func = {
-                _Optimizer.Device.AUTO: likelihood_omhn.gradient_and_score,
-                _Optimizer.Device.CPU: likelihood_omhn.cpu_gradient_and_score
+                Device.AUTO: likelihood_omhn.gradient_and_score,
+                Device.CPU: likelihood_omhn.cpu_gradient_and_score
             }[device]
         return self
 
-    def set_penalty(self, penalty: "_Optimizer.Penalty"):
+    def set_penalty(
+        self,
+        penalty: (
+            Penalty
+            | tuple[
+                Callable[[np.ndarray], float],
+                Callable[[np.ndarray], np.ndarray],
+            ]
+        ),
+    ):
         """
-        Set the penalty that should be used for training.
+        Sets the penalty type for training.
 
-        You have two options:
-            Penalty.L1:          (default) uses the L1 penalty as regularization
-            Penalty.SYM_SPARSE:  uses a penalty which induces sparsity and soft symmetry
+        You have four options:
+            Penalty.L1:                 (default) uses the L1 penalty as
+                regularization
+            Penalty.L2:                 uses the L2 penalty as
+                regularization
+            Penalty.SYM_SPARSE:         uses a penalty which induces
+                sparsity and soft symmetry
+            (penalty, penalty_deriv):   a custom penalty function and
+                its derivative. They must both take the log_theta matrix
+                in the form of a numpy array as input and return a float
+                and a numpy array, respectively.
 
         The Penalty enum is part of this optimizer class.
+
+        Args:
+            penalty (Penalty | tuple[Callable[[np.ndarray], float], Callable[[np.ndarray], np.ndarray]]): The penalty to use (L1, L2, SYM_SPARSE).
+
+        Returns:
+            _Optimizer: The optimizer instance.
+
+        Raises:
+            ValueError: If the given penalty is not an instance of
+            Penalty or a tuple of two functions.
         """
-        if not isinstance(penalty, oMHNOptimizer.Penalty):
+        if not isinstance(penalty, oMHNOptimizer.Penalty) and (
+            not isinstance(penalty, tuple)
+            or len(penalty) != 2
+            or not callable(penalty[0])
+            or not callable(penalty[1])
+        ):
             raise ValueError(
-                f"The given penalty is not an instance of {oMHNOptimizer.Penalty}")
-        penalty_score, penalty_gradient = {
-            oMHNOptimizer.Penalty.L1: (penalties_omhn.l1, penalties_omhn.l1_),
-            oMHNOptimizer.Penalty.SYM_SPARSE: (
-                penalties_omhn.sym_sparse, penalties_omhn.sym_sparse_deriv)
-        }[penalty]
-        self._regularized_score_func_builder = lambda grad_score_func: \
-            penalties_omhn.build_regularized_score_func(
-                grad_score_func, penalty_score)
-        self._regularized_gradient_func_builder = lambda grad_score_func: \
-            penalties_omhn.build_regularized_gradient_func(
-                grad_score_func, penalty_gradient)
+                "The given penalty must either be an instance of oMHNOptimizer.Penalty or a tuple of two functions."
+            )
+
+        if isinstance(penalty, oMHNOptimizer.Penalty):
+            penalty_score, penalty_gradient = {
+                Penalty.L1: (penalties_omhn.l1, penalties_omhn.l1_),
+                Penalty.L2: (penalties_omhn.l2, penalties_omhn.l2_),
+                Penalty.SYM_SPARSE: (
+                    penalties_omhn.sym_sparse,
+                    penalties_omhn.sym_sparse_deriv,
+                ),
+            }[penalty]
+        else:
+            penalty_score, penalty_gradient = penalty
+
+        self._regularized_score_func_builder = lambda grad_score_func: penalties_omhn.build_regularized_score_func(
+            grad_score_func, penalty_score
+        )
+        self._regularized_gradient_func_builder = lambda grad_score_func: penalties_omhn.build_regularized_gradient_func(
+            grad_score_func, penalty_gradient
+        )
         return self
+
+
+class MHNType(Enum):
+    """
+    Enum representing the types of MHN models that can be trained.
+
+    Attributes:
+        cMHN: Classical MHN as proposed by Schill et al. (2019).
+        oMHN: MHN with observation bias correction as proposed by Schill et al. (2024).
+    """
+    # add new types with their Optimizer classes here
+    cMHN = cMHNOptimizer
+    oMHN = oMHNOptimizer
+
+    def get_optimizer(self) -> oMHNOptimizer | cMHNOptimizer:
+        """Associates each enum member with its optimizer."""
+        return self.value()
+
+
+class Optimizer:
+    """
+    A dynamic wrapper for optimizer classes (e.g., oMHNOptimizer, cMHNOptimizer) that
+    provides access to all methods and attributes of the wrapped optimizer instance.
+
+    Args:
+        mhn_type (MHNType, optional): Type of MHN trained by this optimizer class. Defaults to the most recent type.
+    """
+
+    # Reference to the external enums (re-export), makes separate import of enums unnecessary
+    MHNType = MHNType
+    Device = Device
+    Penalty = Penalty
+
+    def __new__(
+        cls, mhn_type: MHNType = MHNType.oMHN
+    ) -> oMHNOptimizer | cMHNOptimizer:
+        if not isinstance(mhn_type, MHNType):
+            mhn_type_options = ['MHNType.' + member.name for member in MHNType]
+            raise ValueError(
+                f"Invalid type {mhn_type}. Must be {', '.join(mhn_type_options[:-1])} or {mhn_type_options[-1]}."
+            )
+        return mhn_type.get_optimizer()
