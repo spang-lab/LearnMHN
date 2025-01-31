@@ -179,7 +179,7 @@ setup(
     include_package_data=True,
     install_requires=[
         f'numpy>={numpy.__version__},<2.0.0',
-        f'scipy>={scipy.__version__}',
+        f'scipy>={scipy.__version__}, <1.15.0',
         'pandas>=1.5.3',
         'tqdm>=4.66.3',
         'matplotlib>=3.6.0'
