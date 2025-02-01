@@ -26,16 +26,40 @@ jobs:
       id: extract-packages
       run: |
         import toml
+        import sys
+        import re
+        
         with open("pyproject.toml") as f:
             pyproject = toml.load(f)
+        
         requires = pyproject["build-system"]["requires"]
-        package_list = " ".join(requires)
-        print(f"::set-output name=packages::{package_list}")
+        version_pattern = re.compile(r".*?python_version\s*([<>=!]+)\s*'(\d+\.\d+)'")
+        
+        valid_packages = []
+        for req in requires:
+            if "python_version" in req:
+                pkg, condition = req.split(";")
+                pkg = pkg.strip()
+                operator, version = version_pattern.match(condition).groups()
+                tuple_version = tuple(map(int, version.split(".")))
+                condition = f"{sys.version_info[:2]} {operator} {tuple_version}".strip()
+                if eval(condition):
+                    valid_packages.append(pkg)
+            else:
+                valid_packages.append(req.strip())
+        
+        packages = " ".join(valid_packages)
+        print(f"::group::Extracted Dependencies")
+        print(f"Packages to install: {packages}")
+        print(f"::endgroup::")
+        with open(os.environ['GITHUB_ENV'], "a") as env_file:
+            env_file.write(f"PACKAGES={packages}\n")
+
       shell: python
 
     - name: Install build dependencies
       run: |
-        pip install ${{ steps.extract-packages.outputs.packages }}    
+        pip install $PACKAGES
 
     - name: Build package
       run: python setup.py sdist
