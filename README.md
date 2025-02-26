@@ -35,6 +35,9 @@ pip install --upgrade mhn
 
 ## Quickstart: Training a New MHN
 
+
+### In a nutshell 
+
 Training a new MHN can be as simple as writing the following few lines of code:
 
 ```python
@@ -46,6 +49,10 @@ new_mhn = opt.train()
 new_mhn.save("path/to/saving/location")
 ```
 We will look at the methods of the Optimizer class in more detail below.
+
+### Demonstration training and analysis workflow
+
+For an extensive demonstration of a simple MHN training and analysis workflow, have a look at [this demo notebook](./demo/demo.ipynb).
 
 ## Using the CUDA Implementation to Accelerate Score Computations
 If your device has an Nvidia GPU, you can accelerate the computation of the log-likelihood score and its gradient for
@@ -196,3 +203,5 @@ from the ```result``` parameter:
 ```python
 new_mhn = opt.result
 ```
+
+For an extensive demonstration of a simple MHN training and analysis workflow, have a look at [this demo notebook](./demo/demo.ipynb).
