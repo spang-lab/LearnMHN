@@ -11,6 +11,8 @@ is likely where you should start. It currently contains *Optimizer* classes for 
 a *classical* MHN (cMHN) (see `Schill et al. (2020) <https://academic.oup.com/bioinformatics/article/36/1/241/5524604>`_)
 or an *observation* MHN (oMHN) (see `Schill et al. (2024) <https://link.springer.com/chapter/10.1007/978-1-0716-3989-4_14>`_).
 
+For an extensive demonstration of a simple MHN training and analysis workflow, have a look at `this demo notebook <https://github.com/spang-lab/LearnMHN/blob/main/demo/demo.ipynb>`_.
+
 Configure the Optimizer
 -----------------------
 
