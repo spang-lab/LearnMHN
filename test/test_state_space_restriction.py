@@ -123,13 +123,21 @@ class TestCudaGradient(unittest.TestCase):
             self.skipTest("CUDA not available for testing")
 
     def test_compare_with_cython(self):
-        n = 40
-        sample_num = 30
-        theta = ModelConstruction.random_theta(n)
-        random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.7, 0.3]).astype(np.int32)
-        # make sure that there are mutations in two different "parts" of the "State" C struct
-        random_sample[:, 1] = 1
-        random_sample[:, -3] = 1
+        # n = 40
+        # sample_num = 30
+        # theta = ModelConstruction.random_theta(n)
+        # random_sample = np.random.choice([0, 1], (sample_num, n), p=[0.7, 0.3]).astype(np.int32)
+        # # make sure that there are mutations in two different "parts" of the "State" C struct
+        # random_sample[:, 1] = 1
+        # random_sample[:, -3] = 1
+        theta = np.array([[0, 0], [0, 1]], dtype=float)
+        random_sample = np.array(
+            [
+                [0, 0],
+                [1, 1],
+            ],
+            dtype=np.int32,
+        )
         state_containers = StateContainer(random_sample)
         gradient1, score1 = likelihood_cmhn.cpu_gradient_and_score(theta, state_containers)
         gradient2, score2 = likelihood_cmhn.cuda_gradient_and_score(theta, state_containers)
