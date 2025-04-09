@@ -156,8 +156,14 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
     // patch_size is important for later for the case i == j in the shuffle algorithm
     // as we do not actually shuffle the data in px in this implementation (only implicitly), we have to keep track of some indices
     // and which entries have to be computed together in the case i == j. Those two indices are (x_index) and (x_index + patch_size)
-    // ("patch_size", as over all, the entries that have to be computed together occur in patches of size 2**(count_before_i))
-    const int patch_size = 1 << count_before_i;
+    // ("patch_size", as over all, the entries that have to be computed together occur in patches of size 2**(count_before_i)
+    
+    int patch_size;
+    if (count_before_i < 0) {
+        patch_size = 0;
+    } else {
+        patch_size = 1 << count_before_i;
+    }
     int x_index = (cuda_index >> count_before_i) * 2 * patch_size + (cuda_index & (patch_size - 1));
 
     // for each iteration of this while loop, we compute the output values for indices (x_index) and (x_index + patch_size) 
@@ -238,10 +244,12 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
         else {
             pout[x_index] += theta_product * px[x_index];
             // multiply the last theta to this entry, as the thetas needed for both entries only differ in this last one
-            pout[x_index + patch_size] += theta_product * px[x_index + patch_size] * theta;
+            if (patch_size > 0) {
+                pout[x_index + patch_size] += theta_product * px[x_index + patch_size] * theta;
+            }
         }
 
-
+        
         // if patch_size is bigger than stride, we have to do corrections to the indices
         if (stride < patch_size) {
             // check if the current index is inside an odd patch, if so, jump to the next one
