@@ -125,6 +125,18 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
     const int stride = blockDim.x * gridDim.x;
     const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
+    // special case: if there are no mutations, the later logic won't work, instead simply multiply px[0] with theta_ii and subtract it from pout[0]
+    if (mutation_num == 0) {
+        // as the transition rate matrix is here a simple scalar, if diag is false, there is nothing to do
+        if (!diag)
+            return;
+
+        if (cuda_index == 0)
+            pout[0] -= ptheta[i * n + i] * px[0];
+
+        return;
+    }
+
     // in the following 1 << i is equivalent to 2^i, x >> i is equivalent to x // 2^i, x & ((1<<i)-1) to x % 2^i
     const int nx = 1 << mutation_num;
 
@@ -157,13 +169,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
     // as we do not actually shuffle the data in px in this implementation (only implicitly), we have to keep track of some indices
     // and which entries have to be computed together in the case i == j. Those two indices are (x_index) and (x_index + patch_size)
     // ("patch_size", as over all, the entries that have to be computed together occur in patches of size 2**(count_before_i)
-    
-    int patch_size;
-    if (count_before_i < 0) {
-        patch_size = 0;
-    } else {
-        patch_size = 1 << count_before_i;
-    }
+    const int patch_size = 1 << count_before_i;
     int x_index = (cuda_index >> count_before_i) * 2 * patch_size + (cuda_index & (patch_size - 1));
 
     // for each iteration of this while loop, we compute the output values for indices (x_index) and (x_index + patch_size) 
@@ -244,9 +250,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
         else {
             pout[x_index] += theta_product * px[x_index];
             // multiply the last theta to this entry, as the thetas needed for both entries only differ in this last one
-            if (patch_size > 0) {
-                pout[x_index + patch_size] += theta_product * px[x_index + patch_size] * theta;
-            }
+            pout[x_index + patch_size] += theta_product * px[x_index + patch_size] * theta;
         }
 
         
