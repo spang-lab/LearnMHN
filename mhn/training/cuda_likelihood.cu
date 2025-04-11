@@ -125,6 +125,18 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
     const int stride = blockDim.x * gridDim.x;
     const int cuda_index = blockIdx.x * blockDim.x + threadIdx.x;
 
+    // special case: if there are no mutations, the later logic won't work, instead simply multiply px[0] with theta_ii and subtract it from pout[0]
+    if (mutation_num == 0) {
+        // as the transition rate matrix is here a simple scalar, if diag is false, there is nothing to do
+        if (!diag)
+            return;
+
+        if (cuda_index == 0)
+            pout[0] -= ptheta[i * n + i] * px[0];
+
+        return;
+    }
+
     // in the following 1 << i is equivalent to 2^i, x >> i is equivalent to x // 2^i, x & ((1<<i)-1) to x % 2^i
     const int nx = 1 << mutation_num;
 
@@ -233,7 +245,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
                 }
             }
         }
-        // if the ith gene is not mutated the two entries do not have to be computated together, this is why we could choose
+        // if the ith gene is not mutated the two entries do not have to be computed together, this is why we could choose
         // count_before_i independently from the given state
         else {
             pout[x_index] += theta_product * px[x_index];
@@ -241,7 +253,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
             pout[x_index + patch_size] += theta_product * px[x_index + patch_size] * theta;
         }
 
-
+        
         // if patch_size is bigger than stride, we have to do corrections to the indices
         if (stride < patch_size) {
             // check if the current index is inside an odd patch, if so, jump to the next one
@@ -654,7 +666,7 @@ void DLL_PREFIX cuda_restricted_gradient(const double *ptheta, const State *stat
         // use the shuffle trick for a more efficient computation of the gradient
         for (int j = 0; j < n; j++) {
             // confusion warning: the p0_pD here has nothing to do with p0 or pD
-            // in this section p0_pD is used again, because we need an allocated array and p0_pD isnt needed anymore so we can just use that as memory
+            // in this section p0_pD is used again, because we need an allocated array and p0_pD isn't needed anymore so we can just use that as memory
             if (state_copy & 1) {
                 shuffle<<<block_num, thread_num>>>(old_vec, shuffled_vec, nx);
                 if (i == j) {
