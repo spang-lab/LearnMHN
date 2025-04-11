@@ -168,7 +168,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
     // patch_size is important for later for the case i == j in the shuffle algorithm
     // as we do not actually shuffle the data in px in this implementation (only implicitly), we have to keep track of some indices
     // and which entries have to be computed together in the case i == j. Those two indices are (x_index) and (x_index + patch_size)
-    // ("patch_size", as over all, the entries that have to be computed together occur in patches of size 2**(count_before_i)
+    // ("patch_size", as over all, the entries that have to be computed together occur in patches of size 2**(count_before_i))
     const int patch_size = 1 << count_before_i;
     int x_index = (cuda_index >> count_before_i) * 2 * patch_size + (cuda_index & (patch_size - 1));
 
@@ -245,7 +245,7 @@ __global__ void cuda_restricted_kronvec(const double* __restrict__ ptheta, const
                 }
             }
         }
-        // if the ith gene is not mutated the two entries do not have to be computated together, this is why we could choose
+        // if the ith gene is not mutated the two entries do not have to be computed together, this is why we could choose
         // count_before_i independently from the given state
         else {
             pout[x_index] += theta_product * px[x_index];
@@ -666,7 +666,7 @@ void DLL_PREFIX cuda_restricted_gradient(const double *ptheta, const State *stat
         // use the shuffle trick for a more efficient computation of the gradient
         for (int j = 0; j < n; j++) {
             // confusion warning: the p0_pD here has nothing to do with p0 or pD
-            // in this section p0_pD is used again, because we need an allocated array and p0_pD isnt needed anymore so we can just use that as memory
+            // in this section p0_pD is used again, because we need an allocated array and p0_pD isn't needed anymore so we can just use that as memory
             if (state_copy & 1) {
                 shuffle<<<block_num, thread_num>>>(old_vec, shuffled_vec, nx);
                 if (i == j) {
