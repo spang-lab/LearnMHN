@@ -130,6 +130,8 @@ class TestCudaGradient(unittest.TestCase):
         # make sure that there are mutations in two different "parts" of the "State" C struct
         random_sample[:, 1] = 1
         random_sample[:, -3] = 1
+        # also test with an empty sample
+        random_sample[-1, :] = 0
         state_containers = StateContainer(random_sample)
         gradient1, score1 = likelihood_cmhn.cpu_gradient_and_score(theta, state_containers)
         gradient2, score2 = likelihood_cmhn.cuda_gradient_and_score(theta, state_containers)
