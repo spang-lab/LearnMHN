@@ -5,6 +5,14 @@ This part of the mhn package contains functions to compute and work with MHNs on
 
 The structure of this part of the package is very similar to the original R implementation by Schill et al. (2019):
 
+*fisher*
+------------------
+
+.. automodule:: mhn.full_state_space.fisher
+    :noindex:
+
+:ref:`View documentation <The *fisher* submodule>`
+
 *Likelihood*
 ------------
 .. automodule:: mhn.full_state_space.Likelihood

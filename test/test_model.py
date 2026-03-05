@@ -78,6 +78,77 @@ class TestMHN(unittest.TestCase):
         np.testing.assert_array_equal(obs_times_1, obs_times_2)
         self.assertListEqual(trajectories_1, trajectories_2)
 
+    def test_sample_trajectories_timed(self):
+        """
+        Tests if the timed parameter works correctly.
+        """
+        n = 10
+        theta = ModelConstruction.random_theta(n)
+        mhn_object = model.cMHN(theta)
+        mhn_object.events = ["A" * i for i in range(n)]
+
+        initial_state = np.zeros(n, dtype=np.int32)
+
+        for output_event_names in [True, False]:
+            with self.subTest(output_event_names=output_event_names):
+
+                # on average, longer running samples should have more events
+                np.random.seed(0)
+                trajectories_1 = mhn_object.sample_trajectories(
+                    100, initial_state=initial_state, timed=False,
+                    output_event_names=output_event_names)[0]
+                np.random.seed(0)
+                trajectories_2 = mhn_object.sample_trajectories(
+                    100, initial_state=initial_state, timed=10,
+                    output_event_names=output_event_names)
+
+                self.assertGreater(
+                    np.mean([len(t) for t in trajectories_2]),
+                    np.mean([len(t) for t in trajectories_1]))
+
+                # when running "infinitely" long, all events should have happened
+                trajectories_all = mhn_object.sample_trajectories(
+                    10, initial_state=initial_state, timed=np.inf,
+                    output_event_names=output_event_names)
+                for traj in trajectories_all:
+                    self.assertEqual(len(traj), n)
+
+    def test_sample_trajectories_event_times(self):
+        """
+        Tests if the return_event_times parameter works correctly.
+        """
+        n = 5
+        theta = ModelConstruction.random_theta(n)
+        mhn_object = model.cMHN(theta)
+        mhn_object.events = ["A" * i for i in range(n)]
+
+        initial_state = np.zeros(n, dtype=np.int32)
+
+        for output_event_names in [True, False]:
+            with self.subTest(output_event_names=output_event_names):
+
+                trajectories, acc_times, obs_times = mhn_object.sample_trajectories(
+                    100, initial_state=initial_state, return_event_times=True,
+                    output_event_names=output_event_names)
+
+                for traj, times, obs_time in zip(trajectories, acc_times, obs_times):
+                    self.assertEqual(len(traj), len(times))
+                    # event times should be strictly increasing
+                    for i in range(1, len(times)):
+                        self.assertGreater(times[i], times[i-1])
+                    if len(times) > 0:
+                        self.assertGreater(obs_time, times[-1])
+
+                trajectories, acc_times = mhn_object.sample_trajectories(
+                    100, initial_state=initial_state, return_event_times=True,
+                    timed=1, output_event_names=output_event_names)
+
+                for traj, times in zip(trajectories, acc_times):
+                    self.assertEqual(len(traj), len(times))
+                    # event times should be strictly increasing
+                    for i in range(1, len(times)):
+                        self.assertGreater(times[i], times[i-1])
+
     def test_compute_marginal_likelihood(self):
         """
         Tests if the probabilities yielded by compute_marginal_likelihood() match the actual probability distribution.

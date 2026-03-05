@@ -447,7 +447,7 @@ def compute_restricted_inverse(double[:, :] theta, int[:] state, double[:] b, bi
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
-cdef double restricted_gradient_and_score(double[:, :] theta, State *state, double[:, :] g):
+cdef double restricted_gradient_and_score(double[:, :] theta, State *state, double[:, :] g) except *:
     """
     Computes a part of the gradient and score corresponding to a given state.
 

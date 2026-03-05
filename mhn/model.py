@@ -10,7 +10,7 @@ import itertools
 import json
 import warnings
 from math import factorial
-from typing import Iterator, Optional, Union
+from typing import Iterator, Optional, Union, Literal
 from collections import defaultdict
 
 import matplotlib
@@ -104,22 +104,42 @@ class cMHN:
     def sample_trajectories(
         self,
         trajectory_num: int,
-        initial_state: np.ndarray | list[str],
+        initial_state: np.ndarray | list[str] | None = None,
         output_event_names: bool = False,
-    ) -> tuple[list[list[int | str]], np.ndarray]:
+        timed: float | Literal[False] = False,
+        return_event_times: bool = False
+    ) -> (
+        tuple[
+            list[list[int | str]]
+            | list[list[int | str]], (list[list[float]] | np.ndarray)
+            | list[list[int | str]], list[list[float]], np.ndarray
+        ]
+    ):
         """
         Simulates event accumulation using the Gillespie algorithm. Use np.random.seed() to make results reproducible.
 
         Args:
             trajectory_num (int): Number of trajectories to simulate.
-            initial_state (np.ndarray | list[str]): Starting state for the trajectories. Can be either a numpy array containing 0s and 1s, where each entry
+            initial_state (np.ndarray | list[str], optional): Starting state for the trajectories. Can be either a numpy array containing 0s and 1s, where each entry
                                                     represents an event being present (1) or not (0), or a list of strings, where each string is the name of
                                                     an event. The later can only be used if events were specified during creation of the cMHN object.
+                                                    Can also be None. In this case a vector of zeros is used as initial_state. Defaults to None.
             output_event_names (bool, optional): Whether to return event names instead of indices. Defaults to False.
+            timed (float, optional): If a float is given, only sample trajectories until this (abstract) timepoint (without units). May also be np.inf.
+                                                    If False, sample trajectories until observation event. In this case the observation times are returned as last argument. Defaults to False.
+            return_event_times (bool, optional): If True, returns the accumulation times of all events in the trajectories as second argument.
+                                                    Accumulation times of events already present in initial_state are declared as None. Defaults to False.
 
         Returns:
-            tuple[list[list[int | str]], np.ndarray]: List of trajectories and their observation times.
+            tuple[list[list[int | str]] | list[list[int | str]], (list[list[float]] | np.ndarray) | list[list[int | str]], list[list[float]], np.ndarray]: A tuple with 1-3 elements containing:
+                                                    - List of all trajectories,
+                                                    - if return_event_times is True, a list of lists of accumulation times for all trajectories' events,
+                                                    - if timed is False, a numpy array of all simulated samples' observation times.
         """
+
+        if initial_state is None:
+            initial_state = np.zeros((self.log_theta.shape[1]), dtype=np.int32)
+
         if type(initial_state) is np.ndarray:
             initial_state = initial_state.astype(np.int32)
             if initial_state.size != self.log_theta.shape[1]:
@@ -140,25 +160,30 @@ class cMHN:
                 index = self.events.index(event)
                 initial_state[index] = 1
 
-        trajectory_list, observation_times = utilities.gillespie(
-            self.log_theta, initial_state, trajectory_num
-        )
+        if timed is False:
+            gillespie_result = utilities.gillespie(
+                self.log_theta, initial_state, trajectory_num, return_event_times
+            )
+        else:
+            gillespie_result = utilities.gillespie_timed(
+                self.log_theta, initial_state, trajectory_num, timed, return_event_times
+            )
+
+        trajectory_list = gillespie_result[0]
 
         if output_event_names:
             if self.events is None:
                 raise ValueError(
                     "output_event_names can only be set to True, if events was set for the cMHN object"
                 )
-            trajectory_list = list(
-                map(
-                    lambda trajectory: list(
-                        map(lambda event: self.events[event], trajectory)
-                    ),
-                    trajectory_list,
-                )
+            trajectory_list[:] = map(
+                lambda trajectory: list(
+                    map(lambda event_idx: self.events[event_idx], trajectory)
+                ),
+                trajectory_list,
             )
 
-        return trajectory_list, observation_times
+        return gillespie_result
 
     def compute_marginal_likelihood(self, state: np.ndarray) -> float:
         """
@@ -351,9 +376,9 @@ class cMHN:
                     # numerator in Gotovos formula
                     num = np.exp(log_theta[e, state_events].sum())
                     pre_st = st - (1 << e)
-                    A_new[st][j * _m : (j + 1) * _m] = num * A[pre_st]
-                    B_new[st][j * _m : (j + 1) * _m, :-1] = B[pre_st]
-                    B_new[st][j * _m : (j + 1) * _m, -1] = e
+                    A_new[st][j * _m: (j + 1) * _m] = num * A[pre_st]
+                    B_new[st][j * _m: (j + 1) * _m, :-1] = B[pre_st]
+                    B_new[st][j * _m: (j + 1) * _m, -1] = e
                 sorting = A_new[st].argsort()[::-1][:m]
                 A_new[st] = A_new[st][sorting]
                 B_new[st] = B_new[st][sorting]
@@ -830,15 +855,10 @@ class cMHN:
         if ax is None:
             _, ax = plt.subplots()
 
-        circle_num = min(
-            max_event_num, max(map(lambda ordering: len(ordering), orderings))
-        )
-        orderings = list(
-            filter(
-                lambda ordering: orderings.count(ordering) >= min_number_of_occurrence,
-                orderings,
-            )
-        )
+        circle_num = min(max_event_num, max(
+            map(lambda ordering: len(ordering), orderings)))
+        orderings = list(filter(lambda ordering: orderings.count(
+            ordering) >= min_number_of_occurrence, orderings))
         orderings.sort()
 
         if len(orderings) == 0:
@@ -848,7 +868,8 @@ class cMHN:
             return ax
 
         # chronological tree can be seen as a suffix tree
-        suffix_tree_root = {"nodes": {}, "leaves": 0, "passed": 0, "is_end": False}
+        suffix_tree_root = {"nodes": {}, "leaves": 0,
+                            "passed": 0, "is_end": False}
         for ordering in orderings:
             curr_node = suffix_tree_root
             backtracking_nodes = []
@@ -876,9 +897,8 @@ class cMHN:
         event_coordinates = defaultdict(list)
         event_symbol_sizes = defaultdict(list)
         event_symbol_border = defaultdict(list)
-        max_passed = max(
-            suffix_tree_root[event]["passed"] for event in suffix_tree_root
-        )
+        max_passed = max(suffix_tree_root[event]["passed"]
+                         for event in suffix_tree_root)
 
         def recursive_tree_builder(
             suffix_tree: dict,
@@ -894,7 +914,8 @@ class cMHN:
 
             circle_radius = inner_circle_radius + order_idx * circle_radius_diff
             curr_angle = min_angle
-            total_leaves = sum(suffix_tree[event]["leaves"] for event in suffix_tree)
+            total_leaves = sum(suffix_tree[event]["leaves"]
+                               for event in suffix_tree)
             for event in suffix_tree:
                 node = suffix_tree[event]
                 span = node["leaves"] / total_leaves * (max_angle - min_angle)

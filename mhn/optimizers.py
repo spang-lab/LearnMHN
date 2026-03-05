@@ -84,6 +84,8 @@ class _Optimizer(abc.ABC):
             penalties_cmhn.build_regularized_gradient_func(
                 grad_score_func, penalties_cmhn.l1_)
 
+        self._penalty = (penalties_cmhn.l1, penalties_cmhn.l1_)
+
         self._OutputMHNClass = model.cMHN
 
     def set_init_theta(self, init: np.ndarray | None) -> _Optimizer:
@@ -212,7 +214,7 @@ class _Optimizer(abc.ABC):
 
         if lam is None:
             lam = 1 / self._data.get_data_shape()[0]
-
+            
         self._result = None
         self.__backup_current_step = 0
 
@@ -383,8 +385,26 @@ class _Optimizer(abc.ABC):
         self._regularized_gradient_func_builder = lambda grad_score_func: penalties_cmhn.build_regularized_gradient_func(
             grad_score_func, penalty_gradient
         )
+
+        self._penalty = (penalty_score, penalty_gradient)
+
         return self
 
+    @property
+    def penalty(self):
+        return self._penalty
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop("_data")
+        state.pop("_regularized_score_func_builder")
+        state.pop("_regularized_gradient_func_builder")
+        
+        return state
+    
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._data = StateContainer(state["_bin_datamatrix"])
 
 class cMHNOptimizer(_Optimizer):
     """
@@ -618,6 +638,9 @@ class oMHNOptimizer(cMHNOptimizer):
                 grad_score_func, penalties_omhn.l1_)
         self._OutputMHNClass = model.oMHN
 
+        self._penalty = (penalties_omhn.l1, penalties_omhn.l1_)
+
+
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
               reltol: float = 1e-7, round_result: bool = True) -> model.oMHN:
         """
@@ -764,8 +787,10 @@ class oMHNOptimizer(cMHNOptimizer):
         self._regularized_gradient_func_builder = lambda grad_score_func: penalties_omhn.build_regularized_gradient_func(
             grad_score_func, penalty_gradient
         )
-        return self
 
+        self._penalty = (penalty_score, penalty_gradient)
+
+        return self
 
 class MHNType(Enum):
     """

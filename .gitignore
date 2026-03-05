@@ -24,3 +24,5 @@ mhn/training/*.lib
 
 build
 METADATA
+
+doc/_build

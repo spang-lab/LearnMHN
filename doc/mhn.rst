@@ -87,3 +87,15 @@ The *utilities* submodule
 
     View documentation of utilities <utilities>
 
+The *mcmc* subpackage
+---------------------
+
+.. automodule:: mhn.mcmc
+    :noindex:
+
+.. toctree::
+    :maxdepth: 1
+
+    View documentation of mcmc <mcmc/mhn.mcmc>
+
+

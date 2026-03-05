@@ -1,3 +1,5 @@
+import collections
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -22,6 +24,10 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'setup']
 
+
+# -- Skip the additional config of classes inheriting from namedtuple --------
+
+napoleon_attr_annotations = False
 
 
 # -- Options for HTML output -------------------------------------------------
