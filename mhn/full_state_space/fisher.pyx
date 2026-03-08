@@ -8,7 +8,7 @@ CUDA implementation.
 # authors: Stefan Vocht, Y. Linda Hu
 
 from scipy.linalg.cython_blas cimport dcopy, dscal, daxpy, ddot
-from libc.stdlib cimport malloc
+from libc.stdlib cimport malloc, free
 
 import numpy as np
 cimport numpy as np
@@ -139,6 +139,13 @@ def cython_fisher(
                     swap_vec = dQ_ij
                     dQ_ij = shuffled_vec
                     shuffled_vec = swap_vec
+
+    free(shuffled_vec)
+    free(q_st)
+    free(dQ_st)
+    free(masked_dQ_st)
+    free(zero_mask)
+    free(dQ_ij)
  
     # fill the lower triangular part
     fisher_mat += np.tril(fisher_mat.T, -1)
