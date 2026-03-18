@@ -1,7 +1,7 @@
 """
 This submodule contains Optimizer classes to learn an MHN from mutation data.
 """
-# author(s): Stefan Vocht, Y. Linda Hu, Rudolf Schill, Andreas Lösch
+# author(s): Stefan Vocht, Y. Linda Hu, Rudolf Schill, Andreas Lösch, Michael Bonart
 
 from __future__ import annotations
 
@@ -70,6 +70,7 @@ class _Optimizer(abc.ABC):
 
         self._init_theta = None
         self.__custom_callback = None
+        self._theta_restriction_mask = None
 
         self.__backup_steps = -1
         self.__backup_filename = None
@@ -88,18 +89,30 @@ class _Optimizer(abc.ABC):
 
         self._OutputMHNClass = model.cMHN
 
-    def set_init_theta(self, init: np.ndarray | None) -> _Optimizer:
+    def set_init_theta(self, init: np.ndarray | pd.DataFrame | None) -> _Optimizer:
         """
         Sets the initial theta matrix for learning a new MHN.
 
         Args:
-            init (np.ndarray | None): Initial theta matrix in logarithmic form. If None, uses an independence model where the baseline hazard Theta_ii
+            init (np.ndarray | pd.DataFrame | None): Initial theta matrix in logarithmic form. If None, uses an independence model where the baseline hazard Theta_ii
                                       of each event is set to its empirical odds and the hazard ratios (off-diagonal entries) are set to exactly 1.
 
         Returns:
             _Optimizer: The optimizer instance.
+
+        Raises:
+            UserWarning: If shape of given matrix does not match log_theta or theta_restriction_mask.
         """
+
+        if isinstance(init, pd.DataFrame):
+            init = np.array(init, dtype=np.float64)
+
         self._init_theta = init
+
+        mat_compatible = self._check_matrix_shape_compatibility()
+        if not mat_compatible[0]:
+            warnings.warn(mat_compatible[1])
+
         return self
 
     def get_data_properties(self) -> dict:
@@ -134,6 +147,39 @@ class _Optimizer(abc.ABC):
             },
             'event statistics': event_dataframe
         }
+
+    def get_theta_shape(self) -> tuple[int, int]:
+        """
+        Gets shape of theta, that will result from training on loaded data.
+
+        Raises:
+            ValueError: If no data has been loaded.
+
+        Returns:
+            (int, int): The shape of theta as a tuple of integers.
+        """
+
+        if self._data is None:
+            raise ValueError("Specify the number of events (e.g. by loading data) before calling this method.")
+
+        n = self._data.get_data_shape()[1]
+        return (n, n)
+
+    def get_default_init_theta(self) -> np.ndarray:
+        """
+        Gets the cMHN's independence model (based on loaded data), which is used as the initialization of log_theta by default.
+
+        Returns:
+            np.ndarray: The matrix used as the default initialization of log_theta.
+
+        Raises:
+            ValueError: If no data has been loaded.
+        """
+
+        if self._data is None:
+            raise ValueError("No data has been loaded. Cannot compute independence model.")
+
+        return create_indep_model(self._data)
 
     def set_callback_func(self, callback=None) -> _Optimizer:
         """
@@ -191,6 +237,14 @@ class _Optimizer(abc.ABC):
             with open(filename, 'wb') as f:
                 np.save(f, theta)
 
+    def __restrict_gradient_func(self, _gradient_func):
+        mask_flattened = self._theta_restriction_mask.flatten()
+
+        def restricted_gradient_func(theta, states, lam, n, score_grad_container):
+            return mask_flattened*_gradient_func(theta, states, lam, n, score_grad_container)
+
+        return restricted_gradient_func
+
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
               reltol: float = 1e-7, round_result: bool = True) -> model.cMHN:
         """
@@ -208,13 +262,18 @@ class _Optimizer(abc.ABC):
 
         Raises:
             ValueError: If no data has been loaded.
+            ValueError: If log_theta, init_theta or theta_restriction_mask don't have matching shapes.
         """
         if self._data is None:
             raise ValueError("You have to load data before training!")
 
+        mat_compatible = self._check_matrix_shape_compatibility()
+        if not mat_compatible[0]:
+            raise ValueError(mat_compatible[1])
+
         if lam is None:
             lam = 1 / self._data.get_data_shape()[0]
-            
+
         self._result = None
         self.__backup_current_step = 0
 
@@ -228,7 +287,14 @@ class _Optimizer(abc.ABC):
         gradient_func = self._regularized_gradient_func_builder(
             self._gradient_and_score_func)
 
-        result = reg_optim.learn_mhn(self._data, score_func, gradient_func, self._init_theta, lam, maxit, trace, reltol,
+        if self._theta_restriction_mask is not None:
+            gradient_func = self.__restrict_gradient_func(gradient_func)
+
+        _init_theta = self._init_theta
+        if _init_theta is None:
+            _init_theta = self.get_default_init_theta()
+
+        result = reg_optim.learn_mhn(self._data, score_func, gradient_func, _init_theta, lam, maxit, trace, reltol,
                                      round_result, callback_func)
 
         self.__backup_current_step = None
@@ -239,6 +305,7 @@ class _Optimizer(abc.ABC):
             meta={
                 "lambda": lam,
                 "init": self._init_theta,
+                "mask": self._theta_restriction_mask,
                 "maxit": maxit,
                 "reltol": reltol,
                 "score": result.fun,
@@ -366,7 +433,7 @@ class _Optimizer(abc.ABC):
             raise ValueError(
                 "The given penalty must either be an instance of _Optimizer.Penalty or a tuple of two functions."
             )
-        
+
         if isinstance(penalty, oMHNOptimizer.Penalty):
             penalty_score, penalty_gradient = {
                 Penalty.L1: (penalties_cmhn.l1, penalties_cmhn.l1_),
@@ -378,7 +445,7 @@ class _Optimizer(abc.ABC):
             }[penalty]
         else:
             penalty_score, penalty_gradient = penalty
-        
+
         self._regularized_score_func_builder = lambda grad_score_func: penalties_cmhn.build_regularized_score_func(
             grad_score_func, penalty_score
         )
@@ -399,12 +466,88 @@ class _Optimizer(abc.ABC):
         state.pop("_data")
         state.pop("_regularized_score_func_builder")
         state.pop("_regularized_gradient_func_builder")
-        
+
         return state
-    
+
     def __setstate__(self, state):
         self.__dict__.update(state)
         self._data = StateContainer(state["_bin_datamatrix"])
+
+    def set_restriction(
+            self,
+            restriction_mask: np.ndarray | pd.DataFrame | None = None
+    ) -> _Optimizer:
+        """
+        Sets a restriction imposed on selected entries of log_theta. Restricted entries of log_theta will not be altered during training.
+        Their values are thus given by the '_init_theta' property of the Optimizer class. For a non-default choice of '_init_theta' call set_init_theta().
+
+        Args:
+            restriction_mask (np.ndarray | pd.Dataframe | None): Matrix of 0's and 1's determining which entries of log_theta will be restricted.
+                0: corresponding log_theta entry will be restricted and remain fixed during training.
+                1: corresponding log_theta entry will be optimized during training as usual.
+            Shape of restriction_mask has to match the shape of log_theta.
+            Defaults to None.
+
+        Returns:
+            _Optimizer: The optimizer instance.
+
+        Raises:
+            ValueError: If given mask contains values other than 0 or 1.
+            UserWarning: If shape of given mask does not match log_theta or init_theta.
+            UserWarning: If given mask restricts all entries of log_theta.
+        """
+
+        mask_vals = np.unique(restriction_mask) if restriction_mask is not None else []
+        if not set(mask_vals) <= {0, 1}:
+            raise ValueError(f"Theta restriction mask must contain 0's and 1's only. (contained {set(mask_vals)})")
+        elif len(mask_vals) == 1 and mask_vals[0] == 0:
+            warnings.warn(f"Given mask restricts all entries of log_theta.")
+
+        if isinstance(restriction_mask, pd.DataFrame):
+            restriction_mask = np.array(restriction_mask, dtype=np.int8)
+
+        self._theta_restriction_mask = restriction_mask
+
+        mat_compatible = self._check_matrix_shape_compatibility()
+        if not mat_compatible[0]:
+            warnings.warn(mat_compatible[1])
+
+        return self
+
+    def _check_matrix_shape_compatibility(self) -> tuple[bool, str]:
+        """
+        Checks whether log_theta, init_theta and theta_restriction_mask have compatible shapes.
+
+        Returns:
+            (bool, str): Tuple of bool telling whether matrices are compatible and message describing potential issues.
+        """
+
+        DESC, OBJ, SHAPE = 0, 1, 2
+        matrix_getters = [
+            ("log_theta", self._data,
+                lambda: self.get_theta_shape()),
+
+            ("init_theta", self._init_theta,
+                lambda: self._init_theta.shape),
+
+            ("theta_restriction_mask", self._theta_restriction_mask,
+                lambda: self._theta_restriction_mask.shape)
+        ]
+        matrix_getters = [mg for mg in matrix_getters if mg[OBJ] is not None]
+        matrix_shapes = [mg[SHAPE]() for mg in matrix_getters]
+
+        if len(matrix_shapes) == 0:
+            return (True, "No matrices have been initialized yet.")
+
+        if all(shp == matrix_shapes[0] for shp in matrix_shapes):
+            return (True, f"All given matrices have the same shape ({matrix_shapes[0]})")
+
+        error_msg = "Incompatible matrix shapes:"
+        for mg, shp in zip(matrix_getters, matrix_shapes):
+            error_msg += f" {mg[DESC]}: {shp}; "
+
+        return (False, error_msg)
+
 
 class cMHNOptimizer(_Optimizer):
     """
@@ -425,6 +568,9 @@ class cMHNOptimizer(_Optimizer):
 
         Returns:
             cMHNOptimizer: This optimizer object.
+
+        Raises:
+            UserWarning: If shape of log_theta derived from loaded data does not match init_theta or theta_restriction_mask.
         """
         if isinstance(data_matrix, pd.DataFrame):
             self._events = data_matrix.columns.to_list()
@@ -434,6 +580,11 @@ class cMHNOptimizer(_Optimizer):
         data_matrix = self._preprocess_binary_matrix(data_matrix)
         self._data = StateContainer(data_matrix)
         self._bin_datamatrix = data_matrix
+
+        mat_compatible = self._check_matrix_shape_compatibility()
+        if not mat_compatible[0]:
+            warnings.warn(mat_compatible[1] + " (shape of log_theta is derived from loaded data)")
+
         return self
 
     def load_data_from_csv(self, src: str, delimiter: str = ',', **kwargs):
@@ -495,6 +646,10 @@ class cMHNOptimizer(_Optimizer):
             raise ValueError(
                 "You have to load data before you start cross-validation")
 
+        mat_compatible = self._check_matrix_shape_compatibility()
+        if not mat_compatible[0]:
+            raise ValueError(mat_compatible[1])
+
         if lambda_min is None and lambda_max is not None or lambda_min is not None and lambda_max is None:
             raise ValueError("You have to set both lambda_min and lambda_max, if you want to use them.")
 
@@ -529,6 +684,10 @@ class cMHNOptimizer(_Optimizer):
         opt._regularized_score_func_builder = self._regularized_score_func_builder
         opt._regularized_gradient_func_builder = self._regularized_gradient_func_builder
 
+        # make sure that the same init_theta and theta_restriction_mask are used
+        opt.set_init_theta(self._init_theta)
+        opt.set_restriction(self._theta_restriction_mask)
+
         disable_progressbar = not show_progressbar
 
         for j in trange(nfolds, desc="Cross-Validation Folds", position=0, disable=disable_progressbar):
@@ -557,7 +716,7 @@ class cMHNOptimizer(_Optimizer):
             # choose the actual lambda according to the "one standard error rule"
             standard_error = np.std(scores[:, best_lambda_idx]) / np.sqrt(nfolds)
             threshold = np.max(score_means) - standard_error
-            chosen_lambda_idx = np.max(np.argwhere(score_means >= threshold))
+            chosen_lambda_idx = np.argmax(np.where(score_means >= threshold, lambda_path, -np.inf))
         else:
             # simply choose the best-performing lambda
             chosen_lambda_idx = best_lambda_idx
@@ -640,6 +799,43 @@ class oMHNOptimizer(cMHNOptimizer):
 
         self._penalty = (penalties_omhn.l1, penalties_omhn.l1_)
 
+    def get_theta_shape(self) -> tuple[int, int]:
+        """
+        Gets shape of oMHN-theta, that will result from training on loaded data.
+
+        Raises:
+            ValueError: If no data has been loaded.
+
+        Returns:
+            (int, int): The shape of theta as a tuple of integers.
+        """
+
+        if self._data is None:
+            raise ValueError("Specify the number of events (e.g. by loading data) before calling this method.")
+
+        n = self._data.get_data_shape()[1]
+        return (n+1, n)
+
+    def get_default_init_theta(self) -> np.ndarray:
+        """
+        Gets the oMHN's default initialization of log_theta (based on loaded data).
+
+        Returns:
+            np.ndarray: The matrix used as the default initialization of log_theta.
+
+        Raises:
+            ValueError: If no data has been loaded.
+        """
+
+        if self._data is None:
+            raise ValueError("No data has been loaded. Cannot compute independence model.")
+
+        vanilla_theta = create_indep_model(self._data)
+        n = vanilla_theta.shape[0]
+        omega_theta = np.zeros((n + 1, n))
+        omega_theta[:n] = vanilla_theta
+
+        return omega_theta
 
     def train(self, lam: float = None, maxit: int = 5000, trace: bool = False,
               reltol: float = 1e-7, round_result: bool = True) -> model.oMHN:
@@ -662,20 +858,7 @@ class oMHNOptimizer(cMHNOptimizer):
         if self._data is None:
             raise ValueError("You have to load data before training!")
 
-        undo_init_theta = False
-        if self._init_theta is None:
-            undo_init_theta = True
-            vanilla_theta = create_indep_model(self._data)
-            n = vanilla_theta.shape[0]
-            omega_theta = np.zeros((n + 1, n))
-            omega_theta[:n] = vanilla_theta
-            self._init_theta = omega_theta
-
         super().train(lam, maxit, trace, reltol, round_result)
-
-        if undo_init_theta:
-            self._init_theta = None
-            self._result.meta["init"] = None
 
         return self.result
 
@@ -791,6 +974,7 @@ class oMHNOptimizer(cMHNOptimizer):
         self._penalty = (penalty_score, penalty_gradient)
 
         return self
+
 
 class MHNType(Enum):
     """
