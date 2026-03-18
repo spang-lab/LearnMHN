@@ -9,7 +9,7 @@ import platform
 from shutil import which
 import subprocess
 
-VERSION = "1.2.1"                                  # current package version
+VERSION = "1.2.2"                                  # current package version
 
 IS_WINDOWS = (platform.system() == 'Windows')      # get the operating system
 STATE_SIZE = 8                                     # the compiled code supports MHNs with maximum size of 32 * STATE_SIZE
@@ -177,9 +177,9 @@ setup(
     ext_modules=cythonize(ext_modules,
                           annotate=GENERATE_DEBUG_HTML,
                           compile_time_env=dict(
-                                                NVCC_AVAILABLE=nvcc_available,
-                                                STATE_SIZE=STATE_SIZE
-                                                ),
+                              NVCC_AVAILABLE=nvcc_available,
+                              STATE_SIZE=STATE_SIZE
+                          ),
                           compiler_directives={'embedsignature': True}
                           ),
     include_dirs=[numpy.get_include()],

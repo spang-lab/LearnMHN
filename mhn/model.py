@@ -2,7 +2,7 @@
 This submodule contains classes to represent Mutual Hazard Networks.
 """
 
-# author(s): Y. Linda Hu, Stefan Vocht
+# author(s): Y. Linda Hu, Stefan Vocht, Michael Bonart
 
 from __future__ import annotations
 
@@ -527,6 +527,7 @@ class cMHN:
         cmap_brs: Union[str, matplotlib.colors.Colormap] = "Greens",
         colorbar: bool = True,
         annot: Union[float, bool] = 0.1,
+        overlay_restriction_mask: bool = True,
         ax: Optional[np.arraymatplotlib.axes.Axes] = None,
         logarithmic: bool = True,
     ) -> (
@@ -552,6 +553,10 @@ class cMHN:
                 If boolean, either all or no annotations are displayed. If numerical, displays
                 annotations for all effects greater than this threshold in the logarithmic theta matrix.
                 Defaults to 0.1.
+            overlay_restriction_mask (bool, optional):
+                If set to True, restriction mask will be overlayed on plot of theta.
+                Restricted entries of theta are depicted by a hatch pattern with diagonal stripes.
+                Defaults to True.
             ax (Optional[matplotlib.axes.Axes], optional):
                 Matplotlib axes to plot on. Defaults to None.
             logarithmic (bool, optional):
@@ -661,6 +666,21 @@ class cMHN:
         ax_theta.tick_params(axis="x", rotation=90)
 
         ax_theta.set_ylim((dim_theta_0 - 0.5, -0.5))
+
+        # add overlay of theta restriction mask
+        if (overlay_restriction_mask
+                and self.meta is not None
+                and self.meta['mask'] is not None):
+
+            restriction_mask: np.ndarray = self.meta['mask'].copy()
+            plotting_mask_br = np.ma.masked_less(-np.diag(restriction_mask).reshape(-1, 1), 0)
+            np.fill_diagonal(restriction_mask, 1)
+            plotting_mask_theta = np.ma.masked_less(-restriction_mask, 0)
+            none_map = colors.ListedColormap(['none'])
+            ax_theta.pcolor(np.arange(0, dim_theta_1), np.arange(0, dim_theta_0),
+                            plotting_mask_theta, cmap=none_map, hatch='///', edgecolor='0.7')
+            ax_brs.pcolor([-0.5, 0.5], np.arange(0, dim_theta_0)-0.5,
+                          plotting_mask_br, cmap=none_map, hatch='///', edgecolor='0.7')
 
         # add annotations
         if annot:
